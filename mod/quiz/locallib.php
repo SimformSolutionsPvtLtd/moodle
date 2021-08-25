@@ -1681,7 +1681,7 @@ function quiz_send_notification($recipient, $submitter, $a) {
     global $PAGE, $DB;
 
     $submitterentries = $DB->get_record('user_info_data', array('userid' => $submitter->id, 'fieldid' => '1'));
-    $recipiententries = $DB->get_record('user_info_data', array('userid' => $recipient->id, 'fieldid' => '1'));;
+    $recipiententries = $DB->get_record('user_info_data', array('userid' => $recipient->id, 'fieldid' => '1'));
 
     // Recipient info for template.
     $a->useridnumber = $recipient->idnumber;
