@@ -1279,7 +1279,7 @@ class core_course_renderer extends plugin_renderer_base {
         }
         $content = $this->course_summary($chelper, $course);
         $content .= $this->course_overview_files($course);
-        $content .= $this->course_contacts($course);
+        //$content .= $this->course_contacts($course);
         $content .= $this->course_category_name($chelper, $course);
         $content .= $this->course_custom_fields($course);
         return $content;

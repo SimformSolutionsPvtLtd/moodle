@@ -2037,6 +2037,7 @@ abstract class enrol_plugin {
      */
     public function enrol_user(stdClass $instance, $userid, $roleid = null, $timestart = 0, $timeend = 0, $status = null, $recovergrades = null) {
         global $DB, $USER, $CFG; // CFG necessary!!!
+        require_once($CFG->libdir . '/moodlelib.php');
 
         if ($instance->courseid == SITEID) {
             throw new coding_exception('invalid attempt to enrol into frontpage course!');
@@ -2087,6 +2088,15 @@ abstract class enrol_plugin {
                         )
                     );
             $event->trigger();
+
+            if($instance->enrol == 'cohort') {
+                $user = $DB->get_record('user', array('id' => $userid));
+                $course = $DB->get_record('course', array('id' => $courseid));
+                $courselink = $CFG->wwwroot . "/course/view.php?id=" . $course->id;
+                $body = "Hi ". $user->firstname . " " . $user->lastname .",<br/><br/>" . "You have been enrolled to <strong>" . " " . $course->fullname . "</strong> course.<br/><br/>" . "Please <a href='" . $courselink . "'>Click here</a> to view your course." . "<br/><br/>" . "Thanks," . "<br/>Admin";
+                email_to_user($user, $USER, 'Enrollment Notification', 'You have been enrolled to course', $body);
+            }
+
             // Check if course contacts cache needs to be cleared.
             core_course_category::user_enrolment_changed($courseid, $ue->userid,
                     $ue->status, $ue->timestart, $ue->timeend);
@@ -2117,6 +2127,8 @@ abstract class enrol_plugin {
                 remove_temp_course_roles($context);
             }
         }
+
+
     }
 
     /**
