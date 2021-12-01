@@ -33,6 +33,8 @@ require_once($CFG->dirroot.'/group/lib.php');
 require_once($CFG->dirroot.'/enrol/manual/locallib.php');
 require_once($CFG->dirroot.'/cohort/lib.php');
 require_once($CFG->dirroot . '/enrol/manual/classes/enrol_users_form.php');
+require_once($CFG->libdir.'/moodlelib.php');
+global $CFG;
 
 $id      = required_param('id', PARAM_INT); // Course id.
 $action  = required_param('action', PARAM_ALPHANUMEXT);
@@ -179,5 +181,9 @@ switch ($action) {
     default:
         throw new enrol_ajax_exception('unknowajaxaction');
 }
+
+$courselink = $CFG->wwwroot . "/course/view.php?id=" . $course->id;
+$body = "Hi ". $user->firstname . " " . $user->lastname .",<br/><br/>" . "You have been enrolled to <strong>" . " " . $course->fullname . "</strong> course.<br/><br/>" . "Please <a href='" . $courselink . "'>Click here</a> to view your course." . "<br/><br/>" . "Thanks," . "<br/>Admin";
+email_to_user($user, $USER, 'Enrollment Notification', 'You have been enrolled to course', $body);
 
 echo json_encode($outcome);
