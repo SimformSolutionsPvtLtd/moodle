@@ -3082,6 +3082,22 @@ class global_navigation extends navigation_node {
             }
         }
 
+        if (isloggedin()) {
+            if (is_siteadmin($USER)) {
+                $url = new moodle_url('/course/index.php');
+                $node = $coursenode->add(
+                    get_string('courses'),
+                    $url,
+                    self::TYPE_SETTING,
+                    null,
+                    'courses',
+                    new pix_icon('i/course', '')
+                );
+                $node->display = false;
+                $node->showinflatnavigation = true;
+            }
+        }
+
         return true;
     }
 
