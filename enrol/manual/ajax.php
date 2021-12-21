@@ -182,8 +182,4 @@ switch ($action) {
         throw new enrol_ajax_exception('unknowajaxaction');
 }
 
-$courselink = $CFG->wwwroot . "/course/view.php?id=" . $course->id;
-$body = "Hi ". $user->firstname . " " . $user->lastname .",<br/><br/>" . "You have been enrolled to <strong>" . " " . $course->fullname . "</strong> course.<br/><br/>" . "Please <a href='" . $courselink . "'>Click here</a> to view your course." . "<br/><br/>" . "Thanks," . "<br/>Admin";
-email_to_user($user, $USER, 'Enrollment Notification', 'You have been enrolled to course', $body);
-
 echo json_encode($outcome);

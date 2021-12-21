@@ -2109,6 +2109,14 @@ abstract class enrol_plugin {
             $ue->modifierid   = $USER->id;
             $ue->timecreated  = time();
             $ue->timemodified = $ue->timecreated;
+
+            $enrol = $DB->get_fieldset_select('enrol', 'id', 'courseid = :courseid', ['courseid' => $instance->courseid]);
+            list($insql, $inparams) = $DB->get_in_or_equal($enrol);
+            $sql = "select * from {user_enrolments} where userid = $userid and enrolid $insql";
+            $ues = $DB->get_records_sql($sql, $inparams);
+            if ($ues) {
+                $ue->emailsent = 1;
+            }
             $ue->id = $DB->insert_record('user_enrolments', $ue);
 
             $inserted = true;
@@ -2127,13 +2135,6 @@ abstract class enrol_plugin {
                     );
             $event->trigger();
 
-            if($instance->enrol == 'cohort') {
-                $user = $DB->get_record('user', array('id' => $userid));
-                $course = $DB->get_record('course', array('id' => $courseid));
-                $courselink = $CFG->wwwroot . "/course/view.php?id=" . $course->id;
-                $body = "Hi ". $user->firstname . " " . $user->lastname .",<br/><br/>" . "You have been enrolled to <strong>" . " " . $course->fullname . "</strong> course.<br/><br/>" . "Please <a href='" . $courselink . "'>Click here</a> to view your course." . "<br/><br/>" . "Thanks," . "<br/>Admin";
-                email_to_user($user, $USER, 'Enrollment Notification', 'You have been enrolled to course', $body);
-            }
 
             // Check if course contacts cache needs to be cleared.
             core_course_category::user_enrolment_changed($courseid, $ue->userid,
