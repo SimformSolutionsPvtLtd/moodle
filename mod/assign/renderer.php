@@ -384,9 +384,8 @@ class mod_assign_renderer extends plugin_renderer_base {
 
         $participants1 =  $participants - $submitted;
         $participants2 =  $submitted - $needsGrading;
-        $participants3 =  $needsGrading;
 
-        $gradeSummary = new \core\chart_series('Participants', [$participants1, $participants2, $participants3]);
+        $gradeSummary = new \core\chart_series('Participants', [$participants1, $participants2, $needsGrading]);
         $labels = ['Not Submitted', 'Graded & Submitted', 'Not Graded & Submitted'];
 
         $chart = new \core\chart_pie();
