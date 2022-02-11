@@ -30,5 +30,23 @@ $tasks = array(
         'day' => '*',
         'month' => '*',
         'dayofweek' => '*'
+    ),
+    array(
+        'classname' => 'mod_assign\task\send_assignment_email_reminder',
+        'blocking' => 0,
+        'minute' => 0,
+        'hour' => 4,
+        'day' => '*',
+        'month' => '*',
+        'dayofweek' => '*'
+    ),
+    array(
+        'classname' => 'mod_assign\task\send_not_submitted_email_reminder',
+        'blocking' => 0,
+        'minute' => 0,
+        'hour' => 4,
+        'day' => '*',
+        'month' => '*',
+        'dayofweek' => '*'
     )
 );
