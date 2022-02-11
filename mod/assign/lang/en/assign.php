@@ -635,3 +635,5 @@ $string['nolatesubmissions'] = 'No late submissions accepted. ';
 $string['nosubmissionsacceptedafter'] = 'No submissions accepted after ';
 $string['notsubmittedyet'] = 'Not submitted yet';
 $string['submissionsnotgraded'] = 'Submissions not graded: {$a}';
+$string['assignmentreminder'] = 'Assignment email reminder';
+$string['submissionreminder'] = 'Submission email reminder';
