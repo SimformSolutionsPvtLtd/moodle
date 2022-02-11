@@ -62,7 +62,7 @@ class send_not_submitted_email_reminder extends \core\task\scheduled_task {
                 if(!$DB->get_records('assign_submission', array('assignment' => $a->id, 'userid' => $ue->userid), '', '*')) {
                     $user = $DB->get_record('user', array('id' => $ue->userid));
                     $body = "Hi ". $user->firstname . " " . $user->lastname .",<br/><br/>" . "You have not submitted your assignment yet, Please submit your assignment and inform your mentor.<br/><br/>" . "<a href='" . $courseurl . "'>" . $course->fullname . "</a> : <a href='" . $assignurl . "'>" . $a->name . "</a>". "<br/><br/>Thanks," . "<br/>Admin";
-                    email_to_user($user, $USER, 'Assignment Not', 'Reminder for Grading Assignment', $body);
+                    email_to_user($user, $USER, 'Assignment Not Submitted Yet', 'Reminder for Assignment Submission', $body);
                 }
             }
         }
