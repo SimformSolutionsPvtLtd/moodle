@@ -40,7 +40,7 @@ class send_not_submitted_email_reminder extends \core\task\scheduled_task {
     public function execute() {
         global $DB, $USER, $CFG;
         require_once($CFG->libdir . '/moodlelib.php');
-
+        $trace = new \text_progress_trace();
         $assignments = $DB->get_records('assign', null, '', '*');
         foreach($assignments as $a) {
             if($a->duedate < (time() - 86400) || $a->duedate > (time())) {
@@ -56,16 +56,25 @@ class send_not_submitted_email_reminder extends \core\task\scheduled_task {
                 $enrolids[] = $enrol->id;
             }
             list($insql, $inparams) = $DB->get_in_or_equal($enrolids);
-            $sql = "select * from {user_enrolments} where enrolid $insql";
+            $sql = "select distinct(userid), id from {user_enrolments} where enrolid $insql";
             $ues = $DB->get_records_sql($sql, $inparams);
             foreach($ues as $ue) {
-                if(!$DB->get_records('assign_submission', array('assignment' => $a->id, 'userid' => $ue->userid), '', '*')) {
-                    $user = $DB->get_record('user', array('id' => $ue->userid));
-                    $body = "Hi ". $user->firstname . " " . $user->lastname .",<br/><br/>" . "You have not submitted your assignment yet, Please submit your assignment and inform your mentor.<br/><br/>" . "<a href='" . $courseurl . "'>" . $course->fullname . "</a> : <a href='" . $assignurl . "'>" . $a->name . "</a>". "<br/><br/>Thanks," . "<br/>Admin";
-                    email_to_user($user, $USER, 'Assignment Not Submitted Yet', 'Reminder for Assignment Submission', $body);
+                if(!$DB->get_records('assign_submission', array('assignment' => $a->id, 'userid' => $ue->userid, 'status' => "submitted"), '', '*')) {
+                    $context = \context_course::instance($course->id);
+                    $roles = get_user_roles($context, $ue->userid, true);
+                    $roletypes = array_map(function($o) {
+                        return $o->archetype;
+                    }, $roles);
+                    if (in_array("student", $roletypes) || in_array("user", $roletypes)) {
+                        $user = $DB->get_record('user', array('id' => $ue->userid));
+                        $body = "Hi ". $user->firstname . " " . $user->lastname .",<br/><br/>" . "You have not submitted your assignment yet, Please submit your assignment and inform your mentor.<br/><br/>" . "<a href='" . $courseurl . "'>" . $course->fullname . "</a> : <a href='" . $assignurl . "'>" . $a->name . "</a>". "<br/><br/>Thanks," . "<br/>Admin";
+                        email_to_user($user, $USER, 'Assignment Not Submitted Yet', 'Reminder for Assignment Submission', $body);
+                        $trace->output("notifying user $ue->userid - $user->email that assignment not submitted yet in $course->fullname");
+                    }
                 }
             }
         }
+        $trace->finished();
     }
        
 }

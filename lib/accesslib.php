@@ -3024,7 +3024,7 @@ function get_user_roles(context $context, $userid = 0, $checkparentcontexts = tr
 
     array_unshift($params, $userid);
 
-    $sql = "SELECT ra.*, r.name, r.shortname
+    $sql = "SELECT ra.*, r.name, r.shortname, r.archetype
               FROM {role_assignments} ra, {role} r, {context} c
              WHERE ra.userid = ?
                    AND ra.roleid = r.id
