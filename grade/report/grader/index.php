@@ -138,6 +138,8 @@ if ($isediting && ($data = data_submitted()) && confirm_sesskey()) {
 $report->load_users();
 $report->load_final_grades();
 echo $report->group_selector;
+echo $report->cohort_selector;
+$report->currentgroupname = $report->currentcohortname ? $report->currentcohortname : $report->currentgroupname;
 
 // User search
 $url = new moodle_url('/grade/report/grader/index.php', array('id' => $course->id));

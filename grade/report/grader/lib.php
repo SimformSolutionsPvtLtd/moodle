@@ -163,6 +163,7 @@ class grade_report_grader extends grade_report {
         $this->setup_groups();
         $this->setup_users();
         $this->setup_sortitemid();
+        $this->setup_cohorts();
 
         $this->overridecat = (bool)get_config('moodle', 'grade_overridecat');
     }
@@ -436,7 +437,7 @@ class grade_report_grader extends grade_report {
         // If the user has clicked one of the sort asc/desc arrows.
         if (is_numeric($this->sortitemid)) {
             $params = array_merge(array('gitemid' => $this->sortitemid), $gradebookrolesparams, $this->userwheresql_params,
-                    $this->groupwheresql_params, $enrolledparams, $relatedctxparams);
+                    $this->groupwheresql_params, $this->cohortwheresql_params, $enrolledparams, $relatedctxparams);
 
             $sortjoin = "LEFT JOIN {grade_grades} g ON g.userid = u.id AND g.itemid = $this->sortitemid";
             $sort = "g.finalgrade $this->sortorder, u.idnumber, u.lastname, u.firstname, u.email";
@@ -455,7 +456,7 @@ class grade_report_grader extends grade_report {
                 $sort = "{$usersortfield} {$this->sortorder}, " . implode(', ', $defaultsortfields);
             }
 
-            $params = array_merge($gradebookrolesparams, $this->userwheresql_params, $this->groupwheresql_params, $enrolledparams, $relatedctxparams);
+            $params = array_merge($gradebookrolesparams, $this->userwheresql_params, $this->groupwheresql_params, $this->cohortwheresql_params, $enrolledparams, $relatedctxparams);
         }
         $params = array_merge($userfieldssql->params, $params);
         $sql = "SELECT {$userfieldssql->selects}
@@ -463,6 +464,7 @@ class grade_report_grader extends grade_report {
                         {$userfieldssql->joins}
                   JOIN ($enrolledsql) je ON je.id = u.id
                        $this->groupsql
+                       $this->cohortsql
                        $sortjoin
                   JOIN (
                            SELECT DISTINCT ra.userid
@@ -473,6 +475,7 @@ class grade_report_grader extends grade_report {
                    AND u.deleted = 0
                    $this->userwheresql
                    $this->groupwheresql
+                   $this->cohortwheresql
               ORDER BY $sort";
         $studentsperpage = $this->get_students_per_page();
         $this->users = $DB->get_records_sql($sql, $params, $studentsperpage * $this->page, $studentsperpage);
@@ -1498,7 +1501,7 @@ class grade_report_grader extends grade_report {
             // We want to query both the current context and parent contexts.
             list($relatedctxsql, $relatedctxparams) = $DB->get_in_or_equal($this->context->get_parent_context_ids(true), SQL_PARAMS_NAMED, 'relatedctx');
 
-            $params = array_merge(array('courseid' => $this->courseid), $gradebookrolesparams, $enrolledparams, $groupwheresqlparams, $relatedctxparams);
+            $params = array_merge(array('courseid' => $this->courseid), $gradebookrolesparams, $enrolledparams, $groupwheresqlparams, $this->cohortwheresql_params, $relatedctxparams);
 
             // Find sums of all grade items in course.
             $sql = "SELECT g.itemid, SUM(g.finalgrade) AS sum
@@ -1513,10 +1516,12 @@ class grade_report_grader extends grade_report {
                                   AND ra.contextid $relatedctxsql
                            ) rainner ON rainner.userid = u.id
                       $groupsql
+                      $this->cohortsql
                      WHERE gi.courseid = :courseid
                        AND u.deleted = 0
                        AND g.finalgrade IS NOT NULL
                        $groupwheresql
+                       $this->cohortwheresql
                      GROUP BY g.itemid";
             $sumarray = array();
             if ($sums = $DB->get_records_sql($sql, $params)) {
@@ -1535,11 +1540,13 @@ class grade_report_grader extends grade_report {
                       LEFT OUTER JOIN {grade_grades} g
                            ON (g.itemid = gi.id AND g.userid = u.id AND g.finalgrade IS NOT NULL)
                       $groupsql
+                      $this->cohortsql
                      WHERE gi.courseid = :courseid
                            AND ra.roleid $gradebookrolessql
                            AND ra.contextid $relatedctxsql
                            AND g.id IS NULL
                            $groupwheresql
+                           $this->cohortwheresql
                   GROUP BY gi.id";
 
             $ungradedcounts = $DB->get_records_sql($sql, $params);

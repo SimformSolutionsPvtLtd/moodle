@@ -140,6 +140,44 @@ abstract class grade_report {
      */
     protected $groupwheresql_params = array();
 
+    // COHORT VARIABLES (including SQL)
+
+    /**
+     * The current cohort being displayed.
+     * @var int $currentcohort
+     */
+    public $currentcohort;
+
+    /**
+     * The current cohortname being displayed.
+     * @var string $currentcohortname
+     */
+    public $currentcohortname;
+
+    /**
+     * A HTML select element used to select the cohort group.
+     * @var string $cohort_selector
+     */
+    public $cohort_selector;
+
+    /**
+     * An SQL fragment used to add linking information to the cohort tables.
+     * @var string $cohortsql
+     */
+    protected $cohortsql;
+
+    /**
+     * An SQL constraint to append to the queries used by this object to build the report.
+     * @var string $cohortwheresql
+     */
+    protected $cohortwheresql;
+
+    /**
+     * The ordered params for $cohortwheresql
+     * @var array $cohortwheresql_params
+     */
+    protected $cohortwheresql_params = array();
+
     // USER VARIABLES (including SQL).
 
     /**
@@ -295,6 +333,8 @@ abstract class grade_report {
         $userwheresql = "";
         $groupsql      = "";
         $groupwheresql = "";
+        $cohortsql      = "";
+        $cohortwheresql = "";
 
         // Limit to users with a gradeable role.
         list($gradebookrolessql, $gradebookrolesparams) = $DB->get_in_or_equal(explode(',', $this->gradebookroles), SQL_PARAMS_NAMED, 'grbr0');
@@ -318,6 +358,12 @@ abstract class grade_report {
             $params        = array_merge($params, $this->groupwheresql_params);
         }
 
+        if ($this->cohortsql) {
+            $cohortsql      = $this->cohortsql;
+            $cohortwheresql = $this->cohortwheresql;
+            $params         = array_merge($params, $this->cohortwheresql_params);
+        }
+
         $sql = "SELECT DISTINCT u.id
                        FROM {user} u
                        JOIN ($enrolledsql) je
@@ -325,10 +371,12 @@ abstract class grade_report {
                        JOIN {role_assignments} ra
                             ON u.id = ra.userid
                        $groupsql
+                       $cohortsql
                       WHERE ra.roleid $gradebookrolessql
                             AND u.deleted = 0
                             $userwheresql
                             $groupwheresql
+                            $cohortwheresql
                             AND ra.contextid $relatedctxsql";
         $selectedusers = $DB->get_records_sql($sql, $params);
 
@@ -384,6 +432,27 @@ abstract class grade_report {
                 $this->groupsql             = " JOIN {groups_members} gm ON gm.userid = u.id ";
                 $this->groupwheresql        = " AND gm.groupid = :gr_grpid ";
                 $this->groupwheresql_params = array('gr_grpid'=>$this->currentgroup);
+            }
+        }
+    }
+
+    /**
+     * Sets up this object's cohort variables, mainly to restrict the selection of users to display.
+     */
+    protected function setup_cohorts() {
+        global $DB;
+        
+        $changecohort = optional_param('cohort', -1, PARAM_INT);
+        $this->cohort_selector = cohorts_print_course_menu($this->course, $this->pbarurl);
+        if ($changecohort > 0) {
+            $this->currentcohort = $changecohort;
+            if ($cohort = $DB->get_record('cohort', array('visible' => 1, 'id' => $changecohort))) {
+                $this->currentcohortname = $cohort->name;
+            }
+            if ($this->currentcohort) {
+                $this->cohortsql             = " JOIN {cohort_members} cm ON cm.userid = u.id ";
+                $this->cohortwheresql        = " AND cm.cohortid = :ch_chpid ";
+                $this->cohortwheresql_params = array('ch_chpid'=>$this->currentcohort);
             }
         }
     }
