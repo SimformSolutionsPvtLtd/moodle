@@ -623,6 +623,45 @@ function groups_print_course_menu($course, $urlroot, $return=false) {
 }
 
 /**
+ * Print cohort menu selector for course level.
+ *
+ * @category cohort
+ * @param stdClass $course course object
+ * @param mixed $urlroot return address. Accepts either a string or a moodle_url
+ * @param bool $return return as string instead of printing
+ * @return mixed void or string depending on $return param
+ */
+function cohorts_print_course_menu($course, $urlroot) {
+    global $USER, $OUTPUT, $DB;
+
+    $activecohort = optional_param('cohort', -1, PARAM_INT);
+
+    $cohortmenu = array();
+    $activecohort = ($activecohort != -1) ? $activecohort : 0;
+    $cohortmenu[0] = get_string('allparticipants');
+
+    $cohorts = $DB->get_records('cohort', array('visible' => 1));
+
+    foreach ($cohorts as $cohort) {
+        $cohortmenu[$cohort->id] = $cohort->name;
+    }
+    $cohortlabel = get_string('selectcohort', 'cohort');
+
+    if (count($cohortmenu) == 1) {
+        $cohortname = reset($cohortmenu);
+        $output = $cohortlabel.': '.$cohortname;
+    } else {
+        $select = new single_select(new moodle_url($urlroot), 'cohort', $cohortmenu, $activecohort, null, 'selectcohort');
+        $select->label = $cohortlabel;
+        $output = $OUTPUT->render($select);
+    }
+
+    $output = '<div class="cohortselector">'.$output.'<hr></div>';
+
+    return $output;
+}
+
+/**
  * Turn an array of groups into an array of menu options.
  * @param array $groups of group objects.
  * @return array groupid => formatted group name.
