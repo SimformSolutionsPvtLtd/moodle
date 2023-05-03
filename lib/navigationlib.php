@@ -1432,7 +1432,7 @@ class global_navigation extends navigation_node {
         $this->rootnodes['currentcourse'] = $this->add(get_string('currentcourse'), null, self::TYPE_ROOTNODE, null, 'currentcourse');
         $this->rootnodes['mycourses'] = $this->add(
             get_string('mycourses'),
-            new moodle_url('/my/courses.php'),
+            new moodle_url('/'),
             self::TYPE_ROOTNODE,
             null,
             'mycourses',
@@ -1444,7 +1444,6 @@ class global_navigation extends navigation_node {
             $this->rootnodes['mycourses']->mainnavonly = true;
         }
 
-        $this->rootnodes['mycourses'] = $this->add(get_string('mycourses'), new moodle_url('/'), self::TYPE_ROOTNODE, null, 'mycourses', new pix_icon('i/course', ''));
         $this->rootnodes['courses'] = $this->add(get_string('courses'), new moodle_url('/course/index.php'), self::TYPE_ROOTNODE, null, 'courses');
         if (!core_course_category::user_top()) {
             $this->rootnodes['courses']->hide();
