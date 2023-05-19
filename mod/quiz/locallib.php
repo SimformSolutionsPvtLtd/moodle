@@ -1678,7 +1678,10 @@ function quiz_send_confirmation($recipient, $a, $studentisonline) {
  * @return int|false as for {@link message_send()}.
  */
 function quiz_send_notification($recipient, $submitter, $a) {
-    global $PAGE;
+    global $PAGE, $DB;
+
+    $submitterentries = $DB->get_record('user_info_data', array('userid' => $submitter->id, 'fieldid' => '1'));
+    $recipiententries = $DB->get_record('user_info_data', array('userid' => $recipient->id, 'fieldid' => '1'));
 
     // Recipient info for template.
     $a->useridnumber = $recipient->idnumber;
@@ -1713,7 +1716,11 @@ function quiz_send_notification($recipient, $submitter, $a) {
     ];
 
     // ... and send it.
-    return message_send($eventdata);
+    if ($submitterentries->data == $recipiententries->data) {
+        return message_send($eventdata);
+    }
+
+    return true;
 }
 
 /**

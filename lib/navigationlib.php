@@ -1432,7 +1432,7 @@ class global_navigation extends navigation_node {
         $this->rootnodes['currentcourse'] = $this->add(get_string('currentcourse'), null, self::TYPE_ROOTNODE, null, 'currentcourse');
         $this->rootnodes['mycourses'] = $this->add(
             get_string('mycourses'),
-            new moodle_url('/my/courses.php'),
+            new moodle_url('/'),
             self::TYPE_ROOTNODE,
             null,
             'mycourses',
@@ -3078,6 +3078,22 @@ class global_navigation extends navigation_node {
                 $url = new moodle_url('/contentbank/index.php', $params);
                 $node = $coursenode->add(get_string('contentbank'), $url,
                     self::TYPE_CUSTOM, null, 'contentbank', new pix_icon('i/contentbank', ''));
+                $node->showinflatnavigation = true;
+            }
+        }
+
+        if (isloggedin()) {
+            if (is_siteadmin($USER)) {
+                $url = new moodle_url('/course/index.php');
+                $node = $coursenode->add(
+                    get_string('courses'),
+                    $url,
+                    self::TYPE_SETTING,
+                    null,
+                    'courses',
+                    new pix_icon('i/course', '')
+                );
+                $node->display = false;
                 $node->showinflatnavigation = true;
             }
         }

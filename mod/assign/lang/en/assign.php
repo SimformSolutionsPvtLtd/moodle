@@ -667,3 +667,12 @@ $string['allowsubmissionsfromdatesummary'] = 'This assignment will accept submis
 $string['allowsubmissionsanddescriptionfromdatesummary'] = 'The assignment details and submission form will be available from <strong>{$a}</strong>';
 $string['relativedatessubmissionduedateafter'] = '{$a->datediffstr} after course start';
 $string['relativedatessubmissionduedatebefore'] = '{$a->datediffstr} before course start';
+// Deprecated since Moodle 3.8.
+$string['duedateno'] = 'No due date';
+$string['mysubmission'] = 'My submission: ';
+$string['nolatesubmissions'] = 'No late submissions accepted. ';
+$string['nosubmissionsacceptedafter'] = 'No submissions accepted after ';
+$string['notsubmittedyet'] = 'Not submitted yet';
+$string['submissionsnotgraded'] = 'Submissions not graded: {$a}';
+$string['assignmentreminder'] = 'Assignment email reminder';
+$string['submissionreminder'] = 'Submission email reminder';

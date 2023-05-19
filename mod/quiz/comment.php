@@ -25,6 +25,8 @@
 
 require_once('../../config.php');
 require_once('locallib.php');
+require_once($CFG->libdir . '/moodlelib.php');
+global $DB, $USER;
 
 $attemptid = required_param('attempt', PARAM_INT);
 $slot = required_param('slot', PARAM_INT); // The question number in the attempt.
@@ -99,6 +101,10 @@ if (data_submitted() && confirm_sesskey()) {
         );
         $event = \mod_quiz\event\question_manually_graded::create($params);
         $event->trigger();
+
+        $url = new moodle_url('/mod/quiz/review.php', array('attempt'=>$attemptid,'cmid'=>$attemptobj->get_cm()->id));
+        $body = "Hi $student->firstname $student->lastname,"."<br/><br/>Click <a href='$url'>here</a> to view your result.<br/><br/>Thanks,<br/>Admin";
+        email_to_user($student, $USER, 'Response Added to '.$attemptobj->get_quiz_name(), 'You have been Responsed to quiz', $body);
 
         echo $output->notification(get_string('changessaved'), 'notifysuccess');
         close_window(2, true);

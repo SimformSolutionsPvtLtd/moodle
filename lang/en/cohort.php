@@ -35,6 +35,7 @@ $string['categorynotfound'] = 'Category <b>{$a}</b> not found or you don\'t have
 $string['cohort'] = 'Cohort';
 $string['cohortmember'] = 'Cohort member';
 $string['cohorts'] = 'Cohorts';
+$string['selectcohort'] = 'Select cohort';
 $string['cohortsin'] = '{$a}: available cohorts';
 $string['assigncohorts'] = 'Assign cohort members';
 $string['component'] = 'Source';

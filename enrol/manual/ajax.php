@@ -33,6 +33,8 @@ require_once($CFG->dirroot.'/group/lib.php');
 require_once($CFG->dirroot.'/enrol/manual/locallib.php');
 require_once($CFG->dirroot.'/cohort/lib.php');
 require_once($CFG->dirroot . '/enrol/manual/classes/enrol_users_form.php');
+require_once($CFG->libdir.'/moodlelib.php');
+global $CFG;
 
 $id      = required_param('id', PARAM_INT); // Course id.
 $action  = required_param('action', PARAM_ALPHANUMEXT);

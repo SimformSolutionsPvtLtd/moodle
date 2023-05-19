@@ -381,6 +381,24 @@ class renderer extends \plugin_renderer_base {
 
         // All done - write the table.
         $o .= \html_writer::table($t);
+        
+        //Pie Chart for Grading Summary
+        $participants = $summary->participantcount;
+        $submitted = $summary->submissionssubmittedcount;
+        $needsGrading = $summary->submissionsneedgradingcount;
+
+        $participants1 =  $participants - $submitted;
+        $participants2 =  $submitted - $needsGrading;
+
+        $gradeSummary = new \core\chart_series('Participants', [$participants1, $participants2, $needsGrading]);
+        $labels = ['Not Submitted', 'Graded & Submitted', 'Not Graded & Submitted'];
+
+        $chart = new \core\chart_pie();
+        $chart->set_title('PIE CHART FOR GRADE SUMMARY');
+        $chart->add_series($gradeSummary);
+        $chart->set_labels($labels);
+        $o .= $this->output->render($chart);
+        
         $o .= $this->output->box_end();
 
         // Close the container and insert a spacer.

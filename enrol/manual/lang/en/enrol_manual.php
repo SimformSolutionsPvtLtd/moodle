@@ -84,3 +84,4 @@ $string['wsnoinstance'] = 'Manual enrolment plugin instance doesn\'t exist or is
 $string['wsusercannotassign'] = 'You don\'t have the permission to assign this role ({$a->roleid}) to this user ({$a->userid}) in this course ({$a->courseid}).';
 $string['manualpluginnotinstalled'] = 'The "Manual" plugin has not yet been installed';
 $string['privacy:metadata'] = 'The Manual enrolments plugin does not store any personal data.';
+$string['sendemailnotificationsformanual'] = 'send enrol email notification via queue.';

@@ -2075,6 +2075,7 @@ abstract class enrol_plugin {
      */
     public function enrol_user(stdClass $instance, $userid, $roleid = null, $timestart = 0, $timeend = 0, $status = null, $recovergrades = null) {
         global $DB, $USER, $CFG; // CFG necessary!!!
+        require_once($CFG->libdir . '/moodlelib.php');
 
         if ($instance->courseid == SITEID) {
             throw new coding_exception('invalid attempt to enrol into frontpage course!');
@@ -2108,6 +2109,14 @@ abstract class enrol_plugin {
             $ue->modifierid   = $USER->id;
             $ue->timecreated  = time();
             $ue->timemodified = $ue->timecreated;
+
+            $enrol = $DB->get_fieldset_select('enrol', 'id', 'courseid = :courseid', ['courseid' => $instance->courseid]);
+            list($insql, $inparams) = $DB->get_in_or_equal($enrol);
+            $sql = "select * from {user_enrolments} where userid = $userid and enrolid $insql";
+            $ues = $DB->get_records_sql($sql, $inparams);
+            if ($ues) {
+                $ue->emailsent = 1;
+            }
             $ue->id = $DB->insert_record('user_enrolments', $ue);
 
             $inserted = true;
@@ -2125,6 +2134,8 @@ abstract class enrol_plugin {
                         )
                     );
             $event->trigger();
+
+
             // Check if course contacts cache needs to be cleared.
             core_course_category::user_enrolment_changed($courseid, $ue->userid,
                     $ue->status, $ue->timestart, $ue->timeend);
