@@ -68,8 +68,10 @@ class mod_feedback_complete_form extends moodleform {
         $this->structure = $structure;
         $this->gopage = isset($customdata['gopage']) ? $customdata['gopage'] : 0;
         $isanonymous = $this->structure->is_anonymous() ? ' ianonymous' : '';
-        parent::__construct(null, $customdata, 'POST', '',
-                array('id' => $formid, 'class' => 'feedback_form' . $isanonymous), true);
+        parent::__construct(
+            customdata: $customdata,
+            attributes: ['id' => $formid, 'class' => 'feedback_form' . $isanonymous],
+        );
         $this->set_display_vertical();
     }
 
@@ -167,10 +169,12 @@ class mod_feedback_complete_form extends moodleform {
      * This will add all items to the form, including pagebreaks as horizontal rules.
      */
     protected function definition_preview() {
+        $this->_form->addElement('html', html_writer::start_div('', ['data-region' => 'questions-sortable-list']));
         foreach ($this->structure->get_items() as $feedbackitem) {
             $itemobj = feedback_get_item_class($feedbackitem->typ);
             $itemobj->complete_form_element($feedbackitem, $this);
         }
+        $this->_form->addElement('html', html_writer::end_div());
     }
 
     /**
@@ -243,6 +247,15 @@ class mod_feedback_complete_form extends moodleform {
     }
 
     /**
+     * Returns whether the form is considered read-only (e.g. when previewing it)
+     *
+     * @return bool
+     */
+    private function is_readonly(): bool {
+        return $this->mode === self::MODE_PRINT;
+    }
+
+    /**
      * Returns the current course module
      * @return cm_info
      */
@@ -269,9 +282,6 @@ class mod_feedback_complete_form extends moodleform {
      */
     protected function get_suggested_class($item) {
         $class = "feedback_itemlist feedback-item-{$item->typ}";
-        if ($item->dependitem) {
-            $class .= " feedback_is_dependent";
-        }
         if ($item->typ !== 'pagebreak') {
             $itemobj = feedback_get_item_class($item->typ);
             if ($itemobj->get_hasvalue()) {
@@ -301,10 +311,6 @@ class mod_feedback_complete_form extends moodleform {
         } else {
             // Add non-group element to the form.
             if (is_array($element)) {
-                if ($this->is_frozen() && $element[0] === 'text') {
-                    // Convert 'text' element to 'static' when freezing for better display.
-                    $element = ['static', $element[1], $element[2]];
-                }
                 $element = call_user_func_array(array($this->_form, 'createElement'), $element);
             }
             $element = $this->_form->addElement($element);
@@ -314,6 +320,7 @@ class mod_feedback_complete_form extends moodleform {
         $attributes = $element->getAttributes();
         $class = !empty($attributes['class']) ? ' ' . $attributes['class'] : '';
         $attributes['class'] = $this->get_suggested_class($item) . $class;
+
         $element->setAttributes($attributes);
 
         // Add required rule.
@@ -323,7 +330,7 @@ class mod_feedback_complete_form extends moodleform {
 
         // Set default value.
         if ($setdefaultvalue && ($tmpvalue = $this->get_item_value($item))) {
-            $this->_form->setDefault($element->getName(), s($tmpvalue));
+            $this->_form->setDefault($element->getName(), htmlspecialchars_decode($tmpvalue, ENT_QUOTES));
         }
 
         // Freeze if needed.
@@ -331,9 +338,20 @@ class mod_feedback_complete_form extends moodleform {
             $element->freeze();
         }
 
+        // For read-only forms, just disable each added element.
+        if ($this->is_readonly()) {
+            $this->_form->disabledIf($element->getName(), 'id');
+        }
+
         // Add red asterisks on required fields.
         if ($item->required) {
-            $required = $OUTPUT->pix_icon('req', get_string('requiredelement', 'form'));
+            $requiredlabel = get_string('requiredelement', 'form');
+            $pixparams = [
+                'class' => 'ms-2',
+                'title' => $requiredlabel,
+            ];
+            $required = $OUTPUT->pix_icon('req', '', 'moodle', $pixparams)
+                . \core\output\html_writer::span("($requiredlabel)", 'sr-only');
             $element->setLabel($element->getLabel() . $required);
             $this->hasrequired = true;
         }
@@ -449,8 +467,7 @@ class mod_feedback_complete_form extends moodleform {
         global $OUTPUT;
         $menu = new action_menu();
         $menu->set_owner_selector('#' . $this->guess_element_id($item, $element));
-        $menu->set_constraint('.feedback_form');
-        $menu->set_menu_trigger(get_string('edit'));
+        $menu->set_kebab_trigger(get_string('edit'));
         $menu->prioritise = true;
 
         $itemobj = feedback_get_item_class($item->typ);
@@ -458,14 +475,10 @@ class mod_feedback_complete_form extends moodleform {
         foreach ($actions as $action) {
             $menu->add($action);
         }
-        $editmenu = $OUTPUT->render($menu);
-
-        $name = $element->getLabel();
-
-        $name = html_writer::span('', 'itemdd', array('id' => 'feedback_item_box_' . $item->id)) .
-                html_writer::span($name, 'itemname') .
-                html_writer::span($editmenu, 'itemactions');
-        $element->setLabel(html_writer::span($name, 'itemtitle'));
+        $menudata = $menu->export_for_template($OUTPUT);
+        $element->setLabel(html_writer::span($element->getLabel(), '', [
+            'data-item-actions-menu' => json_encode($menudata),
+        ]));
     }
 
     /**
@@ -571,9 +584,5 @@ class mod_feedback_complete_form extends moodleform {
         }
 
         $this->_form->display();
-
-        if ($this->mode == self::MODE_EDIT) {
-            $PAGE->requires->js_call_amd('mod_feedback/edit', 'setup');
-        }
     }
 }

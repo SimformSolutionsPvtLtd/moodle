@@ -40,9 +40,9 @@ Feature: View competencies
       | competency | relatedcompetency |
       | desserts   | cakes             |
     And the following "core_competency > plans" exist:
-      | name     | description           | competencies            | user     |
-      | Cookery  | Cookery is important  | salads, desserts, cakes | student1 |
-      | Literacy | Literacy is important | reading, writing        | student1 |
+      | name     | description           | competencies            | user     | status |
+      | Cookery  | Cookery is important  | salads, desserts, cakes | student1 | active |
+      | Literacy | Literacy is important | reading, writing        | student1 | active |
     And the following "core_competency > course_competencies" exist:
       | course | competency |
       | C1     | salads     |
@@ -152,7 +152,7 @@ Feature: View competencies
     # Participant learning plans
     And I click on "Close" "button" in the "Cakes" "dialogue"
     And I click on "Close" "button" in the "User competency summary" "dialogue"
-    And I navigate to course participants
+    And I am on the "C1" "enrolled users" page
     And I click on "Student first" "link"
     And I click on "Learning plans" "link"
     And I should see "Cookery"

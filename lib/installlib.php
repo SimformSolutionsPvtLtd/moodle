@@ -162,7 +162,7 @@ function install_helpbutton($url, $title='') {
     echo "<a href=\"javascript:void(0)\" ";
     echo "onclick=\"return window.open('$url','Help','menubar=0,location=0,scrollbars,resizable,width=500,height=400')\"";
     echo ">";
-    echo "<img src=\"pix/help.gif\" class=\"iconhelp\" alt=\"$title\" title=\"$title\"/>";
+    echo "<img src=\"pix/help.gif\" alt=\"$title\" title=\"$title\"/>";
     echo "</a>\n";
 }
 
@@ -344,7 +344,7 @@ function install_print_header($config, $stagename, $heading, $stagetext, $stagec
           <link rel="shortcut icon" href="theme/clean/pix/favicon.ico" />';
 
     echo '<link rel="stylesheet" type="text/css" href="'.$CFG->wwwroot.'/install/css.php" />
-          <title>'.get_string('installation','install').' - Moodle '.$CFG->target_release.'</title>
+          <title>'.get_string('installation', 'install') . moodle_page::TITLE_SEPARATOR . 'Moodle '.$CFG->target_release.'</title>
           <meta name="robots" content="noindex">
           <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
           <meta http-equiv="pragma" content="no-cache" />
@@ -388,9 +388,9 @@ function install_print_footer($config, $reload=false) {
     global $CFG;
 
     if ($config->stage > INSTALL_WELCOME) {
-        $first = '<input type="submit" id="previousbutton" class="btn btn-secondary flex-grow-0 ml-auto" name="previous" value="&laquo; '.s(get_string('previous')).'" />';
+        $first = '<input type="submit" id="previousbutton" class="btn btn-secondary flex-grow-0 ms-auto" name="previous" value="&laquo; '.s(get_string('previous')).'" />';
     } else {
-        $first = '<input type="submit" id="previousbutton" class="btn btn-secondary flex-grow-0  ml-auto" name="next" value="'.s(get_string('reload')).'" />';
+        $first = '<input type="submit" id="previousbutton" class="btn btn-secondary flex-grow-0  ms-auto" name="next" value="'.s(get_string('reload')).'" />';
         $first .= '<script type="text/javascript">
 //<![CDATA[
     var first = document.getElementById("previousbutton");
@@ -401,9 +401,9 @@ function install_print_footer($config, $reload=false) {
     }
 
     if ($reload) {
-        $next = '<input type="submit" id="nextbutton" class="btn btn-primary ml-1 flex-grow-0 mr-auto" name="next" value="'.s(get_string('reload')).'" />';
+        $next = '<input type="submit" id="nextbutton" class="btn btn-primary ms-1 flex-grow-0 me-auto" name="next" value="'.s(get_string('reload')).'" />';
     } else {
-        $next = '<input type="submit" id="nextbutton" class="btn btn-primary ml-1 flex-grow-0 mr-auto" name="next" value="'.s(get_string('next')).' &raquo;" />';
+        $next = '<input type="submit" id="nextbutton" class="btn btn-primary ms-1 flex-grow-0 me-auto" name="next" value="'.s(get_string('next')).' &raquo;" />';
     }
 
     echo '</fieldset><div id="nav_buttons" class="mb-3 w-100 d-flex">'.$first.$next.'</div>';
@@ -507,8 +507,10 @@ function install_cli_database(array $options, $interactive) {
     }
 
     // Set the support email address if specified.
-    if (isset($options['supportemail'])) {
+    if (!empty($options['supportemail'])) {
         set_config('supportemail', $options['supportemail']);
+    } else if (!empty($options['adminemail'])) {
+        set_config('supportemail', $options['adminemail']);
     }
 
     // indicate that this site is fully configured

@@ -19,7 +19,7 @@
  *
  * The UI mockup has been proposed in MDL-18688
  * It uses the standard core Moodle formslib. For more info about them, please
- * visit: http://docs.moodle.org/dev/lib/formslib.php
+ * visit: https://moodledev.io/docs/apis/subsystems/form
  *
  * @package    mod_workshop
  * @copyright  2009 David Mudrak <david.mudrak@gmail.com>
@@ -246,10 +246,6 @@ class mod_workshop_mod_form extends moodleform_mod {
 
         $label = get_string('assessmentend', 'workshop');
         $mform->addElement('date_time_selector', 'assessmentend', $label, array('optional' => true));
-
-        $coursecontext = context_course::instance($this->course->id);
-        // To be removed (deprecated) with MDL-67526.
-        plagiarism_get_form_elements_module($mform, $coursecontext, 'mod_workshop');
 
         // Common module settings, Restrict availability, Activity completion etc. ----
         $features = array('groups' => true, 'groupings' => true,

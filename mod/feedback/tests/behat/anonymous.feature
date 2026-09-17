@@ -29,7 +29,7 @@ Feature: Anonymous feedback
     When I log in as "manager"
     And I am on site homepage
     And I follow "Site feedback"
-    And I click on "Edit questions" "link" in the "[role=main]" "css_element"
+    And I navigate to "Questions" in current page administration
     And I add a "Multiple choice" question to the feedback with:
       | Question                       | Do you like our site?              |
       | Label                          | multichoice2                       |
@@ -58,11 +58,9 @@ Feature: Anonymous feedback
 
   @javascript
   Scenario: Complete anonymous feedback and view analysis on the front page as an authenticated user
-    And I log in as "admin"
-    And I set the following system permissions of "Authenticated user on site home" role:
-      | capability                   | permission |
-      | mod/feedback:viewanalysepage | Allow      |
-    And I log out
+    Given the following "role capability" exists:
+      | role                         | frontpage |
+      | mod/feedback:viewanalysepage | allow     |
     And I log in as "user1"
     And I am on site homepage
     When I follow "Site feedback"
@@ -118,11 +116,9 @@ Feature: Anonymous feedback
   Scenario: Complete fully anonymous feedback and view analyze on the front page as a guest
     Given the following config values are set as admin:
       | feedback_allowfullanonymous | 1 |
-    And I log in as "admin"
-    And I set the following system permissions of "Guest" role:
-      | capability                   | permission |
-      | mod/feedback:viewanalysepage | Allow      |
-    And I log out
+    And the following "role capability" exists:
+      | role                         | guest |
+      | mod/feedback:viewanalysepage | allow |
     When I follow "Site feedback"
     And I should not see "Preview questions"
     And I follow "Answer the questions"
@@ -160,7 +156,7 @@ Feature: Anonymous feedback
   Scenario: Anonymous feedback in a course
     # Teacher can not
     When I am on the "Course feedback" "feedback activity" page logged in as teacher
-    And I click on "Edit questions" "link" in the "[role=main]" "css_element"
+    And I navigate to "Questions" in current page administration
     And I add a "Multiple choice" question to the feedback with:
       | Question                       | Do you like this course?           |
       | Label                          | multichoice1                       |
@@ -255,8 +251,8 @@ Feature: Anonymous feedback
     And I should see "Non anonymous entries (1)"
     And I click on "," "link" in the "Username 1" "table_row"
     And I should see "(Username 1)"
-    And I should see "usertext"
+    Then the field "this is a short text answer" matches value "usertext"
     And I navigate to "Responses" in current page administration
     And I follow "Response number: 1"
     And I should see "Response number: 1 (Anonymous)"
-    Then I should see "anontext"
+    And the field "this is a short text answer" matches value "anontext"

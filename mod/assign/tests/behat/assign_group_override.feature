@@ -52,15 +52,13 @@ Feature: Assign group override
     And I press "Continue"
     And I should not see "Group 1"
 
-  Scenario: Duplicate a user override
-    Given I am on the "Test assignment name" Activity page logged in as teacher1
+  Scenario: Duplicate a group override
+    Given the following "mod_assign > group overrides" exist:
+      | assignment            | group | duedate              |
+      | Test assignment name  | G1    | ##1 Jan 2020 08:00## |
+    And I am on the "Test assignment name" Activity page logged in as teacher1
     When I navigate to "Overrides" in current page administration
     And I select "Group overrides" from the "jump" singleselect
-    And I press "Add group override"
-    And I set the following fields to these values:
-      | Override group | Group 1              |
-      | Due date       | ##1 Jan 2020 08:00## |
-    And I press "Save"
     Then I should see "Wednesday, 1 January 2020, 8:00"
     And I click on "copy" "link"
     And I set the following fields to these values:
@@ -71,29 +69,25 @@ Feature: Assign group override
     And I should see "Group 2"
 
   Scenario: Allow a group to have a different due date
-    Given I am on the "Test assignment name" Activity page logged in as teacher1
-    When I navigate to "Settings" in current page administration
+    Given the following "mod_assign > group overrides" exist:
+      | assignment            | group | duedate              |
+      | Test assignment name  | G1    | ##1 Jan 2020 08:00## |
+    When I am on the "Test assignment name" Activity page logged in as teacher1
+    And I navigate to "Settings" in current page administration
     And I set the following fields to these values:
       | Allow submissions from | disabled             |
       | Due date               | ##1 Jan 2000 08:00## |
       | Cut-off date           | disabled             |
     And I press "Save and display"
-    And I navigate to "Overrides" in current page administration
-    And I select "Group overrides" from the "jump" singleselect
-    And I press "Add group override"
-    And I set the following fields to these values:
-      | Override group | Group 1              |
-      | Due date       | ##1 Jan 2020 08:00## |
-    And I press "Save"
-    And I should see "Wednesday, 1 January 2020, 8:00"
-    And I log out
     And I am on the "Test assignment name" Activity page logged in as student2
     Then the activity date in "Test assignment name" should contain "Due: Saturday, 1 January 2000, 8:00"
-    And I log out
     And I am on the "Test assignment name" Activity page logged in as student1
     And the activity date in "Test assignment name" should contain "Due: Wednesday, 1 January 2020, 8:00"
 
   Scenario: Allow a group to have a different cut off date
+    Given the following "mod_assign > group overrides" exist:
+      | assignment            | group | cutoffdate           |
+      | Test assignment name  | G1    | ##1 Jan 2030 08:00## |
     Given I am on the "Test assignment name" Activity page logged in as teacher1
     When I navigate to "Settings" in current page administration
     And I set the following fields to these values:
@@ -101,42 +95,25 @@ Feature: Assign group override
       | Allow submissions from | disabled             |
       | Cut-off date           | ##1 Jan 2000 08:00## |
     And I press "Save and display"
-    And I navigate to "Overrides" in current page administration
-    And I select "Group overrides" from the "jump" singleselect
-    And I press "Add group override"
-    And I set the following fields to these values:
-      | Override group | Group 1              |
-      | Cut-off date   | ##1 Jan 2030 08:00## |
-    And I press "Save"
-    And I should see "Tuesday, 1 January 2030, 8:00"
-    And I log out
     And I am on the "Test assignment name" Activity page logged in as student2
     Then I should not see "You have not made a submission yet."
-    And I log out
     And I am on the "Test assignment name" Activity page logged in as student1
     And I should see "No submissions have been made yet"
 
   Scenario: Allow a group to have a different start date
-    Given I am on the "Test assignment name" Activity page logged in as teacher1
+    Given the following "mod_assign > group overrides" exist:
+      | assignment            | group | allowsubmissionsfromdate  |
+      | Test assignment name  | G1    | ##1 Jan 2015 08:00##      |
+    And I am on the "Test assignment name" Activity page logged in as teacher1
     When I navigate to "Settings" in current page administration
     And I set the following fields to these values:
       | Due date               | disabled                 |
       | Allow submissions from | ##1 January 2030 08:00## |
       | Cut-off date           | disabled                 |
     And I press "Save and display"
-    And I navigate to "Overrides" in current page administration
-    And I select "Group overrides" from the "jump" singleselect
-    And I press "Add group override"
-    And I set the following fields to these values:
-      | Override group         | Group 1              |
-      | Allow submissions from | ##1 Jan 2015 08:00## |
-    And I press "Save"
-    And I should see "Thursday, 1 January 2015, 8:00"
-    And I log out
     And I am on the "Test assignment name" Activity page logged in as student2
     Then the activity date in "Test assignment name" should contain "Opens: Tuesday, 1 January 2030, 8:00"
     And I should not see "Add submission"
-    And I log out
     And I am on the "Test assignment name" Activity page logged in as student1
     And I should not see "Tuesday, 1 January 2030, 8:00"
 
@@ -218,22 +195,97 @@ Feature: Assign group override
     And the following "group members" exist:
       | user     | group |
       | teacher1 | G1    |
-    And I am on the "Assignment 2" Activity page logged in as admin
-    And I navigate to "Overrides" in current page administration
-    And I select "Group overrides" from the "jump" singleselect
-    And I press "Add group override"
-    And I set the following fields to these values:
-      | Override group         | Group 1                  |
-      | Allow submissions from | ##1 January 2020 08:00## |
-    And I press "Save and enter another override"
-    And I set the following fields to these values:
-      | Override group         | Group 2                  |
-      | Allow submissions from | ##1 January 2020 08:00## |
-    And I press "Save"
-    And I log out
-
+    And the following "mod_assign > group overrides" exist:
+      | assignment    | group | allowsubmissionsfromdate  |
+      | Assignment 2  | G1    | ##1 Jan 2020 08:00##      |
+      | Assignment 2  | G2    | ##1 Jan 2020 08:00##      |
     When I am on the "Assignment 2" Activity page logged in as teacher1
     And I navigate to "Overrides" in current page administration
     And I select "Group overrides" from the "jump" singleselect
     Then I should see "Group 1" in the ".generaltable" "css_element"
     And I should not see "Group 2" in the ".generaltable" "css_element"
+
+  Scenario: "Not visible" groups should not be available for group overrides
+    Given the following "groups" exist:
+      | name                                 | course | idnumber | visibility | participation |
+      | Visible to everyone/Participation         | C1     | VP       | 0          | 1             |
+      | Only visible to members/Participation     | C1     | MP       | 1          | 1             |
+      | Only see own membership                   | C1     | O        | 2          | 0             |
+      | Not visible                          | C1     | N        | 3          | 0             |
+      | Visible to everyone/Non-Participation     | C1     | VN       | 0          | 0             |
+      | Only visible to members/Non-Participation | C1     | MN       | 1          | 0             |
+    When I am on the "Test assignment name" Activity page logged in as teacher1
+    And I navigate to "Overrides" in current page administration
+    And I select "Group overrides" from the "jump" singleselect
+    And I press "Add group override"
+    Then I should see "Visible to everyone/Participation" in the "Override group" "select"
+    And I should see "Visible to everyone/Non-Participation" in the "Override group" "select"
+    And I should see "Only visible to members" in the "Override group" "select"
+    And I should see "Only visible to members/Non-Participation" in the "Override group" "select"
+    And I should see "Only see own membership" in the "Override group" "select"
+    And I should not see "Not visible" in the "Override group" "select"
+
+  @javascript
+  Scenario: Assign activity group overrides are displayed on the timeline block
+    Given the following "group members" exist:
+      | user     | group |
+      | student1 | G2    |
+    And I am on the "Test assignment name" "assign activity editing" page logged in as teacher1
+    And I set the following fields to these values:
+      | allowsubmissionsfromdate[enabled]  | 1            |
+      | duedate[enabled]                   | 1            |
+      | allowsubmissionsfromdate           | ##today##    |
+      | duedate                            | ##tomorrow## |
+    And I press "Save and display"
+    When I log in as "student1"
+    Then I should see "##tomorrow##%A, %d %B %Y##" in the "Timeline" "block"
+    And the following "mod_assign > group overrides" exist:
+      | assignment            | group | allowsubmissionsfromdate | duedate            |
+      | Test assignment name  | G1    | ##tomorrow##             | ##tomorrow +1day## |
+    And I reload the page
+    And I should see "##tomorrow +1day##%A, %d %B %Y##" in the "Timeline" "block"
+    And the following "mod_assign > group overrides" exist:
+      | assignment            | group | allowsubmissionsfromdate | duedate             |
+      | Test assignment name  | G2    | ##tomorrow +1day##       | ##tomorrow +3days## |
+    And I reload the page
+    And I should see "##tomorrow +3days##%A, %d %B %Y##" in the "Timeline" "block"
+
+  @javascript
+  Scenario: Assign activity user override is displayed even if group override exists on the timeline block
+    Given the following "group members" exist:
+      | user     | group |
+      | student1 | G2    |
+    And I am on the "Test assignment name" "assign activity editing" page logged in as teacher1
+    And I set the following fields to these values:
+      | allowsubmissionsfromdate[enabled]  | 1            |
+      | duedate[enabled]                   | 1            |
+      | allowsubmissionsfromdate           | ##today##    |
+      | duedate                            | ##tomorrow## |
+    And I press "Save and display"
+    And the following "mod_assign > group overrides" exist:
+      | assignment            | group | allowsubmissionsfromdate  | duedate            |
+      | Test assignment name  | G1    | ##tomorrow##              | ##tomorrow +1day## |
+      | Test assignment name  | G2    | ##tomorrow +1day##        | ##tomorrow +3day## |
+    And the following "mod_assign > user overrides" exist:
+      | assignment            | user     | allowsubmissionsfromdate | duedate           |
+      | Test assignment name  | student1 | ##tomorrow##             | ##tomorrow noon## |
+    When I log in as "student1"
+    Then I should see "##tomorrow noon##%A, %d %B %Y##" in the "Timeline" "block"
+
+  @javascript
+  Scenario: Assign activity override are not visible on timeline block when student is unenrolled
+    Given the following "group members" exist:
+      | user     | group |
+      | student1 | G2    |
+    And the following "mod_assign > group overrides" exist:
+      | assignment            | group | allowsubmissionsfromdate  | duedate             |
+      | Test assignment name  | G2    | ##tomorrow +1day##        | ##tomorrow +3days## |
+    And the following "mod_assign > user overrides" exist:
+      | assignment            | user     | allowsubmissionsfromdate | duedate           |
+      | Test assignment name  | student1 | ##tomorrow##             | ##tomorrow noon## |
+    And I am on the "C1" "enrolled users" page logged in as "teacher1"
+    And I click on "Unenrol" "icon" in the "student1" "table_row"
+    And I click on "Unenrol" "button" in the "Unenrol" "dialogue"
+    When I log in as "student1"
+    Then "Test assignment name" "link" should not exist in the "Timeline" "block"
+    And I should not see "##tomorrow noon##%A, %d %B %Y##" in the "Timeline" "block"

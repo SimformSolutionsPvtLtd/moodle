@@ -39,7 +39,7 @@ class user_edit_form extends moodleform {
     /**
      * Define the form.
      */
-    public function definition () {
+    public function definition() {
         global $CFG, $COURSE, $USER;
 
         $mform = $this->_form;
@@ -234,6 +234,8 @@ class user_edit_form extends moodleform {
                 $errors['email'] = $errorstr;
             }
         }
+
+        $errors += useredit_validate_description_length((array)$usernew);
 
         // Next the customisable profile fields.
         $errors += profile_validation($usernew, $files);

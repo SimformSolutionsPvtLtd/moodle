@@ -25,7 +25,7 @@ import {dispatchEvent} from 'core/event_dispatcher';
 import {loadFragment} from 'core/fragment';
 import Notification from 'core/notification';
 import Pending from 'core/pending';
-import {get_string as getString} from 'core/str';
+import {getString} from 'core/str';
 import Templates from 'core/templates';
 import {add as addToast} from 'core/toast';
 import DynamicForm from 'core_form/dynamicform';
@@ -53,11 +53,11 @@ const setFilterButtonCount = async(reportElement, filterCount) => {
  * Initialise module for given report
  *
  * @method
- * @param {Number} reportId
+ * @param {String} reportElementId
  * @param {Number} contextId
  */
-export const init = (reportId, contextId) => {
-    const reportElement = document.querySelector(reportSelectors.forReport(reportId));
+export const init = (reportElementId, contextId) => {
+    const reportElement = document.getElementById(reportElementId);
     const filterFormContainer = reportElement.querySelector(reportSelectors.regions.filtersForm);
 
     // Ensure we only add our listeners once (can be called multiple times by mustache template).
@@ -86,8 +86,8 @@ export const init = (reportId, contextId) => {
         event.preventDefault();
 
         const pendingPromise = new Pending('core_reportbuilder/filters:reset');
-        const reportParameters = reportElement.dataset.parameter;
 
+        const {reportId, reportParameters} = reportElement.dataset;
         resetFilters(reportId, reportParameters)
             .then(() => getString('filtersreset', 'core_reportbuilder'))
             .then(addToast)

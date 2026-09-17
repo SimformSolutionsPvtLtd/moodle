@@ -37,6 +37,35 @@ require_once($CFG->libdir . '/questionlib.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class qtype_multichoice extends question_type {
+    /**
+     * @var int a special value that can be set for {@see question_display_options::$feedback}.
+     *
+     * This is not used by the core question type, but is used by some variants of this question
+     * types in the plugins database, including qtype_oumultiresponse and qtype_answersselect.
+     *
+     * If ->feedback is set to this value, then the renderer will display the combined feebdack,
+     * but not the feedback for each specific choice.
+     */
+    const COMBINED_BUT_NOT_CHOICE_FEEDBACK = 0x100;
+
+    /**
+     * Helper to catch and update if a plugin is using the old version of the COMBINED_BUT_NOT_CHOICE_FEEDBACK thing.
+     *
+     * @param question_display_options $options to be updated before being used.
+     */
+    public static function support_legacy_review_options_hack(question_display_options $options): void {
+        if (empty($options->suppresschoicefeedback)) {
+            return; // Nothing to do.
+        }
+
+        debugging('$options->suppresschoicefeedback should no longer be used. To get a similar effect, ' .
+            'instead set $options->feedback = $options->feedback && qtype_multichoice::COMBINED_BUT_NOT_CHOICE_FEEDBACK.');
+        if ($options->feedback) {
+            $options->feedback = self::COMBINED_BUT_NOT_CHOICE_FEEDBACK;
+        }
+        unset($options->suppresschoicefeedback);
+    }
+
     public function get_question_options($question) {
         global $DB, $OUTPUT;
 
@@ -59,7 +88,7 @@ class qtype_multichoice extends question_type {
      * @param object $question The queston we are working with.
      * @return object The options object.
      */
-    protected function create_default_options($question) {
+    public function create_default_options($question) {
         // Create a default question options record.
         $options = new stdClass();
         $options->questionid = $question->id;
@@ -241,6 +270,13 @@ class qtype_multichoice extends question_type {
     public function get_random_guess_score($questiondata) {
         if (!$questiondata->options->single) {
             // Pretty much impossible to compute for _multi questions. Don't try.
+            return null;
+        }
+
+        if (empty($questiondata->options->answers)) {
+            // A multi-choice question with no choices is senseless,
+            // but, seemingly, it can happen (presumably as a side-effect of bugs).
+            // Therefore, ensure it does not lead to errors here.
             return null;
         }
 

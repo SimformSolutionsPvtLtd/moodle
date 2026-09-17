@@ -14,19 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * License manager helper class.
- *
- * @package    tool_licensemanager
- * @copyright  2019 Tom Dickman <tomdickman@catalyst-au.net>
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
 
 namespace tool_licensemanager;
 
 use moodle_url;
 
-defined('MOODLE_INTERNAL') || die();
 
 /**
  * License manager helper class.
@@ -47,13 +39,8 @@ class helper {
      *
      * @return \moodle_url
      */
-    public static function get_licensemanager_url() : moodle_url {
-        global $CFG;
-
-        $url = new moodle_url($CFG->wwwroot . self::MANAGER_PATH,
-            ['sesskey' => sesskey()]);
-
-        return $url;
+    public static function get_licensemanager_url(): moodle_url {
+        return new moodle_url(self::MANAGER_PATH);
     }
 
     /**
@@ -63,7 +50,7 @@ class helper {
      *
      * @return \moodle_url
      */
-    public static function get_enable_license_url(string $licenseshortname) : moodle_url {
+    public static function get_enable_license_url(string $licenseshortname): moodle_url {
         $url = new moodle_url(self::MANAGER_PATH,
             ['action' => manager::ACTION_ENABLE, 'license' => $licenseshortname, 'sesskey' => sesskey()]);
 
@@ -77,7 +64,7 @@ class helper {
      *
      * @return \moodle_url
      */
-    public static function get_disable_license_url(string $licenseshortname) : moodle_url {
+    public static function get_disable_license_url(string $licenseshortname): moodle_url {
         $url = new moodle_url(self::MANAGER_PATH,
             ['action' => manager::ACTION_DISABLE, 'license' => $licenseshortname, 'sesskey' => sesskey()]);
 
@@ -89,10 +76,9 @@ class helper {
      *
      * @return \moodle_url
      */
-    public static function get_create_license_url() : moodle_url {
-        $url = new moodle_url(self::MANAGER_PATH,
-            ['action' => manager::ACTION_CREATE, 'sesskey' => sesskey()]);
-
+    public static function get_create_license_url(): moodle_url {
+        $url = self::get_licensemanager_url();
+        $url->params(['action' => manager::ACTION_CREATE]);
         return $url;
     }
 
@@ -103,10 +89,9 @@ class helper {
      *
      * @return \moodle_url
      */
-    public static function get_update_license_url(string $licenseshortname) : moodle_url {
-        $url = new moodle_url(self::MANAGER_PATH,
-            ['action' => manager::ACTION_UPDATE, 'license' => $licenseshortname, 'sesskey' => sesskey()]);
-
+    public static function get_update_license_url(string $licenseshortname): moodle_url {
+        $url = self::get_licensemanager_url();
+        $url->params(['action' => manager::ACTION_UPDATE, 'license' => $licenseshortname]);
         return $url;
     }
 
@@ -117,7 +102,7 @@ class helper {
      *
      * @return \moodle_url
      */
-    public static function get_moveup_license_url(string $licenseshortname) : moodle_url {
+    public static function get_moveup_license_url(string $licenseshortname): moodle_url {
         $url = new moodle_url(self::MANAGER_PATH,
             ['action' => manager::ACTION_MOVE_UP, 'license' => $licenseshortname, 'sesskey' => sesskey()]);
 
@@ -131,7 +116,7 @@ class helper {
      *
      * @return \moodle_url
      */
-    public static function get_movedown_license_url(string $licenseshortname) : moodle_url {
+    public static function get_movedown_license_url(string $licenseshortname): moodle_url {
         $url = new moodle_url(self::MANAGER_PATH,
             ['action' => manager::ACTION_MOVE_DOWN, 'license' => $licenseshortname, 'sesskey' => sesskey()]);
 
@@ -145,7 +130,7 @@ class helper {
      *
      * @return int $epoch
      */
-    public static function convert_version_to_epoch(string $version) : int {
+    public static function convert_version_to_epoch(string $version): int {
         $date = substr($version, 0, 8);
         $epoch = strtotime($date);
 

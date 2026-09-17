@@ -15,7 +15,7 @@
     along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 }}
 {{!
-    @template calendar/upcoming_mini
+    @template core_calendar/upcoming_mini
 
     Calendar upcoming view for blocks.
 
@@ -44,7 +44,7 @@
             }} data-eventtype-{{normalisedeventtype}}="1"{{!
             }} data-region="event-item"{{!
         }}>
-            <div class="activityiconcontainer small {{{purpose}}} courseicon mr-3">
+            <div class="activityiconcontainer small courseicon me-3">
                 {{#icon}}
                 {{#iconurl}}
                     <img alt="{{alttext}}" title="{{alttext}}" src="{{{ iconurl }}}" class="icon {{iconclass}}">
@@ -55,15 +55,16 @@
                 {{/icon}}
             </div>
             <div class="overflow-auto">
-                <h6 class="d-flex mb-1">
+                <h4 class="d-flex mb-1 h6">
                     <a{{!
                         }} class="text-truncate"{{!
                         }} data-type="event"{{!
                         }} data-action="view-event"{{!
                         }} data-event-id="{{id}}"{{!
                         }} href="{{viewurl}}"{{!
+                        }} title="{{name}}"{{!
                     }}>{{{name}}}</a>
-                </h6>
+                </h4>
                 <div class="date small">{{{formattedtime}}}</div>
             </div>
         </div>

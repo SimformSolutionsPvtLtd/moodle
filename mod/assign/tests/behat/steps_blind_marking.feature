@@ -34,9 +34,10 @@ Feature: Assignments correctly add feedback to the grade report when workflow an
 
     # Mark the submission.
     And I am on the "Test assignment name" Activity page logged in as teacher1
-    And I follow "View all submissions"
+    And I navigate to "Submissions" in current page administration
     And I should see "Not marked" in the "I'm the student's first submission" "table_row"
-    And I click on "Grade" "link" in the "I'm the student's first submission" "table_row"
+    And I click on "Grade actions" "actionmenu" in the "I'm the student's first submission" "table_row"
+    And I choose "Grade" in the open action menu
     And I set the field "Grade out of 100" to "50"
     And I set the field "Marking workflow state" to "In review"
     And I set the field "Feedback comments" to "Great job! Lol, not really."
@@ -47,58 +48,53 @@ Feature: Assignments correctly add feedback to the grade report when workflow an
 
   @javascript
   Scenario: Student identities are revealed after releasing the grades.
-    When I click on "Grade" "link" in the "I'm the student's first submission" "table_row"
+    When I click on "Grade actions" "actionmenu" in the "I'm the student's first submission" "table_row"
+    And I choose "Grade" in the open action menu
     And I set the field "Marking workflow state" to "Ready for release"
     And I set the field "Notify student" to "0"
     And I press "Save changes"
     And I follow "View all submissions"
     And I should see "Ready for release" in the "I'm the student's first submission" "table_row"
-    And I click on "Grade" "link" in the "I'm the student's first submission" "table_row"
+    And I click on "Grade actions" "actionmenu" in the "I'm the student's first submission" "table_row"
+    And I choose "Grade" in the open action menu
     And I set the field "Marking workflow state" to "Released"
     And I press "Save changes"
     And I follow "View all submissions"
     And I should see "Released" in the "I'm the student's first submission" "table_row"
-    And I set the field "Grading action" to "Reveal student identities"
+    And I choose the "Reveal student identities" item in the "Actions" action menu
     And I press "Continue"
-    And I log out
-
-    And I am on the "C1" Course page logged in as student1
-    And I navigate to "User report" in the course gradebook
+    And I am on the "Course 1" "grades > User report > View" page logged in as "student1"
     Then I should see "50"
     And I should see "Great job! Lol, not really."
 
   @javascript
   Scenario: Student identities are revealed before releasing the grades.
-    When I click on "Grade" "link" in the "I'm the student's first submission" "table_row"
+    When I click on "Grade actions" "actionmenu" in the "I'm the student's first submission" "table_row"
+    And I choose "Grade" in the open action menu
     And I set the field "Marking workflow state" to "Ready for release"
     And I set the field "Notify student" to "0"
     And I press "Save changes"
     And I follow "View all submissions"
     And I should see "Ready for release" in the "I'm the student's first submission" "table_row"
-    And I set the field "Grading action" to "Reveal student identities"
+    And I choose the "Reveal student identities" item in the "Actions" action menu
     And I press "Continue"
-    And I click on "Grade" "link" in the "Student 1" "table_row"
+    And I change window size to "large"
+    And I click on "Grade actions" "actionmenu" in the "Student 1" "table_row"
+    And I choose "Grade" in the open action menu
+    And I change window size to "medium"
     And I set the field "Marking workflow state" to "Released"
     And I press "Save changes"
     And I follow "View all submissions"
     And I should see "Released" in the "Student 1" "table_row"
-    And I log out
-
-    And I am on the "C1" Course page logged in as student1
-    And I navigate to "User report" in the course gradebook
+    And I am on the "Course 1" "grades > User report > View" page logged in as "student1"
     Then I should see "50"
     And I should see "Great job! Lol, not really."
 
   @javascript
   Scenario: Submissions table visible with overrides and blind marking
+    Given the following "mod_assign > user overrides" exist:
+      | assignment            | user     | duedate              |
+      | Test assignment name  | student1 | ##2030-01-01 08:00## |
     When I am on the "Test assignment name" "assign activity" page
-    And I navigate to "Overrides" in current page administration
-    And I press "Add user override"
-    And I set the following fields to these values:
-      | Override user | Student              |
-      | Due date      | ##2030-01-01 08:00## |
-    And I press "Save"
-    And I should see "Tuesday, 1 January 2030, 8:00"
-    And I am on the "Test assignment name" "assign activity" page
-    And I follow "View all submissions"
-    And I should see "In review" in the "I'm the student's first submission" "table_row"
+    And I navigate to "Submissions" in current page administration
+    Then I should see "In review" in the "I'm the student's first submission" "table_row"

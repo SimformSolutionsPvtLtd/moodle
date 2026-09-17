@@ -31,6 +31,10 @@ define('ABORT_AFTER_CONFIG', true);
 define('CACHE_DISABLE_ALL', true);
 define('NO_OUTPUT_BUFFERING', true);
 
+// It makes no sense to use BEHAT_CLI for this script (the Behat launch scripts expect to start
+// from the normal environment), so in case user has set tne environment variable, disable it.
+putenv('BEHAT_CLI=0');
+
 require_once(__DIR__ .'/../../../../config.php');
 require_once(__DIR__.'/../../../../lib/clilib.php');
 require_once(__DIR__.'/../../../../lib/behat/lib.php');
@@ -87,7 +91,7 @@ Options:
 Example from Moodle root directory:
 \$ php admin/tool/behat/cli/run.php --tags=\"@javascript\"
 
-More info in http://docs.moodle.org/dev/Acceptance_testing#Running_tests
+More info in https://moodledev.io/general/development/tools/behat/running
 ";
 
 if (!empty($options['help'])) {
@@ -220,6 +224,11 @@ if (empty($parallelrun)) {
     $cmds['singlerun'] = $runtestscommand;
 
     echo "Running single behat site:" . PHP_EOL;
+    // The inner PHP process is not marked as having an interactive terminal even if it's passed
+    // through from this one which does, so we need to pass it through as an environment variable.
+    if (function_exists('posix_isatty') && posix_isatty(STDOUT)) {
+        putenv('MOODLE_BEHAT_RUNNING_IN_TTY=1');
+    }
     passthru("php $runtestscommand", $status);
     $exitcodes['singlerun'] = $status;
     chdir($cwd);
@@ -521,4 +530,3 @@ function get_status_lines_from_run_op(Symfony\Component\Process\Process $process
 
     return $statusstr;
 }
-

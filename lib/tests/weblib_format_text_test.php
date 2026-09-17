@@ -19,29 +19,32 @@ namespace core;
 /**
  * Unit tests for format_text defined in weblib.php.
  *
+ * @covers ::format_text
+ *
  * @package   core
  * @category  test
  * @copyright 2015 The Open University
  * @license   http://www.gnu.org/copyleft/gpl.html GNU Public License
+ * @covers ::format_text
  */
-class weblib_format_text_test extends \advanced_testcase {
+final class weblib_format_text_test extends \advanced_testcase {
 
-    public function test_format_text_format_html() {
+    public function test_format_text_format_html(): void {
         $this->resetAfterTest();
         filter_set_global_state('emoticon', TEXTFILTER_ON);
         $this->assertMatchesRegularExpression('~^<p><img class="icon emoticon" alt="smile" title="smile" ' .
-                'src="https://www.example.com/moodle/theme/image.php/_s/boost/core/1/s/smiley" /></p>$~',
+                'src="https://www.example.com/moodle/theme/image.php/boost/core/1/s/smiley" /></p>$~',
                 format_text('<p>:-)</p>', FORMAT_HTML));
     }
 
-    public function test_format_text_format_html_no_filters() {
+    public function test_format_text_format_html_no_filters(): void {
         $this->resetAfterTest();
         filter_set_global_state('emoticon', TEXTFILTER_ON);
         $this->assertEquals('<p>:-)</p>',
                 format_text('<p>:-)</p>', FORMAT_HTML, array('filter' => false)));
     }
 
-    public function test_format_text_format_plain() {
+    public function test_format_text_format_plain(): void {
         // Note FORMAT_PLAIN does not filter ever, no matter we ask for filtering.
         $this->resetAfterTest();
         filter_set_global_state('emoticon', TEXTFILTER_ON);
@@ -49,46 +52,82 @@ class weblib_format_text_test extends \advanced_testcase {
                 format_text(':-)', FORMAT_PLAIN));
     }
 
-    public function test_format_text_format_plain_no_filters() {
+    public function test_format_text_format_plain_no_filters(): void {
         $this->resetAfterTest();
         filter_set_global_state('emoticon', TEXTFILTER_ON);
         $this->assertEquals(':-)',
                 format_text(':-)', FORMAT_PLAIN, array('filter' => false)));
     }
 
-    public function test_format_text_format_markdown() {
+    public function test_format_text_format_markdown(): void {
         $this->resetAfterTest();
         filter_set_global_state('emoticon', TEXTFILTER_ON);
         $this->assertMatchesRegularExpression('~^<p><em><img class="icon emoticon" alt="smile" title="smile" ' .
-                'src="https://www.example.com/moodle/theme/image.php/_s/boost/core/1/s/smiley" />' .
+                'src="https://www.example.com/moodle/theme/image.php/boost/core/1/s/smiley" />' .
                 '</em></p>\n$~',
                 format_text('*:-)*', FORMAT_MARKDOWN));
     }
 
-    public function test_format_text_format_markdown_nofilter() {
+    public function test_format_text_format_markdown_nofilter(): void {
         $this->resetAfterTest();
         filter_set_global_state('emoticon', TEXTFILTER_ON);
         $this->assertEquals("<p><em>:-)</em></p>\n",
                 format_text('*:-)*', FORMAT_MARKDOWN, array('filter' => false)));
     }
 
-    public function test_format_text_format_moodle() {
+    public function test_format_text_format_moodle(): void {
         $this->resetAfterTest();
         filter_set_global_state('emoticon', TEXTFILTER_ON);
         $this->assertMatchesRegularExpression('~^<div class="text_to_html"><p>' .
                 '<img class="icon emoticon" alt="smile" title="smile" ' .
-                'src="https://www.example.com/moodle/theme/image.php/_s/boost/core/1/s/smiley" /></p></div>$~',
+                'src="https://www.example.com/moodle/theme/image.php/boost/core/1/s/smiley" /></p></div>$~',
                 format_text('<p>:-)</p>', FORMAT_MOODLE));
     }
 
-    public function test_format_text_format_moodle_no_filters() {
+    public function test_format_text_format_moodle_no_filters(): void {
         $this->resetAfterTest();
         filter_set_global_state('emoticon', TEXTFILTER_ON);
         $this->assertEquals('<div class="text_to_html"><p>:-)</p></div>',
                 format_text('<p>:-)</p>', FORMAT_MOODLE, array('filter' => false)));
     }
 
-    public function test_format_text_overflowdiv() {
+    /**
+     * Make sure that nolink tags and spans prevent linking in filters that support it.
+     */
+    public function test_format_text_nolink(): void {
+        global $CFG;
+        $this->resetAfterTest();
+        filter_set_global_state('activitynames', TEXTFILTER_ON);
+
+        $course = $this->getDataGenerator()->create_course();
+        $context = \context_course::instance($course->id);
+        $page = $this->getDataGenerator()->create_module('page',
+            ['course' => $course->id, 'name' => 'Test 1']);
+        $cm = get_coursemodule_from_instance('page', $page->id, $page->course, false, MUST_EXIST);
+        $pageurl = $CFG->wwwroot. '/mod/page/view.php?id=' . $cm->id;
+
+        $this->assertSame(
+            '<p>Read <a class="autolink" title="Test 1" href="' . $pageurl . '">Test 1</a>.</p>',
+            format_text('<p>Read Test 1.</p>', FORMAT_HTML, ['context' => $context]));
+
+        $this->assertSame(
+            '<p>Read <a class="autolink" title="Test 1" href="' . $pageurl . '">Test 1</a>.</p>',
+            format_text('<p>Read Test 1.</p>', FORMAT_HTML, ['context' => $context, 'noclean' => true]));
+
+        $this->assertSame(
+            '<p>Read Test 1.</p>',
+            format_text('<p><nolink>Read Test 1.</nolink></p>', FORMAT_HTML, ['context' => $context, 'noclean' => false]));
+
+        $this->assertSame(
+            '<p>Read Test 1.</p>',
+            format_text('<p><nolink>Read Test 1.</nolink></p>', FORMAT_HTML, ['context' => $context, 'noclean' => true]));
+
+        $this->assertSame(
+            '<p><span class="nolink">Read Test 1.</span></p>',
+            format_text('<p><span class="nolink">Read Test 1.</span></p>', FORMAT_HTML, ['context' => $context]));
+    }
+
+    public function test_format_text_overflowdiv(): void {
         $this->assertEquals('<div class="no-overflow"><p>Hello world</p></div>',
                 format_text('<p>Hello world</p>', FORMAT_HTML, array('overflowdiv' => true)));
     }
@@ -100,7 +139,7 @@ class weblib_format_text_test extends \advanced_testcase {
      * @param string $link The link to add target="_blank" to
      * @param string $expected The expected filter value
      */
-    public function test_format_text_blanktarget($link, $expected) {
+    public function test_format_text_blanktarget($link, $expected): void {
         $actual = format_text($link, FORMAT_MOODLE, array('blanktarget' => true, 'filter' => false, 'noclean' => true));
         $this->assertEquals($expected, $actual);
     }
@@ -110,7 +149,7 @@ class weblib_format_text_test extends \advanced_testcase {
      *
      * @return array of testcases
      */
-    public function format_text_blanktarget_testcases() {
+    public static function format_text_blanktarget_testcases(): array {
         return [
             'Simple link' => [
                 '<a href="https://www.youtube.com/watch?v=JeimE8Wz6e4">Hey, that\'s pretty good!</a>',
@@ -165,7 +204,7 @@ class weblib_format_text_test extends \advanced_testcase {
      * @param string $nocleaned Expected output of format_text() with noclean=true
      * @param string $cleaned Expected output of format_text() with noclean=false
      */
-    public function test_format_text_cleaning($input, $nocleaned, $cleaned) {
+    public function test_format_text_cleaning($input, $nocleaned, $cleaned): void {
         global $CFG;
         $this->resetAfterTest();
 
@@ -191,7 +230,7 @@ class weblib_format_text_test extends \advanced_testcase {
      *
      * @return array of testcases (string)testcasename => [(string)input, (string)nocleaned, (string)cleaned]
      */
-    public function format_text_cleaning_testcases() {
+    public static function format_text_cleaning_testcases(): array {
         return [
             'JavaScript' => [
                 'Hello <script type="text/javascript">alert("XSS");</script> world',
@@ -229,5 +268,19 @@ class weblib_format_text_test extends \advanced_testcase {
                 '<div></div>',
             ],
         ];
+    }
+
+    public function test_with_context_as_options(): void {
+        $this->assertEquals(
+            '<p>Example</p>',
+            format_text('<p>Example</p>', FORMAT_HTML, \context_system::instance()),
+        );
+
+        $messages = $this->getDebuggingMessages();
+        $this->assertdebuggingcalledcount(1);
+        $this->assertStringContainsString(
+            'The options argument should not be a context object directly.',
+            $messages[0]->message,
+        );
     }
 }

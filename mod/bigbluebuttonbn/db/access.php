@@ -98,6 +98,17 @@ $capabilities = [
         ],
     ],
 
+    // Ability to view all recordings formats (if not user can only see the formats
+    // defined in bigbluebuttonbn_recording_safe_formats).
+    'mod/bigbluebuttonbn:viewallrecordingformats' => [
+        'captype' => 'read',
+        'contextlevel' => CONTEXT_MODULE,
+        'archetypes' => [
+            'manager' => CAP_ALLOW,
+            'editingteacher' => CAP_ALLOW,
+        ],
+    ],
+
     // Ability to publish recordings.
     'mod/bigbluebuttonbn:publishrecordings' => [
         'captype' => 'write',
@@ -154,6 +165,17 @@ $capabilities = [
         'contextlevel' => CONTEXT_MODULE,
         'archetypes' => [
             'manager' => CAP_ALLOW,
+            'editingteacher' => CAP_ALLOW,
+        ],
+    ],
+
+    // Ability to always see presentation files.
+    'mod/bigbluebuttonbn:seepresentation' => [
+        'captype' => 'read',
+        'contextlevel' => CONTEXT_MODULE,
+        'archetypes' => [
+            'manager' => CAP_ALLOW,
+            'teacher' => CAP_ALLOW,
             'editingteacher' => CAP_ALLOW,
         ],
     ],

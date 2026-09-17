@@ -131,7 +131,7 @@ class standard_action_bar implements renderable, templatable {
             'label' => get_string("searchindefinition", "glossary"),
         ];
 
-        $checkbox = $OUTPUT->render_from_template('core/checkbox', $check);
+        $checkbox = \html_writer::div($OUTPUT->render_from_template('core/checkbox', $check), 'mt-1');
 
         $hiddenfields = [
             (object) ['name' => 'id', 'value' => $this->cm->id],
@@ -160,7 +160,7 @@ class standard_action_bar implements renderable, templatable {
             return null;
         }
         $btn = new single_button(new moodle_url('/mod/glossary/edit.php', ['cmid' => $this->cm->id]),
-            get_string('addsingleentry', 'glossary'), 'post', true);
+            get_string('addsingleentry', 'glossary'), 'post', single_button::BUTTON_PRIMARY);
 
         return $btn->export_for_template($output);
     }

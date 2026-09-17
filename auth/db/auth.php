@@ -85,7 +85,7 @@ class auth_plugin_db extends auth_plugin_base {
 
             $rs = $authdb->Execute("SELECT *
                                       FROM {$this->config->table}
-                                     WHERE {$this->config->fielduser} = '".$this->ext_addslashes($extusername)."'");
+                                     WHERE {$this->config->fielduser} = ?", [$extusername]);
             if (!$rs) {
                 $authdb->Close();
                 debugging(get_string('auth_dbcantconnect','auth_db'));
@@ -113,7 +113,7 @@ class auth_plugin_db extends auth_plugin_base {
 
             $rs = $authdb->Execute("SELECT {$this->config->fieldpass}
                                       FROM {$this->config->table}
-                                     WHERE {$this->config->fielduser} = '".$this->ext_addslashes($extusername)."'");
+                                     WHERE {$this->config->fielduser} = ?", [$extusername]);
             if (!$rs) {
                 $authdb->Close();
                 debugging(get_string('auth_dbcantconnect','auth_db'));
@@ -226,9 +226,9 @@ class auth_plugin_db extends auth_plugin_base {
             $select = implode(', ', $select);
             $sql = "SELECT $select
                       FROM {$this->config->table}
-                     WHERE {$this->config->fielduser} = '".$this->ext_addslashes($extusername)."'";
+                     WHERE {$this->config->fielduser} = ?";
 
-            if ($rs = $authdb->Execute($sql)) {
+            if ($rs = $authdb->Execute($sql, [$extusername])) {
                 if (!$rs->EOF) {
                     $fields = $rs->FetchRow();
                     // Convert the associative array to an array of its values so we don't have to worry about the case of its keys.
@@ -499,7 +499,7 @@ class auth_plugin_db extends auth_plugin_base {
 
         $rs = $authdb->Execute("SELECT *
                                   FROM {$this->config->table}
-                                 WHERE {$this->config->fielduser} = '".$this->ext_addslashes($extusername)."' ");
+                                 WHERE {$this->config->fielduser} = ?", [$extusername]);
 
         if (!$rs) {
             throw new \moodle_exception('auth_dbcantconnect', 'auth_db');
@@ -541,7 +541,7 @@ class auth_plugin_db extends auth_plugin_base {
      * Reads user information from DB and return it in an object.
      *
      * @param string $username username
-     * @return array
+     * @return stdClass
      */
     function get_userinfo_asobj($username) {
         $user_array = truncate_userinfo($this->get_userinfo($username));
@@ -582,7 +582,8 @@ class auth_plugin_db extends auth_plugin_base {
 
         $authdb = $this->db_init();
 
-        $update = array();
+        $update = [];
+        $params = [];
         foreach($curruser as $key=>$value) {
             if ($key == 'username') {
                 continue; // Skip this.
@@ -599,14 +600,16 @@ class auth_plugin_db extends auth_plugin_base {
                 $nuvalue = $nuvalue['text'];
             }
             if ($nuvalue != $value) {
-                $update[] = $this->config->{"field_map_$key"}."='".$this->ext_addslashes(core_text::convert($nuvalue, 'utf-8', $this->config->extencoding))."'";
+                $update[] = $this->config->{"field_map_$key"} . " = ?";
+                $params[] = core_text::convert($nuvalue, 'utf-8', $this->config->extencoding);
             }
         }
         if (!empty($update)) {
+            $params[] = $extusername;
             $sql = "UPDATE {$this->config->table}
                        SET ".implode(',', $update)."
                      WHERE {$this->config->fielduser} = ?";
-            if (!$authdb->Execute($sql, array($this->ext_addslashes($extusername)))) {
+            if (!$authdb->Execute($sql, $params)) {
                 throw new \moodle_exception('auth_dbupdateerror', 'auth_db');
             }
         }
@@ -693,10 +696,18 @@ class auth_plugin_db extends auth_plugin_base {
     /**
      * Add slashes, we can not use placeholders or system functions.
      *
+     * @deprecated since Moodle 4.5.
+     * @todo MDL-88386 Final deprecation in Moodle 6.0.
      * @param string $text
      * @return string
      */
+    #[\core\attribute\deprecated(
+        replacement: 'parameterised queries',
+        since: '4.5',
+        mdl: 'MDL-88138',
+    )]
     function ext_addslashes($text) {
+        \core\deprecation::emit_deprecation_if_present([self::class, __FUNCTION__]);
         if (empty($this->config->sybasequoting)) {
             $text = str_replace('\\', '\\\\', $text);
             $text = str_replace(array('\'', '"', "\0"), array('\\\'', '\\"', '\\0'), $text);
@@ -760,9 +771,7 @@ class auth_plugin_db extends auth_plugin_base {
             $rs->close();
 
         } else {
-            $fields_obj = $rs->FetchObj();
-            $columns = array_keys((array)$fields_obj);
-
+            $columns = array_keys($rs->fetchRow());
             echo $OUTPUT->notification(get_string('auth_dbcolumnlist', 'auth_db', implode(', ', $columns)), 'notifysuccess');
             $rs->close();
         }

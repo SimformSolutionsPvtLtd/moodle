@@ -24,20 +24,18 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-require_once("$CFG->libdir/phpspreadsheet/vendor/autoload.php");
-
-use \PhpOffice\PhpSpreadsheet\Spreadsheet;
-use \PhpOffice\PhpSpreadsheet\IOFactory;
-use \PhpOffice\PhpSpreadsheet\Cell\Coordinate;
-use \PhpOffice\PhpSpreadsheet\Cell\DataType;
-use \PhpOffice\PhpSpreadsheet\Shared\Date;
-use \PhpOffice\PhpSpreadsheet\Style\Alignment;
-use \PhpOffice\PhpSpreadsheet\Style\Border;
-use \PhpOffice\PhpSpreadsheet\Style\Fill;
-use \PhpOffice\PhpSpreadsheet\Style\Font;
-use \PhpOffice\PhpSpreadsheet\Style\NumberFormat;
-use \PhpOffice\PhpSpreadsheet\Worksheet\Drawing;
-use \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Font;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
+use PhpOffice\PhpSpreadsheet\Worksheet\Drawing;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
  * Define and operate over one Moodle Workbook.
@@ -50,7 +48,7 @@ use \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * @package moodlecore
  */
 class MoodleExcelWorkbook {
-    /** @var PhpSpreadsheet */
+    /** @var \PhpOffice\PhpSpreadsheet\Spreadsheet */
     protected $objspreadsheet;
 
     /** @var string */
@@ -202,6 +200,7 @@ class MoodleExcelWorksheet {
     public function write_string($row, $col, $str, $format = null) {
         // For PhpSpreadsheet library, the column indexes start on 1 (instead of 0 as before).
         $col += 1;
+        $str = \core\dataformat::escape_spreadsheet_formula($str);
 
         $this->worksheet->getStyleByColumnAndRow($col, $row + 1)->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_TEXT);
         $this->worksheet->setCellValueExplicitByColumnAndRow($col, $row + 1, $str, DataType::TYPE_STRING);

@@ -28,7 +28,7 @@ require_once(__DIR__ . '/test_helper_trait.php');
  * @copyright 2020 Catalyst IT
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class settings_provider_test extends \advanced_testcase {
+final class settings_provider_test extends \advanced_testcase {
     use \quizaccess_seb_test_helper_trait;
 
     /**
@@ -93,7 +93,7 @@ class settings_provider_test extends \advanced_testcase {
      *
      * @return array
      */
-    public function settings_capability_data_provider() {
+    public static function settings_capability_data_provider(): array {
         $data = [];
 
         // Build first level SEB config settings. Any of this setting let us use SEB manual config.
@@ -110,8 +110,8 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test that settings types to be added to quiz settings, are part of quiz_settings persistent class.
      */
-    public function test_setting_elements_are_part_of_quiz_settings_table() {
-        $dbsettings = (array) (new quiz_settings())->to_record();
+    public function test_setting_elements_are_part_of_quiz_settings_table(): void {
+        $dbsettings = (array) (new seb_quiz_settings())->to_record();
         $settingelements = settings_provider::get_seb_config_elements();
         $settingelements = (array) $this->strip_all_prefixes((object) $settingelements);
 
@@ -124,7 +124,7 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Make sure that all SEB settings have related capabilities.
      */
-    public function test_that_all_seb_settings_have_capabilities() {
+    public function test_that_all_seb_settings_have_capabilities(): void {
         foreach (settings_provider::get_seb_config_elements() as $name => $notused) {
             $this->assertNotEmpty(get_capability_info(settings_provider::build_setting_capability_name($name)));
         }
@@ -133,7 +133,7 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test that setting defaults only refer to settings defined in setting types.
      */
-    public function test_setting_defaults_are_part_of_file_types() {
+    public function test_setting_defaults_are_part_of_file_types(): void {
         $settingelements = settings_provider::get_seb_config_elements();
         $settingdefaults = settings_provider::get_seb_config_element_defaults();
 
@@ -146,7 +146,7 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test that setting types only refer to settings defined in setting types.
      */
-    public function test_setting_types_are_part_of_file_types() {
+    public function test_setting_types_are_part_of_file_types(): void {
         $settingelements = settings_provider::get_seb_config_elements();
         $settingtypes = settings_provider::get_seb_config_element_types();
 
@@ -174,10 +174,10 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test hideif rules.
      */
-    public function test_hideifs() {
+    public function test_hideifs(): void {
         $settinghideifs = settings_provider::get_quiz_hideifs();
 
-        $this->assertCount(23, $settinghideifs);
+        $this->assertCount(25, $settinghideifs);
 
         $this->assertArrayHasKey('seb_templateid', $settinghideifs);
         $this->assertCount(1, $settinghideifs['seb_templateid']);
@@ -362,6 +362,26 @@ class settings_provider_test extends \advanced_testcase {
             settings_provider::USE_SEB_CONFIG_MANUALLY
         );
 
+        $this->assertArrayHasKey('seb_allowcapturecamera', $settinghideifs);
+        $this->assertCount(1, $settinghideifs['seb_allowcapturecamera']);
+        $this->assert_hide_if(
+            $settinghideifs['seb_allowcapturecamera'][0],
+            'seb_allowcapturecamera',
+            'seb_requiresafeexambrowser',
+            'noteq',
+            settings_provider::USE_SEB_CONFIG_MANUALLY
+        );
+
+        $this->assertArrayHasKey('seb_allowcapturemicrophone', $settinghideifs);
+        $this->assertCount(1, $settinghideifs['seb_allowcapturemicrophone']);
+        $this->assert_hide_if(
+            $settinghideifs['seb_allowcapturemicrophone'][0],
+            'seb_allowcapturemicrophone',
+            'seb_requiresafeexambrowser',
+            'noteq',
+            settings_provider::USE_SEB_CONFIG_MANUALLY
+        );
+
         $this->assertArrayHasKey('seb_muteonstartup', $settinghideifs);
         $this->assertCount(2, $settinghideifs['seb_muteonstartup']);
         $this->assert_hide_if(
@@ -532,7 +552,7 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test that setting hideif rules only refer to settings defined in setting types, including the conditions.
      */
-    public function test_setting_hideifs_are_part_of_file_types() {
+    public function test_setting_hideifs_are_part_of_file_types(): void {
         $settingelements = settings_provider::get_seb_config_elements();
         $settinghideifs = settings_provider::get_quiz_hideifs();
 
@@ -559,7 +579,7 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test that exception thrown if we try to build capability name from the incorrect setting name.
      */
-    public function test_build_setting_capability_name_incorrect_setting() {
+    public function test_build_setting_capability_name_incorrect_setting(): void {
         $this->expectException(\coding_exception::class);
         $this->expectExceptionMessage('Incorrect SEB quiz setting broken');
 
@@ -569,7 +589,7 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test we can build capability name from the the setting name.
      */
-    public function test_build_setting_capability_name_correct_setting() {
+    public function test_build_setting_capability_name_correct_setting(): void {
         foreach (settings_provider::get_seb_config_elements() as $name => $type) {
             $expected = 'quizaccess/seb:manage_' . $name;
             $actual = settings_provider::build_setting_capability_name($name);
@@ -582,7 +602,7 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test can check if can manage SEB settings respecting settings structure.
      */
-    public function test_can_manage_seb_config_setting() {
+    public function test_can_manage_seb_config_setting(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
         $this->course = $this->getDataGenerator()->create_course();
@@ -622,11 +642,11 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test SEB usage options.
      *
-     * @param string $settingcapability Setting capability to check manual option against.
+     * @param string $settingcapability Setting capability to check options against.
      *
      * @dataProvider settings_capability_data_provider
      */
-    public function test_get_requiresafeexambrowser_options($settingcapability) {
+    public function test_get_requiresafeexambrowser_options($settingcapability): void {
         $this->resetAfterTest();
         $this->setAdminUser();
         $this->course = $this->getDataGenerator()->create_course();
@@ -656,14 +676,32 @@ class settings_provider_test extends \advanced_testcase {
 
         $options = settings_provider::get_requiresafeexambrowser_options($this->context);
 
-        $this->assertCount(2, $options);
+        $this->assertCount(1, $options);
         $this->assertFalse(array_key_exists(settings_provider::USE_SEB_CONFIG_MANUALLY, $options));
         $this->assertFalse(array_key_exists(settings_provider::USE_SEB_TEMPLATE, $options));
         $this->assertFalse(array_key_exists(settings_provider::USE_SEB_UPLOAD_CONFIG, $options));
-        $this->assertTrue(array_key_exists(settings_provider::USE_SEB_CLIENT_CONFIG, $options));
+        $this->assertFalse(array_key_exists(settings_provider::USE_SEB_CLIENT_CONFIG, $options));
         $this->assertTrue(array_key_exists(settings_provider::USE_SEB_NO, $options));
 
         assign_capability($settingcapability, CAP_ALLOW, $this->roleid, $this->context->id);
+        $options = settings_provider::get_requiresafeexambrowser_options($this->context);
+        $this->assertCount(1, $options);
+        $this->assertFalse(array_key_exists(settings_provider::USE_SEB_CONFIG_MANUALLY, $options));
+        $this->assertFalse(array_key_exists(settings_provider::USE_SEB_TEMPLATE, $options));
+        $this->assertFalse(array_key_exists(settings_provider::USE_SEB_UPLOAD_CONFIG, $options));
+        $this->assertFalse(array_key_exists(settings_provider::USE_SEB_CLIENT_CONFIG, $options));
+        $this->assertTrue(array_key_exists(settings_provider::USE_SEB_NO, $options));
+
+        assign_capability('quizaccess/seb:manage_seb_configuremanually', CAP_ALLOW, $this->roleid, $this->context->id);
+        $options = settings_provider::get_requiresafeexambrowser_options($this->context);
+        $this->assertCount(2, $options);
+        $this->assertTrue(array_key_exists(settings_provider::USE_SEB_CONFIG_MANUALLY, $options));
+        $this->assertFalse(array_key_exists(settings_provider::USE_SEB_TEMPLATE, $options));
+        $this->assertFalse(array_key_exists(settings_provider::USE_SEB_UPLOAD_CONFIG, $options));
+        $this->assertFalse(array_key_exists(settings_provider::USE_SEB_CLIENT_CONFIG, $options));
+        $this->assertTrue(array_key_exists(settings_provider::USE_SEB_NO, $options));
+
+        assign_capability('quizaccess/seb:manage_seb_usesebclientconfig', CAP_ALLOW, $this->roleid, $this->context->id);
         $options = settings_provider::get_requiresafeexambrowser_options($this->context);
         $this->assertCount(3, $options);
         $this->assertTrue(array_key_exists(settings_provider::USE_SEB_CONFIG_MANUALLY, $options));
@@ -694,7 +732,7 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test SEB usage options with conflicting permissions.
      */
-    public function test_get_requiresafeexambrowser_options_with_conflicting_permissions() {
+    public function test_get_requiresafeexambrowser_options_with_conflicting_permissions(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
         $this->course = $this->getDataGenerator()->create_course();
@@ -704,7 +742,7 @@ class settings_provider_test extends \advanced_testcase {
 
         $template = $this->create_template();
 
-        $settings = quiz_settings::get_record(['quizid' => $this->quiz->id]);
+        $settings = seb_quiz_settings::get_record(['quizid' => $this->quiz->id]);
         $settings->set('templateid', $template->get('id'));
         $settings->set('requiresafeexambrowser', settings_provider::USE_SEB_TEMPLATE);
         $settings->save();
@@ -721,7 +759,7 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test that SEB options and templates are frozen if conflicting permissions.
      */
-    public function test_form_elements_are_frozen_if_conflicting_permissions() {
+    public function test_form_elements_are_frozen_if_conflicting_permissions(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
         $this->course = $this->getDataGenerator()->create_course();
@@ -731,7 +769,7 @@ class settings_provider_test extends \advanced_testcase {
 
         // Setup conflicting permissions.
         $template = $this->create_template();
-        $settings = quiz_settings::get_record(['quizid' => $this->quiz->id]);
+        $settings = seb_quiz_settings::get_record(['quizid' => $this->quiz->id]);
         $settings->set('templateid', $template->get('id'));
         $settings->set('requiresafeexambrowser', settings_provider::USE_SEB_TEMPLATE);
         $settings->save();
@@ -755,7 +793,7 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test that All settings are frozen if quiz was attempted and use seb with manual settings.
      */
-    public function test_form_elements_are_locked_when_quiz_attempted_manual() {
+    public function test_form_elements_are_locked_when_quiz_attempted_manual(): void {
         $this->resetAfterTest();
         $this->course = $this->getDataGenerator()->create_course();
 
@@ -784,7 +822,7 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test that All settings are frozen if a quiz was attempted and use template.
      */
-    public function test_form_elements_are_locked_when_quiz_attempted_template() {
+    public function test_form_elements_are_locked_when_quiz_attempted_template(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
         $this->course = $this->getDataGenerator()->create_course();
@@ -794,7 +832,7 @@ class settings_provider_test extends \advanced_testcase {
 
         $template = $this->create_template();
 
-        $settings = quiz_settings::get_record(['quizid' => $this->quiz->id]);
+        $settings = seb_quiz_settings::get_record(['quizid' => $this->quiz->id]);
         $settings->set('templateid', $template->get('id'));
         $settings->set('requiresafeexambrowser', settings_provider::USE_SEB_TEMPLATE);
         $settings->save();
@@ -821,7 +859,7 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test Show Safe Exam Browser download button setting in the form.
      */
-    public function test_showsebdownloadlink_in_form() {
+    public function test_showsebdownloadlink_in_form(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
         $this->course = $this->getDataGenerator()->create_course();
@@ -848,7 +886,7 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test Allowed Browser Exam Keys setting in the form.
      */
-    public function test_allowedbrowserexamkeys_in_form() {
+    public function test_allowedbrowserexamkeys_in_form(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
         $this->course = $this->getDataGenerator()->create_course();
@@ -874,7 +912,7 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test the validation of a seb config file.
      */
-    public function test_validate_draftarea_configfile_success() {
+    public function test_validate_draftarea_configfile_success(): void {
         $this->resetAfterTest();
 
         $user = $this->getDataGenerator()->create_user();
@@ -891,7 +929,7 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test the validation of a missing seb config file.
      */
-    public function test_validate_draftarea_configfile_failure() {
+    public function test_validate_draftarea_configfile_failure(): void {
         $this->resetAfterTest();
 
         $user = $this->getDataGenerator()->create_user();
@@ -905,13 +943,13 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test obtaining the draftarea content.
      */
-    public function test_get_current_user_draft_file() {
+    public function test_get_current_user_draft_file(): void {
         $this->resetAfterTest();
 
         $user = $this->getDataGenerator()->create_user();
         $this->setUser($user);
 
-        $xml = file_get_contents(__DIR__ . '/fixtures/unencrypted.seb');
+        $xml = file_get_contents(self::get_fixture_path(__NAMESPACE__, 'unencrypted.seb'));
         $itemid = $this->create_test_draftarea_file($xml);
         $file = settings_provider::get_current_user_draft_file($itemid);
         $content = $file->get_content();
@@ -922,14 +960,14 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test saving files from the user draft area into the quiz context area storage.
      */
-    public function test_save_filemanager_sebconfigfile_draftarea() {
+    public function test_save_filemanager_sebconfigfile_draftarea(): void {
         $this->resetAfterTest();
         $this->course = $this->getDataGenerator()->create_course();
         $this->quiz = $this->getDataGenerator()->create_module('quiz', ['course' => $this->course->id]);
         $this->context = \context_module::instance($this->quiz->cmid);
         $this->set_up_user_and_role();
 
-        $xml = file_get_contents(__DIR__ . '/fixtures/unencrypted.seb');
+        $xml = file_get_contents(self::get_fixture_path(__NAMESPACE__, 'unencrypted.seb'));
 
         $draftitemid = $this->create_test_draftarea_file($xml);
 
@@ -944,14 +982,14 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test deleting the $this->quiz->cmid itemid from the file area.
      */
-    public function test_delete_uploaded_config_file() {
+    public function test_delete_uploaded_config_file(): void {
         $this->resetAfterTest();
         $this->course = $this->getDataGenerator()->create_course();
         $this->quiz = $this->getDataGenerator()->create_module('quiz', ['course' => $this->course->id]);
         $this->context = \context_module::instance($this->quiz->cmid);
         $this->set_up_user_and_role();
 
-        $xml = file_get_contents(__DIR__ . '/fixtures/unencrypted.seb');
+        $xml = file_get_contents(self::get_fixture_path(__NAMESPACE__, 'unencrypted.seb'));
         $draftitemid = $this->create_test_draftarea_file($xml);
 
         settings_provider::save_filemanager_sebconfigfile_draftarea($draftitemid, $this->quiz->cmid);
@@ -970,7 +1008,7 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test getting the file from the context module id file area.
      */
-    public function test_get_module_context_sebconfig_file() {
+    public function test_get_module_context_sebconfig_file(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
 
@@ -980,7 +1018,7 @@ class settings_provider_test extends \advanced_testcase {
 
         $this->set_up_user_and_role();
 
-        $xml = file_get_contents(__DIR__ . '/fixtures/unencrypted.seb');
+        $xml = file_get_contents(self::get_fixture_path(__NAMESPACE__, 'unencrypted.seb'));
         $draftitemid = $this->create_test_draftarea_file($xml);
 
         $fs = get_file_storage();
@@ -989,7 +1027,7 @@ class settings_provider_test extends \advanced_testcase {
 
         settings_provider::save_filemanager_sebconfigfile_draftarea($draftitemid, $this->quiz->cmid);
 
-        $settings = quiz_settings::get_record(['quizid' => $this->quiz->id]);
+        $settings = seb_quiz_settings::get_record(['quizid' => $this->quiz->id]);
         $settings->set('requiresafeexambrowser', settings_provider::USE_SEB_UPLOAD_CONFIG);
         $settings->save();
 
@@ -1001,7 +1039,7 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test file manager options.
      */
-    public function test_get_filemanager_options() {
+    public function test_get_filemanager_options(): void {
         $expected = [
             'subdirs' => 0,
             'maxfiles' => 1,
@@ -1013,7 +1051,7 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test that users can or can not configure seb settings.
      */
-    public function test_can_configure_seb() {
+    public function test_can_configure_seb(): void {
         $this->resetAfterTest();
 
         $this->course = $this->getDataGenerator()->create_course();
@@ -1034,7 +1072,7 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test that users can or can not use seb template.
      */
-    public function test_can_use_seb_template() {
+    public function test_can_use_seb_template(): void {
         $this->resetAfterTest();
 
         $this->course = $this->getDataGenerator()->create_course();
@@ -1055,7 +1093,7 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test that users can or can not upload seb config file.
      */
-    public function test_can_upload_seb_file() {
+    public function test_can_upload_seb_file(): void {
         $this->resetAfterTest();
 
         $this->course = $this->getDataGenerator()->create_course();
@@ -1076,7 +1114,7 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test that users can or can not change Show Safe Exam Browser download button setting.
      */
-    public function test_can_change_seb_showsebdownloadlink() {
+    public function test_can_change_seb_showsebdownloadlink(): void {
         $this->resetAfterTest();
 
         $this->course = $this->getDataGenerator()->create_course();
@@ -1096,7 +1134,7 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test that users can or can not change Allowed Browser Exam Keys setting.
      */
-    public function test_can_change_seb_allowedbrowserexamkeys() {
+    public function test_can_change_seb_allowedbrowserexamkeys(): void {
         $this->resetAfterTest();
         $this->course = $this->getDataGenerator()->create_course();
 
@@ -1120,7 +1158,7 @@ class settings_provider_test extends \advanced_testcase {
      *
      * @dataProvider settings_capability_data_provider
      */
-    public function test_can_configure_manually($settingcapability) {
+    public function test_can_configure_manually($settingcapability): void {
         $this->resetAfterTest();
         $this->course = $this->getDataGenerator()->create_course();
 
@@ -1134,6 +1172,9 @@ class settings_provider_test extends \advanced_testcase {
 
         $this->assertFalse(settings_provider::can_configure_manually($this->context));
 
+        assign_capability('quizaccess/seb:manage_seb_configuremanually', CAP_ALLOW, $this->roleid, $this->context->id);
+        $this->assertFalse(settings_provider::can_configure_manually($this->context));
+
         assign_capability($settingcapability, CAP_ALLOW, $this->roleid, $this->context->id);
         $this->assertTrue(settings_provider::can_configure_manually($this->context));
     }
@@ -1141,7 +1182,7 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test that we can check if the seb settings are locked.
      */
-    public function test_is_seb_settings_locked() {
+    public function test_is_seb_settings_locked(): void {
         $this->resetAfterTest();
 
         $this->course = $this->getDataGenerator()->create_course();
@@ -1157,7 +1198,7 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test that we can check identify conflicting permissions if set to use template.
      */
-    public function test_is_conflicting_permissions_for_manage_templates() {
+    public function test_is_conflicting_permissions_for_manage_templates(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
 
@@ -1167,7 +1208,7 @@ class settings_provider_test extends \advanced_testcase {
 
         // Create a template.
         $template = $this->create_template();
-        $settings = quiz_settings::get_record(['quizid' => $this->quiz->id]);
+        $settings = seb_quiz_settings::get_record(['quizid' => $this->quiz->id]);
         $settings->set('templateid', $template->get('id'));
         $settings->set('requiresafeexambrowser', settings_provider::USE_SEB_TEMPLATE);
         $settings->save();
@@ -1185,7 +1226,7 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test that we can check identify conflicting permissions if set to use own seb file.
      */
-    public function test_is_conflicting_permissions_for_upload_seb_file() {
+    public function test_is_conflicting_permissions_for_upload_seb_file(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
 
@@ -1194,10 +1235,10 @@ class settings_provider_test extends \advanced_testcase {
         $this->context = \context_module::instance($this->quiz->cmid);
 
         // Save file.
-        $xml = file_get_contents(__DIR__ . '/fixtures/unencrypted.seb');
+        $xml = file_get_contents(self::get_fixture_path(__NAMESPACE__, 'unencrypted.seb'));
         $draftitemid = $this->create_test_draftarea_file($xml);
         settings_provider::save_filemanager_sebconfigfile_draftarea($draftitemid, $this->quiz->cmid);
-        $settings = quiz_settings::get_record(['quizid' => $this->quiz->id]);
+        $settings = seb_quiz_settings::get_record(['quizid' => $this->quiz->id]);
         $settings->set('requiresafeexambrowser', settings_provider::USE_SEB_UPLOAD_CONFIG);
         $settings->save();
 
@@ -1216,7 +1257,7 @@ class settings_provider_test extends \advanced_testcase {
      *
      * @dataProvider settings_capability_data_provider
      */
-    public function test_is_conflicting_permissions_for_configure_manually($settingcapability) {
+    public function test_is_conflicting_permissions_for_configure_manually($settingcapability): void {
         $this->resetAfterTest();
         $this->setAdminUser();
 
@@ -1228,6 +1269,11 @@ class settings_provider_test extends \advanced_testcase {
 
         $this->set_up_user_and_role();
 
+        $this->assertTrue(settings_provider::is_conflicting_permissions($this->context));
+
+        assign_capability('quizaccess/seb:manage_seb_configuremanually', CAP_ALLOW, $this->roleid, $this->context->id);
+        $this->assertTrue(settings_provider::is_conflicting_permissions($this->context));
+
         assign_capability($settingcapability, CAP_ALLOW, $this->roleid, $this->context->id);
         $this->assertFalse(settings_provider::is_conflicting_permissions($this->context));
     }
@@ -1235,7 +1281,7 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test add_prefix helper method.
      */
-    public function test_add_prefix() {
+    public function test_add_prefix(): void {
         $this->assertEquals('seb_one', settings_provider::add_prefix('one'));
         $this->assertEquals('seb_two', settings_provider::add_prefix('seb_two'));
         $this->assertEquals('seb_seb_three', settings_provider::add_prefix('seb_seb_three'));
@@ -1247,7 +1293,7 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test filter_plugin_settings helper method.
      */
-    public function test_filter_plugin_settings() {
+    public function test_filter_plugin_settings(): void {
         $test = new \stdClass();
         $test->one = 'one';
         $test->seb_two = 'two';
@@ -1293,6 +1339,8 @@ class settings_provider_test extends \advanced_testcase {
         $allsettings->seb_regexblocked = 20;
         $allsettings->seb_templateid = 21;
         $allsettings->seb_allowedbrowserexamkeys = 22;
+        $allsettings->seb_allowcapturecamera = 23;
+        $allsettings->seb_allowcapturemicrophone = 24;
 
         return $allsettings;
     }
@@ -1321,7 +1369,7 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test filter_plugin_settings method for no SEB case.
      */
-    public function test_filter_plugin_settings_for_no_seb() {
+    public function test_filter_plugin_settings_for_no_seb(): void {
         $notnulls = ['requiresafeexambrowser'];
         $this->assert_filter_plugin_settings(settings_provider::USE_SEB_NO, $notnulls);
     }
@@ -1329,7 +1377,7 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test filter_plugin_settings method for using uploaded config.
      */
-    public function test_filter_plugin_settings_for_uploaded_config() {
+    public function test_filter_plugin_settings_for_uploaded_config(): void {
         $notnulls = ['requiresafeexambrowser', 'showsebdownloadlink', 'allowedbrowserexamkeys'];
         $this->assert_filter_plugin_settings(settings_provider::USE_SEB_UPLOAD_CONFIG, $notnulls);
     }
@@ -1337,7 +1385,7 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test filter_plugin_settings method for using template.
      */
-    public function test_filter_plugin_settings_for_template() {
+    public function test_filter_plugin_settings_for_template(): void {
         $notnulls = ['requiresafeexambrowser', 'showsebdownloadlink', 'allowuserquitseb', 'quitpassword', 'templateid'];
         $this->assert_filter_plugin_settings(settings_provider::USE_SEB_TEMPLATE, $notnulls);
     }
@@ -1345,7 +1393,7 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test filter_plugin_settings method for using client config.
      */
-    public function test_filter_plugin_settings_for_client_config() {
+    public function test_filter_plugin_settings_for_client_config(): void {
         $notnulls = ['requiresafeexambrowser', 'showsebdownloadlink', 'allowedbrowserexamkeys'];
         $this->assert_filter_plugin_settings(settings_provider::USE_SEB_CLIENT_CONFIG, $notnulls);
     }
@@ -1353,7 +1401,7 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test filter_plugin_settings method for manually configured SEB.
      */
-    public function test_filter_plugin_settings_for_configure_manually() {
+    public function test_filter_plugin_settings_for_configure_manually(): void {
         $allsettings = $this->get_settings();
         $allsettings->seb_requiresafeexambrowser = settings_provider::USE_SEB_CONFIG_MANUALLY;
         $actual = settings_provider::filter_plugin_settings($allsettings);
@@ -1374,7 +1422,7 @@ class settings_provider_test extends \advanced_testcase {
     /**
      * Test settings map.
      */
-    public function test_get_seb_settings_map() {
+    public function test_get_seb_settings_map(): void {
         $expected = [
             settings_provider::USE_SEB_NO => [
 
@@ -1396,6 +1444,8 @@ class settings_provider_test extends \advanced_testcase {
                 'seb_enableaudiocontrol' => [
                     'seb_muteonstartup' => [],
                 ],
+                'seb_allowcapturecamera' => [],
+                'seb_allowcapturemicrophone' => [],
                 'seb_allowspellchecking' => [],
                 'seb_activateurlfiltering' => [
                     'seb_filterembeddedcontent' => [],

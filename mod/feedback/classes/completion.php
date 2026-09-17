@@ -15,16 +15,6 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Contains class mod_feedback_completion
- *
- * @package   mod_feedback
- * @copyright 2016 Marina Glancy
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-
-defined('MOODLE_INTERNAL') || die();
-
-/**
  * Collects information and methods about feedback completion (either complete.php or show_entries.php)
  *
  * @package   mod_feedback
@@ -92,6 +82,11 @@ class mod_feedback_completion extends mod_feedback_structure {
                 $params['userid'] = $nonanonymouseuserid;
             }
             $this->completed = $DB->get_record('feedback_completed', $params, '*', MUST_EXIST);
+
+            if (!groups_user_groups_visible($this->feedback->course, $this->completed->userid, $cm)) {
+                throw new moodle_exception('nopermissiontoshow');
+            }
+
             $this->courseid = $this->completed->courseid;
         }
     }
@@ -550,16 +545,12 @@ class mod_feedback_completion extends mod_feedback_structure {
      * It is also responsible for sending email notifications when applicable.
      */
     public function save_response() {
-        global $SESSION, $DB, $USER;
+        global $DB, $USER;
 
         $feedbackcompleted = $this->find_last_completed();
+        // If no record is found, change false to null for safe use in feedback_save_tmp_values.
+        $feedbackcompleted = !$feedbackcompleted ? null : $feedbackcompleted;
         $feedbackcompletedtmp = $this->get_current_completed_tmp();
-
-        if (feedback_check_is_switchrole()) {
-            // We do not actually save anything if the role is switched, just delete temporary values.
-            $this->delete_completedtmp();
-            return;
-        }
 
         // Save values.
         $completedid = feedback_save_tmp_values($feedbackcompletedtmp, $feedbackcompleted);
@@ -572,26 +563,11 @@ class mod_feedback_completion extends mod_feedback_structure {
             feedback_send_email_anonym($this->cm, $this->feedback, $this->cm->get_course());
         }
 
-        unset($SESSION->feedback->is_started);
-
         // Update completion state.
         $completion = new completion_info($this->cm->get_course());
         if ((isloggedin() || $USER->id != $this->userid) && $completion->is_enabled($this->cm) &&
                 $this->cm->completion == COMPLETION_TRACKING_AUTOMATIC && $this->feedback->completionsubmit) {
             $completion->update_state($this->cm, COMPLETION_COMPLETE, $this->userid);
-        }
-    }
-
-    /**
-     * Deletes the temporary completed and all related temporary values
-     */
-    protected function delete_completedtmp() {
-        global $DB;
-
-        if ($completedtmp = $this->get_current_completed_tmp()) {
-            $DB->delete_records('feedback_valuetmp', ['completed' => $completedtmp->id]);
-            $DB->delete_records('feedback_completedtmp', ['id' => $completedtmp->id]);
-            $this->completedtmp = null;
         }
     }
 
@@ -702,7 +678,7 @@ class mod_feedback_completion extends mod_feedback_structure {
      * @since  Moodle 3.3
      */
     public function process_page($gopage, $gopreviouspage = false) {
-        global $CFG, $PAGE, $SESSION;
+        global $PAGE;
 
         $urltogo = null;
 
@@ -718,9 +694,6 @@ class mod_feedback_completion extends mod_feedback_structure {
                 ($this->form->is_validated() || $gopreviouspage)) {
             // Form was submitted (skip validation for "Previous page" button).
             $data = $this->form->get_submitted_data();
-            if (!isset($SESSION->feedback->is_started) OR !$SESSION->feedback->is_started == true) {
-                throw new \moodle_exception('error', '', $CFG->wwwroot.'/course/view.php?id='.$this->courseid);
-            }
             $this->save_response_tmp($data);
             if (!empty($data->savevalues) || !empty($data->gonextpage)) {
                 if (($nextpage = $this->get_next_page($gopage)) !== null) {
@@ -753,10 +726,6 @@ class mod_feedback_completion extends mod_feedback_structure {
      * @since Moodle 3.3
      */
     public function render_items() {
-        global $SESSION;
-
-        // Print the items.
-        $SESSION->feedback->is_started = true;
         return $this->form->render();
     }
 }

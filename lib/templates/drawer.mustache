@@ -34,11 +34,11 @@
 <div
     id="{{$drawerid}}drawer-{{uniqid}}{{/drawerid}}"
     class="{{$drawerclasses}}{{/drawerclasses}} drawer bg-white {{^show}}hidden{{/show}}"
-    aria-expanded="{{#show}}true{{/show}}{{^show}}false{{/show}}"
     {{^show}}aria-hidden="true"{{/show}}
     data-region="right-hand-drawer"
-    role="region"
-    tabindex="0"
+    role="{{$role}}region{{/role}}"
+    tabindex="{{$tabindex}}0{{/tabindex}}"
+    {{$drawerattributes}}{{/drawerattributes}}
 >
     {{$drawercontent}}{{/drawercontent}}
 </div>

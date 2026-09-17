@@ -23,14 +23,14 @@ namespace core;
  * @copyright  2015 Jetha Chan <jetha@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class user_menu_test extends \advanced_testcase {
+final class user_menu_test extends \advanced_testcase {
 
     /**
      * Custom user menu data for the test_custom_user_menu test.
      *
      * @return array containing testing data
      */
-    public function custom_user_menu_data() {
+    public static function custom_user_menu_data(): array {
         return array(
             // These are fillers only.
             array('###', 0, 1),
@@ -41,6 +41,7 @@ class user_menu_test extends \advanced_testcase {
             array('_____', 0, 0),
             array('test', 0, 0),
             array('#Garbage#', 0, 0),
+            array('privatefiles,/user/files.php', 0, 0),
 
             // These are valid but have an invalid string identifiers or components. They will still produce a menu
             // item, and no exception should be thrown.
@@ -78,7 +79,7 @@ test
      * @param string $input The menu text to test
      * @param int $entrycount The numbers of entries expected
      */
-    public function test_custom_user_menu($data, $entrycount, $dividercount) {
+    public function test_custom_user_menu($data, $entrycount, $dividercount): void {
         global $CFG, $OUTPUT, $USER, $PAGE;
 
         // Must reset because of config and user modifications.
@@ -91,14 +92,27 @@ test
         $PAGE->reset_theme_and_output();
         $PAGE->initialise_theme_and_output();
 
+        // Empty the custom user menu items.
+        // This should only contain default items and items added by extend_user_menu.
+        set_config('customusermenuitems', '');
+
+        // Default menu items.
+        $defaultmenu = $OUTPUT->user_menu($USER);
+
+        // Count the number of entries and dividers in the default menu.
+        preg_match_all('/<a [^>]+role="menuitem"[^>]+>/', $defaultmenu, $results);
+        $defaultentrycount = count($results[0]);
+        preg_match_all('/<span class="filler">/', $defaultmenu, $results);
+        $defaultdividercount = count($results[0]);
+
         // Set the configuration.
         set_config('customusermenuitems', $data);
 
         // We always add two dividers as standard.
-        $dividercount += 2;
+        $dividercount += $defaultdividercount;
 
         // The basic entry count will additionally include the wrapper menu, Preferences, Logout and switch roles link.
-        $entrycount += 3;
+        $entrycount += $defaultentrycount;
 
         $output = $OUTPUT->user_menu($USER);
         preg_match_all('/<a [^>]+role="menuitem"[^>]+>/', $output, $results);

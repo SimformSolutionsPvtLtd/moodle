@@ -41,7 +41,7 @@ $showall = optional_param('showall', '', PARAM_INT);
 $pageno = optional_param('page', 0, PARAM_INT);
 $search = optional_param('search', '', PARAM_CLEAN);
 $pageno = optional_param('p', $pageno, PARAM_INT);
-$pagesize = optional_param('s', 0, PARAM_INT);
+$pagesize = optional_param('s', $CFG->forum_manydiscussions ?? 0, PARAM_INT);
 $sortorder = optional_param('o', null, PARAM_INT);
 
 if (!$cmid && !$forumid) {
@@ -188,7 +188,7 @@ switch ($forum->get_type()) {
                 $groupid = groups_get_activity_group($cm, true) ?: null;
                 $gradeobj = (object) [
                     'contextid' => $forum->get_context()->id,
-                    'cmid' => $cmid,
+                    'cmid' => $forum->get_course_module_record()->id,
                     'name' => format_string($forum->get_name()),
                     'courseid' => $course->id,
                     'coursename' => format_string($course->shortname),
@@ -206,7 +206,7 @@ switch ($forum->get_type()) {
                 $groupid = groups_get_activity_group($cm, true) ?: null;
                 $gradeobj = (object) [
                     'contextid' => $forum->get_context()->id,
-                    'cmid' => $cmid,
+                    'cmid' => $forum->get_course_module_record()->id,
                     'name' => format_string($forum->get_name()),
                     'courseid' => $course->id,
                     'coursename' => format_string($course->shortname),

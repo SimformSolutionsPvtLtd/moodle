@@ -33,10 +33,13 @@ require_once($CFG->libdir .'/filelib.php');
 
 redirect_if_major_upgrade_required();
 
+// Redirect logged-in users to homepage if required.
+$redirect = optional_param('redirect', 1, PARAM_BOOL);
+
 $urlparams = array();
 if (!empty($CFG->defaulthomepage) &&
         ($CFG->defaulthomepage == HOMEPAGE_MY || $CFG->defaulthomepage == HOMEPAGE_MYCOURSES) &&
-        optional_param('redirect', 1, PARAM_BOOL) === 0
+        $redirect === 0
 ) {
     $urlparams['redirect'] = 0;
 }
@@ -68,29 +71,34 @@ if ($hassiteconfig && moodle_needs_upgrading()) {
 // If site registration needs updating, redirect.
 \core\hub\registration::registration_reminder('/index.php');
 
-if (get_home_page() != HOMEPAGE_SITE) {
-    // Redirect logged-in users to My Moodle overview if required.
-    $redirect = optional_param('redirect', 1, PARAM_BOOL);
-    if (optional_param('setdefaulthome', false, PARAM_BOOL)) {
+$homepage = get_home_page();
+if ($homepage != HOMEPAGE_SITE) {
+    if (optional_param('setdefaulthome', false, PARAM_BOOL) && confirm_sesskey()) {
         set_user_preference('user_home_page_preference', HOMEPAGE_SITE);
+        redirect($PAGE->url);
     } else if (!empty($CFG->defaulthomepage) && ($CFG->defaulthomepage == HOMEPAGE_MY) && $redirect === 1) {
         // At this point, dashboard is enabled so we don't need to check for it (otherwise, get_home_page() won't return it).
         redirect($CFG->wwwroot .'/my/');
     } else if (!empty($CFG->defaulthomepage) && ($CFG->defaulthomepage == HOMEPAGE_MYCOURSES) && $redirect === 1) {
         redirect($CFG->wwwroot .'/my/courses.php');
+    } else if ($homepage == HOMEPAGE_URL) {
+        redirect(get_default_home_page_url());
     } else if (!empty($CFG->defaulthomepage) && ($CFG->defaulthomepage == HOMEPAGE_USER)) {
         $frontpagenode = $PAGE->settingsnav->find('frontpage', null);
         if ($frontpagenode) {
             $frontpagenode->add(
                 get_string('makethismyhome'),
-                new moodle_url('/', array('setdefaulthome' => true)),
-                navigation_node::TYPE_SETTING);
+                new moodle_url('/', ['setdefaulthome' => 1, 'sesskey' => sesskey()]),
+                navigation_node::TYPE_SETTING,
+            );
         } else {
             $frontpagenode = $PAGE->settingsnav->add(get_string('frontpagesettings'), null, navigation_node::TYPE_SETTING, null);
             $frontpagenode->force_open();
-            $frontpagenode->add(get_string('makethismyhome'),
-                new moodle_url('/', array('setdefaulthome' => true)),
-                navigation_node::TYPE_SETTING);
+            $frontpagenode->add(
+                get_string('makethismyhome'),
+                new moodle_url('/', ['setdefaulthome' => 1, 'sesskey' => sesskey()]),
+                navigation_node::TYPE_SETTING,
+            );
         }
     }
 }
@@ -101,7 +109,7 @@ course_view(context_course::instance(SITEID));
 $PAGE->set_pagetype('site-index');
 $PAGE->set_docs_path('');
 $editing = $PAGE->user_is_editing();
-$PAGE->set_title($SITE->fullname);
+$PAGE->set_title(get_string('home'));
 $PAGE->set_heading($SITE->fullname);
 $PAGE->set_secondary_active_tab('coursehome');
 

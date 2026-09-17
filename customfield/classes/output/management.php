@@ -81,6 +81,7 @@ class management implements renderable, templatable {
 
             $categoryarray = array();
             $categoryarray['id'] = $category->get('id');
+            $categoryarray['name'] = $category->get_formatted_name();
             $categoryarray['nameeditable'] = $output->render(api::get_category_inplace_editable($category, true));
             $categoryarray['movetitle'] = get_string('movecategory', 'core_customfield',
                 $category->get_formatted_name());
@@ -108,7 +109,7 @@ class management implements renderable, templatable {
                         'data-typename' => $fieldname]);
                 $menu->add($action);
             }
-            $menu->attributes['class'] .= ' float-left mr-1';
+            $menu->attributes['class'] .= ' float-start me-1';
 
             $categoryarray['addfieldmenu'] = $output->render($menu);
 

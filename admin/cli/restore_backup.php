@@ -32,11 +32,13 @@ require_once($CFG->dirroot . "/backup/util/includes/restore_includes.php");
 list($options, $unrecognized) = cli_get_params([
     'file' => '',
     'categoryid' => '',
+    'courseid' => '',
     'showdebugging' => false,
     'help' => false,
 ], [
     'f' => 'file',
     'c' => 'categoryid',
+    'C' => 'courseid',
     's' => 'showdebugging',
     'h' => 'help',
 ]);
@@ -46,18 +48,21 @@ if ($unrecognized) {
     cli_error(get_string('cliunknowoption', 'admin', $unrecognized));
 }
 
-if ($options['help'] || !($options['file']) || !($options['categoryid'])) {
+if ($options['help'] || !($options['file']) || !($options['categoryid'] || $options['courseid'])) {
     $help = <<<EOL
-Restore backup into provided category.
+Restore backup into provided category or course.
+If courseid is set, course module/s will be added into the course.
 
 Options:
--f, --file=STRING           Path to the backup file.
--c, --categoryid=INT        ID of the category to restore too.
--s, --showdebugging         Show developer level debugging information
--h, --help                  Print out this help.
+-f, --file=STRING       Path to the backup file.
+-c, --categoryid=INT    ID of the course category to restore to. This option is ignored when restoring an activity and courseid is set.
+-C, --courseid=INT      ID of the course to restore to. This option is ignored when restoring a course and the categoryid is set.
+-s, --showdebugging     Show developer level debugging information
+-h, --help              Print out this help.
 
 Example:
-\$sudo -u www-data /usr/bin/php admin/cli/restore_backup.php --file=/path/to/backup/file.mbz --categoryid=1\n
+\$sudo -u www-data /usr/bin/php admin/cli/restore_backup.php --file=/path/to/backup/coursebackup.mbz --categoryid=1\n
+\$sudo -u www-data /usr/bin/php admin/cli/restore_backup.php --file=/path/to/backup/activitybackup.mbz --courseid=1\n
 EOL;
 
     echo $help;
@@ -76,29 +81,75 @@ if (!file_exists($options['file'])) {
     throw new \moodle_exception('filenotfound');
 }
 
-if (!$category = $DB->get_record('course_categories', ['id' => $options['categoryid']], 'id')) {
-    throw new \moodle_exception('invalidcategoryid');
+if ($options['categoryid']) {
+    if (!$category = $DB->get_record('course_categories', ['id' => $options['categoryid']], 'id')) {
+        throw new \moodle_exception('invalidcategoryid');
+    }
 }
 
-$backupdir = "restore_" . uniqid();
-$path = $CFG->tempdir . DIRECTORY_SEPARATOR . "backup" . DIRECTORY_SEPARATOR . $backupdir;
+if ($options['courseid']) {
+    if (!$course = $DB->get_record('course', ['id' => $options['courseid']], 'id')) {
+        throw new \moodle_exception('invalidcourseid');
+    }
+}
+
+if (empty($category) && empty($course)) {
+    throw new \moodle_exception('invalidoption');
+}
+
+$backupdir = restore_controller::get_tempdir_name(SITEID, $USER->id);
+$path = make_backup_temp_directory($backupdir);
 
 cli_heading(get_string('extractingbackupfileto', 'backup', $path));
 $fp = get_file_packer('application/vnd.moodle.backup');
 $fp->extract_to_pathname($options['file'], $path);
 
 cli_heading(get_string('preprocessingbackupfile'));
+
 try {
-    list($fullname, $shortname) = restore_dbops::calculate_course_names(0, get_string('restoringcourse', 'backup'),
-        get_string('restoringcourseshortname', 'backup'));
+    // Create a temporary restore controller to determine the restore type.
+    $tmprc = new restore_controller($backupdir, SITEID, backup::INTERACTIVE_NO,
+        backup::MODE_GENERAL, $admin->id, backup::TARGET_EXISTING_ADDING);
+    // Restore the backup into a new course if:
+    // - It is a course backup and the category is set.
+    // - It is an activity backup and the course is not set.
+    $restoreasnewcourse = ($tmprc->get_type() === backup::TYPE_1COURSE && !empty($category)) ||
+        ($tmprc->get_type() !== backup::TYPE_1COURSE && empty($course));
+    // Make sure to clean up the temporary restore controller.
+    $tmprc->destroy();
 
-    $courseid = restore_dbops::create_new_course($fullname, $shortname, $category->id);
-
-    $rc = new restore_controller($backupdir, $courseid, backup::INTERACTIVE_NO,
-        backup::MODE_GENERAL, $admin->id, backup::TARGET_NEW_COURSE);
+    if ($restoreasnewcourse) {
+        list($fullname, $shortname) = restore_dbops::calculate_course_names(0, get_string('restoringcourse', 'backup'),
+            get_string('restoringcourseshortname', 'backup'));
+        $courseid = restore_dbops::create_new_course($fullname, $shortname, $category->id);
+        $rc = new restore_controller($backupdir, $courseid, backup::INTERACTIVE_NO,
+            backup::MODE_GENERAL, $admin->id, backup::TARGET_NEW_COURSE);
+    } else {
+        $courseid = $course->id;
+        $rc = new restore_controller($backupdir, $courseid, backup::INTERACTIVE_NO,
+            backup::MODE_GENERAL, $admin->id, backup::TARGET_EXISTING_ADDING);
+    }
     $rc->execute_precheck();
     $rc->execute_plan();
     $rc->destroy();
+
+    // Rename the course's full and short names with the backup file's original names if the backup file is an activity backup
+    // that is restored to a new course.
+    if ($restoreasnewcourse && $rc->get_type() !== backup::TYPE_1COURSE) {
+        $course = get_course($courseid);
+        $backupinfo = $rc->get_info();
+        $tmpfullname = $backupinfo->original_course_fullname ?? get_string('restoretonewcourse', 'backup');
+        $tmpshortname = $backupinfo->original_course_shortname ?? get_string('newcourse');
+        list($fullname, $shortname) = restore_dbops::calculate_course_names(
+            courseid: 0,
+            fullname: $tmpfullname,
+            shortname: $tmpshortname,
+        );
+        $course->fullname = $fullname;
+        $course->shortname = $shortname;
+        $course->visible = 1;
+        $DB->update_record('course', $course);
+    }
 } catch (Exception $e) {
     cli_heading(get_string('cleaningtempdata'));
     fulldelete($path);

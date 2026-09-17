@@ -19,17 +19,15 @@ Feature: Rename roles within a course
       | teacher1 | C1 | editingteacher |
       | teacher2 | C1 | teacher |
       | student1 | C1 | student |
-    And I log in as "teacher1"
-    And I am on "Course 1" course homepage
-    When I navigate to "Settings" in current page administration
+    And I am on the "Course 1" "renameroles" page logged in as "teacher1"
     And I set the following fields to these values:
       | Your word for 'Non-editing teacher' | Tutor |
       | Your word for 'Student' | Learner |
-    And I press "Save and display"
+    And I press "Save"
     And I follow "Switch role to..." in the user menu
     Then "Tutor" "button" should exist
     And "Learner" "button" should exist
-    And I navigate to course participants
+    And I am on the "Course 1" "enrolled users" page
     And I set the field "type" in the "Filter 1" "fieldset" to "Roles"
     And I open the autocomplete suggestions list in the "Filter 1" "fieldset"
     And I should see "Learner (Student)" in the ".form-autocomplete-suggestions" "css_element"
@@ -42,17 +40,16 @@ Feature: Rename roles within a course
     And I press "Enrol users"
     And the "Assign role" select box should contain "Learner (Student)"
     And I click on "Cancel" "button" in the "Enrol users" "dialogue"
-    And I am on "Course 1" course homepage
-    And I navigate to "Settings" in current page administration
+    And I am on the "Course 1" "renameroles" page
     And I set the following fields to these values:
       | Your word for 'Non-editing teacher' | |
       | Your word for 'Student' | |
-    And I press "Save and display"
+    And I press "Save"
     And I follow "Switch role to..." in the user menu
     And I should see "Teacher"
     And "Student" "button" should exist
     And "Learner" "button" should not exist
-    And I navigate to course participants
+    And I am on the "Course 1" "enrolled users" page
     And I set the field "type" in the "Filter 1" "fieldset" to "Roles"
     And I open the autocomplete suggestions list in the "Filter 1" "fieldset"
     And I should see "Non-editing teacher" in the ".form-autocomplete-suggestions" "css_element"

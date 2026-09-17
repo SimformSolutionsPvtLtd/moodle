@@ -31,21 +31,19 @@ Feature: bigbluebuttonbn instance
 
   Scenario: Add a mod_bigbluebuttonbn instance with Recordings only
     When I am on the "BBB Instance name 3" "bigbluebuttonbn activity" page
-    And I should not see "This room is ready. You can join the session now."
+    Then I should not see "This room is ready. You can join the session now."
     And I should not see "Join session"
     And I should see "Recordings"
 
   Scenario: Add a Recording Only activity and check that no live session settings are available for this instance type
-    When I turn editing mode on
-    And I change window size to "large"
-    And I add a "BigBlueButton" to section "1"
+    When I change window size to "large"
+    And I add a bigbluebuttonbn activity to course "Test course" section "1"
     And I select "Recordings only" from the "Instance type" singleselect
     Then I should not see "Lock settings"
 
   Scenario Outline: Add an activity and check that required settings are available for the three types of instance types
-    When I turn editing mode on
-    And I change window size to "large"
-    And I add a "BigBlueButton" to section "1"
+    When I change window size to "large"
+    And I add a bigbluebuttonbn activity to course "Test course" section "1"
     And I select "<type>" from the "Instance type" singleselect
     Then I should see "Restrict access"
 

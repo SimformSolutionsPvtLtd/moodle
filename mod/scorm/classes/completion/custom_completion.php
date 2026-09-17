@@ -48,16 +48,18 @@ class custom_completion extends activity_custom_completion {
         $this->validate_rule($rule);
 
         // Base query used when fetching user's tracks data.
-        $basequery = "SELECT id, scoid, element, value
-                        FROM {scorm_scoes_track}
-                       WHERE scormid = ?
-                         AND userid = ?";
+        $basequery = "SELECT v.id, v.scoid, e.element, v.value
+                        FROM {scorm_scoes_value} v
+                        JOIN {scorm_attempt} a ON a.id = v.attemptid
+                        JOIN {scorm_element} e ON e.id = v.elementid
+                       WHERE a.scormid = ?
+                         AND a.userid = ?";
 
         switch ($rule) {
             case 'completionstatusrequired':
                 $status = COMPLETION_INCOMPLETE;
                 $query = $basequery .
-                    " AND element IN (
+                    " AND e.element IN (
                           'cmi.core.lesson_status',
                           'cmi.completion_status',
                           'cmi.success_status'
@@ -85,7 +87,7 @@ class custom_completion extends activity_custom_completion {
             case 'completionscorerequired':
                 $status = COMPLETION_INCOMPLETE;
                 $query = $basequery .
-                    " AND element IN (
+                    " AND e.element IN (
                           'cmi.core.score.raw',
                           'cmi.score.raw'
                     )";
@@ -110,7 +112,7 @@ class custom_completion extends activity_custom_completion {
                 // Assume complete unless we find a sco that is not complete.
                 $status = COMPLETION_COMPLETE;
                 $query = $basequery .
-                    " AND element IN (
+                    " AND e.element IN (
                           'cmi.core.lesson_status',
                           'cmi.completion_status',
                           'cmi.success_status'
@@ -144,16 +146,6 @@ class custom_completion extends activity_custom_completion {
             default:
                 $status = COMPLETION_INCOMPLETE;
                 break;
-        }
-
-        // If not yet meeting the requirement and no attempts remain to complete it, mark it as failed.
-        if ($status === COMPLETION_INCOMPLETE) {
-            $scorm = $DB->get_record('scorm', ['id' => $this->cm->instance]);
-            $attemptcount = scorm_get_attempt_count($this->userid, $scorm);
-
-            if ($scorm->maxattempt > 0 && $attemptcount >= $scorm->maxattempt) {
-                $status = COMPLETION_COMPLETE_FAIL;
-            }
         }
 
         return $status;
@@ -215,4 +207,3 @@ class custom_completion extends activity_custom_completion {
         ];
     }
 }
-

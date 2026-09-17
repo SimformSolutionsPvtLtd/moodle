@@ -12,7 +12,9 @@
         "course/format/tests/behat/courseindex_completion.feature",
         "course/format/tests/behat/courseindex_language.feature",
         "badges/tests/behat/badge_navigation.feature",
-        "mod/lesson/tests/behat/lesson_report_detailed_statistics.feature"
+        "lib/tests/behat/menu_navigation_single_activity.feature",
+        "lib/tests/behat/menu_navigation_topics.feature",
+        "mod/subsection/tests/behat/subsection_courseindex.feature"
     ],
     "tags": [
         "addablocklink"

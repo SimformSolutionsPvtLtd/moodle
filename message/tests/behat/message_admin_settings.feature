@@ -16,13 +16,12 @@ Feature: Message admin settings
     Given the following config values are set as admin:
       | messaging | 1 |
     When I log in as "admin"
-    Then "Toggle messaging drawer" "icon" should exist
+    Then "Toggle messaging drawer" "button" should exist
     And I navigate to "Users > Accounts > Browse list of users" in site administration
     And I should see "User One"
     And I follow "User One"
-    And "Add to contacts" "link" should exist
-    And I am on "Course 1" course homepage
-    And I navigate to course participants
+    And "Message" "link" should exist
+    And I am on the "Course 1" "enrolled users" page
     And the "With selected users..." select box should contain "Send a message"
 
   Scenario: disable site messaging
@@ -33,7 +32,6 @@ Feature: Message admin settings
     And I navigate to "Users > Accounts > Browse list of users" in site administration
     And I should see "User One"
     And I follow "User One"
-    And "Add to contacts" "link" should not exist
-    And I am on "Course 1" course homepage
-    And I navigate to course participants
+    And "Message" "link" should not exist
+    And I am on the "Course 1" "enrolled users" page
     And the "With selected users..." select box should not contain "Send a message"

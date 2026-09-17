@@ -270,10 +270,7 @@ function upgrade_calculated_grade_items($courseid = null) {
 
 /**
  * This function creates a default separated/connected scale
- * so there's something in the database.  The locations of
- * strings and files is a bit odd, but this is because we
- * need to maintain backward compatibility with many different
- * existing language translations and older sites.
+ * so there's something in the database.
  *
  * @global object
  * @return void
@@ -286,9 +283,9 @@ function make_default_scale() {
     $defaultscale->userid = 0;
     $defaultscale->name  = get_string('separateandconnected');
     $defaultscale->description = get_string('separateandconnectedinfo');
-    $defaultscale->scale = get_string('postrating1', 'forum').','.
-                           get_string('postrating2', 'forum').','.
-                           get_string('postrating3', 'forum');
+    $defaultscale->scale = get_string('separateandconnected1') . ',' .
+        get_string('separateandconnected2') . ',' .
+        get_string('separateandconnected3');
     $defaultscale->timemodified = time();
 
     $defaultscale->id = $DB->insert_record('scale', $defaultscale);
@@ -537,105 +534,59 @@ function upgrade_delete_orphaned_file_records() {
 function upgrade_core_licenses() {
     global $CFG, $DB;
 
-    $corelicenses = [];
+    $expectedlicenses = json_decode(file_get_contents($CFG->dirroot . '/lib/licenses.json'))->licenses;
+    if (!is_array($expectedlicenses)) {
+        $expectedlicenses = [];
+    }
+    $corelicenses = $DB->get_records('license', ['custom' => 0]);
 
-    $license = new stdClass();
-    $license->shortname = 'unknown';
-    $license->fullname = 'Licence not specified';
-    $license->source = '';
-    $license->enabled = 1;
-    $license->version = '2010033100';
-    $license->custom = 0;
-    $corelicenses[] = $license;
+    // Disable core licenses which are no longer current.
+    $todisable = array_diff(
+        array_map(fn ($license) => $license->shortname, $corelicenses),
+        array_map(fn ($license) => $license->shortname, $expectedlicenses),
+    );
 
-    $license = new stdClass();
-    $license->shortname = 'allrightsreserved';
-    $license->fullname = 'All rights reserved';
-    $license->source = 'https://en.wikipedia.org/wiki/All_rights_reserved';
-    $license->enabled = 1;
-    $license->version = '2010033100';
-    $license->custom = 0;
-    $corelicenses[] = $license;
+    // Disable any old *core* license that does not exist in the licenses.json file.
+    if (count($todisable)) {
+        [$where, $params] = $DB->get_in_or_equal($todisable, SQL_PARAMS_NAMED);
+        $DB->set_field_select(
+            'license',
+            'enabled',
+            0,
+            "shortname {$where}",
+            $params
+        );
+    }
 
-    $license = new stdClass();
-    $license->shortname = 'public';
-    $license->fullname = 'Public domain';
-    $license->source = 'https://en.wikipedia.org/wiki/Public_domain';
-    $license->enabled = 1;
-    $license->version = '2010033100';
-    $license->custom = 0;
-    $corelicenses[] = $license;
-
-    $license = new stdClass();
-    $license->shortname = 'cc';
-    $license->fullname = 'Creative Commons';
-    $license->source = 'https://creativecommons.org/licenses/by/3.0/';
-    $license->enabled = 1;
-    $license->version = '2010033100';
-    $license->custom = 0;
-    $corelicenses[] = $license;
-
-    $license = new stdClass();
-    $license->shortname = 'cc-nd';
-    $license->fullname = 'Creative Commons - NoDerivs';
-    $license->source = 'https://creativecommons.org/licenses/by-nd/3.0/';
-    $license->enabled = 1;
-    $license->version = '2010033100';
-    $license->custom = 0;
-    $corelicenses[] = $license;
-
-    $license = new stdClass();
-    $license->shortname = 'cc-nc-nd';
-    $license->fullname = 'Creative Commons - No Commercial NoDerivs';
-    $license->source = 'https://creativecommons.org/licenses/by-nc-nd/3.0/';
-    $license->enabled = 1;
-    $license->version = '2010033100';
-    $license->custom = 0;
-    $corelicenses[] = $license;
-
-    $license = new stdClass();
-    $license->shortname = 'cc-nc';
-    $license->fullname = 'Creative Commons - No Commercial';
-    $license->source = 'https://creativecommons.org/licenses/by-nc/3.0/';
-    $license->enabled = 1;
-    $license->version = '2010033100';
-    $license->custom = 0;
-    $corelicenses[] = $license;
-
-    $license = new stdClass();
-    $license->shortname = 'cc-nc-sa';
-    $license->fullname = 'Creative Commons - No Commercial ShareAlike';
-    $license->source = 'https://creativecommons.org/licenses/by-nc-sa/3.0/';
-    $license->enabled = 1;
-    $license->version = '2010033100';
-    $license->custom = 0;
-    $corelicenses[] = $license;
-
-    $license = new stdClass();
-    $license->shortname = 'cc-sa';
-    $license->fullname = 'Creative Commons - ShareAlike';
-    $license->source = 'https://creativecommons.org/licenses/by-sa/3.0/';
-    $license->enabled = 1;
-    $license->version = '2010033100';
-    $license->custom = 0;
-    $corelicenses[] = $license;
-
-    foreach ($corelicenses as $corelicense) {
-        // Check for current license to maintain idempotence.
-        $currentlicense = $DB->get_record('license', ['shortname' => $corelicense->shortname]);
-        if (!empty($currentlicense)) {
-            $corelicense->id = $currentlicense->id;
-            // Remember if the license was enabled before upgrade.
-            $corelicense->enabled = $currentlicense->enabled;
-            $DB->update_record('license', $corelicense);
-        } else if (!isset($CFG->upgraderunning) || during_initial_install()) {
-            // Only install missing core licenses if not upgrading or during initial install.
-            $DB->insert_record('license', $corelicense);
+    // Add any new licenses.
+    foreach ($expectedlicenses as $expectedlicense) {
+        if (!$expectedlicense->enabled) {
+            // Skip any license which is no longer enabled.
+            continue;
+        }
+        if (!$DB->record_exists('license', ['shortname' => $expectedlicense->shortname])) {
+            // If the license replaces an older one, check whether this old license was enabled or not.
+            $isreplacement = false;
+            foreach (array_reverse($expectedlicense->replaces ?? []) as $item) {
+                foreach ($corelicenses as $corelicense) {
+                    if ($corelicense->shortname === $item) {
+                        $expectedlicense->enabled = $corelicense->enabled;
+                        // Also, keep the old sort order.
+                        $expectedlicense->sortorder = $corelicense->sortorder * 100;
+                        $isreplacement = true;
+                        break 2;
+                    }
+                }
+            }
+            if (!isset($CFG->upgraderunning) || during_initial_install() || $isreplacement) {
+                // Only install missing core licenses if not upgrading or during initial installation.
+                $DB->insert_record('license', $expectedlicense);
+            }
         }
     }
 
-    // Add sortorder to all licenses.
-    $licenses = $DB->get_records('license');
+    // Add/renumber sortorder to all licenses.
+    $licenses = $DB->get_records('license', null, 'sortorder');
     $sortorder = 1;
     foreach ($licenses as $license) {
         $license->sortorder = $sortorder++;
@@ -1323,62 +1274,56 @@ function upgrade_block_delete_instances(
 ): void {
     global $DB;
 
-    $deleteblockinstances = function (string $instanceselect, array $instanceparams) use ($DB) {
-        $deletesql = <<<EOF
-            SELECT c.id AS cid
-              FROM {context} c
-              JOIN {block_instances} bi ON bi.id = c.instanceid AND c.contextlevel = :contextlevel
-             WHERE {$instanceselect}
-        EOF;
-        $DB->delete_records_subquery('context', 'id', 'cid', $deletesql, array_merge($instanceparams, [
-            'contextlevel' => CONTEXT_BLOCK,
-        ]));
+    $deleteblockinstances = function (array $blockids) use ($DB) {
+        [$insql, $inparams] = $DB->get_in_or_equal($blockids, SQL_PARAMS_NAMED, 'blockid');
+        $contextparams = array_merge(['contextlevel' => CONTEXT_BLOCK], $inparams);
+        $DB->delete_records_select('context', "contextlevel = :contextlevel AND instanceid {$insql}", $contextparams);
 
-        $deletesql = <<<EOF
-            SELECT bp.id AS bpid
-              FROM {block_positions} bp
-              JOIN {block_instances} bi ON bi.id = bp.blockinstanceid
-             WHERE {$instanceselect}
-        EOF;
-        $DB->delete_records_subquery('block_positions', 'id', 'bpid', $deletesql, $instanceparams);
+        $DB->delete_records_select('block_positions', "blockinstanceid {$insql}", $inparams);
 
-        $blockhidden = $DB->sql_concat("'block'", 'bi.id', "'hidden'");
-        $blockdocked = $DB->sql_concat("'docked_block_instance_'", 'bi.id');
-        $deletesql = <<<EOF
-            SELECT p.id AS pid
-              FROM {user_preferences} p
-              JOIN {block_instances} bi ON p.name IN ({$blockhidden}, {$blockdocked})
-             WHERE {$instanceselect}
-        EOF;
-        $DB->delete_records_subquery('user_preferences', 'id', 'pid', $deletesql, $instanceparams);
-
-        $deletesql = <<<EOF
-            SELECT bi.id AS bid
-              FROM {block_instances} bi
-             WHERE {$instanceselect}
-        EOF;
-        $DB->delete_records_subquery('block_instances', 'id', 'bid', $deletesql, $instanceparams);
+        $DB->delete_records_select('block_instances', "id {$insql}", $inparams);
     };
 
-    // Delete the default indexsys version of the block.
+    $deletepreferences = function (array $prefids) use ($DB) {
+        [$insql, $params] = $DB->get_in_or_equal($prefids);
+        $DB->delete_records_select('user_preferences', "id {$insql}", $params);
+    };
+
+    $targetids = [];
+    $batchsize = 1000;
+
+    $collectids = function ($recordset) use (&$targetids) {
+        foreach ($recordset as $record) {
+            $targetids[(int)$record->id] = true;
+        }
+        $recordset->close();
+    };
+
+    $collectpreferences = function ($recordset, $targetids) {
+        $prefstodelete = [];
+        foreach ($recordset as $pref) {
+            $blockid = (int)str_replace(['docked_block_instance_', 'block', 'hidden'], '', $pref->name);
+            if (isset($targetids[$blockid])) {
+                $prefstodelete[] = $pref->id;
+            }
+        }
+        $recordset->close();
+        return $prefstodelete;
+    };
+
+    // Collect block IDs from the default indexsys version of the block.
     $subpagepattern = $DB->get_record('my_pages', [
         'userid' => null,
         'name' => $pagename,
         'private' => MY_PAGE_PRIVATE,
     ], 'id', IGNORE_MULTIPLE)->id;
 
-    $instanceselect = <<<EOF
-            blockname = :blockname
-        AND pagetypepattern = :pagetypepattern
-        AND subpagepattern = :subpagepattern
-    EOF;
-
-    $params = [
+    $recordset = $DB->get_recordset('block_instances', [
         'blockname' => $blockname,
         'pagetypepattern' => $pagetypepattern,
         'subpagepattern' => $subpagepattern,
-    ];
-    $deleteblockinstances($instanceselect, $params);
+    ], '', 'id');
+    $collectids($recordset);
 
     // The subpagepattern is a string.
     // In all core blocks it contains a string represnetation of an integer, but it is theoretically possible for a
@@ -1388,30 +1333,54 @@ function upgrade_block_delete_instances(
 
     // Look for any and all instances of the block in customised /my pages.
     $subpageempty = $DB->sql_isnotempty('block_instances', 'bi.subpagepattern', true, false);
-    $instanceselect = <<<EOF
-         bi.id IN (
-            SELECT * FROM (
-                SELECT bi.id
-                  FROM {my_pages} mp
-                  JOIN {block_instances} bi
-                        ON bi.blockname = :blockname
-                       AND bi.subpagepattern IS NOT NULL AND {$subpageempty}
-                       AND bi.pagetypepattern = :pagetypepattern
-                       AND {$subpagepattern} = mp.id
-                 WHERE mp.private = :private
-                   AND mp.name = :pagename
-            ) bid
-         )
+    $customblockssql = <<<EOF
+        SELECT bi.id
+          FROM {my_pages} mp
+          JOIN {block_instances} bi
+                ON bi.blockname = :blockname
+               AND bi.subpagepattern IS NOT NULL AND {$subpageempty}
+               AND bi.pagetypepattern = :pagetypepattern
+               AND {$subpagepattern} = mp.id
+         WHERE mp.private = :private
+           AND mp.name = :pagename
     EOF;
 
-    $params = [
+    $recordset = $DB->get_recordset_sql($customblockssql, [
         'blockname' => $blockname,
         'pagetypepattern' => $pagetypepattern,
         'pagename' => $pagename,
         'private' => MY_PAGE_PRIVATE,
-    ];
+    ]);
+    $collectids($recordset);
 
-    $deleteblockinstances($instanceselect, $params);
+    if (empty($targetids)) {
+        return;
+    }
+
+    // Collect preference IDs associated with these blocks.
+    $dockedlike = $DB->sql_like('name', ':docked', false);
+    $hiddenlike = $DB->sql_like('name', ':hidden', false);
+    $prefssql = <<<EOF
+        SELECT id, name
+          FROM {user_preferences}
+         WHERE {$dockedlike} OR {$hiddenlike}
+    EOF;
+
+    $recordset = $DB->get_recordset_sql($prefssql, [
+        'docked' => 'docked_block_instance_%',
+        'hidden' => 'block%hidden',
+    ]);
+    $prefstodelete = $collectpreferences($recordset, $targetids);
+
+    // Delete preferences in batches.
+    foreach (array_chunk($prefstodelete, $batchsize) as $batch) {
+        $deletepreferences($batch);
+    }
+
+    // Delete block instances and related records in batches.
+    foreach (array_chunk(array_keys($targetids), $batchsize) as $batch) {
+        $deleteblockinstances($batch);
+    }
 }
 
 /**
@@ -1869,4 +1838,111 @@ function upgrade_add_foreign_key_and_indexes() {
     $key = new xmldb_key('contextid', XMLDB_KEY_FOREIGN, ['contextid'], 'context', ['id']);
     // Launch add key contextid.
     $dbman->add_key($table, $key);
+}
+
+/**
+ * Upgrade helper to change a binary column to an integer column with a length of 1 in a consistent manner across databases.
+ *
+ * This function will
+ * - rename the existing column to a temporary name,
+ * - add a new column with the integer type,
+ * - copy the values from the old column to the new column,
+ * - and finally, drop the old column.
+ *
+ * This function will do nothing if the field is already an integer.
+ *
+ * The new column with the integer type will need to have a default value of 0.
+ * This is to avoid breaking the not null constraint, if it's set, especially if there are existing records.
+ * Please make sure that the column definition in install.xml also has the `DEFAULT` attribute value set to 0.
+ *
+ * @param string $tablename The name of the table.
+ * @param string $fieldname The name of the field to be converted.
+ * @param bool|null $notnull {@see XMLDB_NOTNULL} or null.
+ * @param string|null $previous The name of the field that this field should come after.
+ * @return bool
+ */
+function upgrade_change_binary_column_to_int(
+    string $tablename,
+    string $fieldname,
+    ?bool $notnull = null,
+    ?string $previous = null,
+): bool {
+    global $DB;
+
+    // Get the information about the field to be converted.
+    $columns = $DB->get_columns($tablename);
+    $toconvert = $columns[$fieldname];
+
+    // Check if the field to be converted is already an integer-type column (`meta_type` property of 'I').
+    if ($toconvert->meta_type === 'I') {
+        // Nothing to do if the field is already an integer-type.
+        return false;
+    } else if (!$toconvert->binary) {
+        throw new \core\exception\coding_exception(
+            'This function is only used to convert XMLDB_TYPE_BINARY fields to XMLDB_TYPE_INTEGER fields. '
+            . 'For other field types, please check out \database_manager::change_field_type()'
+        );
+    }
+
+    $dbman = $DB->get_manager();
+    $table = new xmldb_table($tablename);
+    // Temporary rename the field. We'll drop this later.
+    $tmpfieldname = "tmp$fieldname";
+    $field = new xmldb_field($fieldname, XMLDB_TYPE_BINARY);
+    $dbman->rename_field($table, $field, $tmpfieldname);
+
+    // Add the new field wih the integer type.
+    $field = new xmldb_field($fieldname, XMLDB_TYPE_INTEGER, '1', null, $notnull, null, '0', $previous);
+    $dbman->add_field($table, $field);
+
+    // Copy the 'true' values from the old field to the new field.
+    if ($DB->get_dbfamily() === 'oracle') {
+        // It's tricky to use the binary column in the WHERE clause in Oracle DBs.
+        // Let's go updating the records one by one. It's nasty, but it's only done for instances with Oracle DBs.
+        // The normal SQL UPDATE statement will be used for other DBs.
+        $columns = implode(', ', ['id', $tmpfieldname, $fieldname]);
+        $records = $DB->get_recordset($tablename, null, '', $columns);
+        if ($records->valid()) {
+            foreach ($records as $record) {
+                if (!$record->$tmpfieldname) {
+                    continue;
+                }
+                $DB->set_field($tablename, $fieldname, 1, ['id' => $record->id]);
+            }
+        }
+        $records->close();
+    } else {
+        $sql = 'UPDATE {' . $tablename . '}
+                   SET ' . $fieldname . ' = 1
+                 WHERE ' . $tmpfieldname . ' = ?';
+        $DB->execute($sql, [1]);
+    }
+
+    // Drop the old field.
+    $oldfield = new xmldb_field($tmpfieldname);
+    $dbman->drop_field($table, $oldfield);
+
+    return true;
+}
+
+/**
+ * Upgrade script replacing absolute URLs in defaulthomepage setting with relative URLs
+ */
+function upgrade_store_relative_url_sitehomepage() {
+    global $CFG, $DB;
+
+    if (str_starts_with((string)$CFG->defaulthomepage, $CFG->wwwroot . '/')) {
+        set_config('defaulthomepage', substr((string)$CFG->defaulthomepage, strlen($CFG->wwwroot)));
+    }
+
+    $records = $DB->get_records_select('user_preferences', "name = :name AND " . $DB->sql_like('value', ':pattern'),
+        ['name' => 'user_home_page_preference', 'pattern' => 'http%']);
+    foreach ($records as $record) {
+        if (str_starts_with($record->value, $CFG->wwwroot . '/')) {
+            $DB->update_record('user_preferences', [
+                'id' => $record->id,
+                'value' => substr($record->value, strlen($CFG->wwwroot)),
+            ]);
+        }
+    }
 }

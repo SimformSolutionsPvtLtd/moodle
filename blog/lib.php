@@ -338,7 +338,7 @@ function blog_is_enabled_for_user() {
  * @param stdClass $userid Load for a specific user
  * @return array An array of options organised by type.
  */
-function blog_get_all_options(moodle_page $page, stdClass $userid = null) {
+function blog_get_all_options(moodle_page $page, ?stdClass $userid = null) {
     global $CFG, $DB, $USER;
 
     $options = array();
@@ -400,7 +400,7 @@ function blog_get_all_options(moodle_page $page, stdClass $userid = null) {
  * @param stdClass $user
  * @return array The array of options for the requested user
  */
-function blog_get_options_for_user(stdClass $user=null) {
+function blog_get_options_for_user(?stdClass $user=null) {
     global $CFG, $USER;
     // Cache.
     static $useroptions = array();
@@ -471,7 +471,7 @@ function blog_get_options_for_user(stdClass $user=null) {
  * @param stdClass $user The user to load options for null == current user
  * @return array The array of options
  */
-function blog_get_options_for_course(stdClass $course, stdClass $user=null) {
+function blog_get_options_for_course(stdClass $course, ?stdClass $user=null) {
     global $CFG, $USER;
     // Cache.
     static $courseoptions = array();
@@ -716,9 +716,10 @@ function blog_get_headers($courseid=null, $groupid=null, $userid=null, $tagid=nu
     // Note: if action is set to 'add' or 'edit', we do this at the end.
     if (empty($entryid) && empty($modid) && empty($courseid) && empty($userid) && !in_array($action, array('edit', 'add'))) {
         $PAGE->navbar->add($strblogentries, $blogurl);
-        $PAGE->set_title($site->fullname);
+        $strsiteblog = get_string('siteblogheading', 'blog');
+        $PAGE->set_title($strsiteblog);
         $PAGE->set_heading($site->fullname);
-        $headers['heading'] = get_string('siteblogheading', 'blog');
+        $headers['heading'] = $strsiteblog;
     }
 
     // Case 2: only entryid is requested, ignore all other filters. courseid is used to give more contextual information.
@@ -742,9 +743,10 @@ function blog_get_headers($courseid=null, $groupid=null, $userid=null, $tagid=nu
 
         $blogurl->remove_params('userid');
         $PAGE->navbar->add($entry->subject, $blogurl);
-        $PAGE->set_title("$shortname: " . fullname($user) . ": $entry->subject");
+        $blogentryby = get_string('blogentrybyuser', 'blog', fullname($user));
+        $PAGE->set_title($entry->subject . moodle_page::TITLE_SEPARATOR . $blogentryby);
         $PAGE->set_heading("$shortname: " . fullname($user) . ": $entry->subject");
-        $headers['heading'] = get_string('blogentrybyuser', 'blog', fullname($user));
+        $headers['heading'] = $blogentryby;
 
         // We ignore tag and search params.
         if (empty($action) || !$CFG->useblogassociations) {
@@ -758,7 +760,7 @@ function blog_get_headers($courseid=null, $groupid=null, $userid=null, $tagid=nu
 
         $shortname = format_string($site->shortname, true, array('context' => context_course::instance(SITEID)));
         $blogurl->param('userid', $userid);
-        $PAGE->set_title("$shortname: " . fullname($user) . ": " . get_string('blog', 'blog'));
+        $PAGE->set_title(fullname($user) . ": " . get_string('blog', 'blog'));
         $PAGE->set_heading("$shortname: " . fullname($user) . ": " . get_string('blog', 'blog'));
         $headers['heading'] = get_string('userblog', 'blog', fullname($user));
         $headers['strview'] = get_string('viewuserentries', 'blog', fullname($user));
@@ -766,9 +768,10 @@ function blog_get_headers($courseid=null, $groupid=null, $userid=null, $tagid=nu
     } else if (!$CFG->useblogassociations && empty($userid) && !in_array($action, array('edit', 'add'))) {
         // Case 4: No blog associations, no userid.
 
-        $PAGE->set_title($site->fullname);
+        $strsiteblog = get_string('siteblogheading', 'blog');
+        $PAGE->set_title($strsiteblog);
         $PAGE->set_heading($site->fullname);
-        $headers['heading'] = get_string('siteblogheading', 'blog');
+        $headers['heading'] = $strsiteblog;
     } else if (!empty($userid) && !empty($modid) && empty($entryid)) {
         // Case 5: Blog entries associated with an activity by a specific user (courseid ignored).
 
@@ -781,7 +784,7 @@ function blog_get_headers($courseid=null, $groupid=null, $userid=null, $tagid=nu
         $PAGE->navbar->add(fullname($user), "$CFG->wwwroot/user/view.php?id=$user->id");
         $PAGE->navbar->add($strblogentries, $blogurl);
 
-        $PAGE->set_title("$shortname: $cm->name: " . fullname($user) . ': ' . get_string('blogentries', 'blog'));
+        $PAGE->set_title(fullname($user) . ': ' . get_string('blogentries', 'blog') . moodle_page::TITLE_SEPARATOR . $cm->name);
         $PAGE->set_heading("$shortname: $cm->name: " . fullname($user) . ': ' . get_string('blogentries', 'blog'));
 
         $a = new stdClass();
@@ -1217,7 +1220,7 @@ function blog_validate_access($courseid, $modid, $groupid, $entryid, $userid) {
             throw new \moodle_exception('courseblogdisable', 'blog');
         }
         if (!$mod = $DB->get_record('course_modules', array('id' => $modid))) {
-            throw new \moodle_exception('invalidmoduleid', 'error', $modid);
+            throw new \moodle_exception('invalidmoduleid', 'error', '', $modid);
         }
         $courseid = $mod->course;
     }
@@ -1302,4 +1305,27 @@ function blog_validate_access($courseid, $modid, $groupid, $entryid, $userid) {
         }
     }
     return array($courseid, $userid);
+}
+
+/**
+ * Get blog editor and attachment options for when creating or updating an entry
+ *
+ * @param mixed $entry The entry object (can be null)
+ * @return array editor and attachment options
+ */
+function blog_get_editor_options(mixed $entry = null): array {
+    global $CFG;
+
+    if (is_null($entry)) {
+        $entry = new stdClass();
+        $entry->id = null;
+    }
+
+    $sitecontext = context_system::instance();
+
+    $summaryoptions = ['maxfiles' => 99, 'maxbytes' => $CFG->maxbytes, 'trusttext' => true, 'context' => $sitecontext,
+        'subdirs' => file_area_contains_subdirs($sitecontext, 'blog', 'post', $entry->id)];
+    $attachmentoptions = ['subdirs' => false, 'maxfiles' => 99, 'maxbytes' => $CFG->maxbytes];
+
+    return [$summaryoptions, $attachmentoptions];
 }

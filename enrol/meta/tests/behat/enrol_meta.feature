@@ -31,6 +31,8 @@ Feature: Enrolments are synchronised with meta courses
       | student2 | C2C2 | student | 0 |
       | student1 | C4C4 | student | 0 |
       | student2 | C4C4 | student | 1 |
+    And the following config values are set as admin:
+      | enableasyncbackup | 0 |
     And I log in as "admin"
     And I navigate to "Plugins > Enrolments > Manage enrol plugins" in site administration
     And I click on "Enable" "link" in the "Course meta link" "table_row"
@@ -103,7 +105,7 @@ Feature: Enrolments are synchronised with meta courses
   Scenario: Unenrol a user from the course participants page that was enrolled via course meta link.
     Given I add "Course meta link" enrolment method in "Course 3" with:
       | Link course  | C4C4 |
-    And I navigate to course participants
+    And I am on the "Course 3" "enrolled users" page
     # Suspended users can be unenrolled.
     When I click on "//a[@data-action='unenrol']" "xpath_element" in the "student2" "table_row"
     And I click on "Unenrol" "button" in the "Unenrol" "dialogue"

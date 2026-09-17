@@ -35,8 +35,9 @@ export default class extends BaseComponent {
      * @param {number} sectionid the section id
      * @param {Object} state the initial state
      * @param {Element} fullregion the complete section region to mark as dragged
+     * @param {Boolean} isDndAllowed Whether drag and drop is allowed in this section.
      */
-    configDragDrop(sectionid, state, fullregion) {
+    configDragDrop(sectionid, state, fullregion, isDndAllowed = true) {
 
         this.id = sectionid;
         if (this.section === undefined) {
@@ -46,15 +47,15 @@ export default class extends BaseComponent {
             this.course = state.course;
         }
 
-        // Prevent topic zero from being draggable.
-        if (this.section.number > 0) {
+        // Prevent topic zero and delegated sections from being draggable.
+        if (this.section.number > 0 && this.section.component === null) {
             this.getDraggableData = this._getDraggableData;
         }
 
         this.fullregion = fullregion;
 
         // Drag and drop is only available for components compatible course formats.
-        if (this.reactive.isEditing && this.reactive.supportComponents) {
+        if (this.reactive.isEditing && this.reactive.supportComponents && isDndAllowed) {
             // Init the dropzone.
             this.dragdrop = new DragDrop(this);
             // Save dropzone classes.
@@ -68,6 +69,17 @@ export default class extends BaseComponent {
     destroy() {
         if (this.dragdrop !== undefined) {
             this.dragdrop.unregister();
+        }
+    }
+
+    /**
+     * Enable or disable the draggable property.
+     *
+     * @param {bool} value the new draggable value
+     */
+    setDraggable(value) {
+        if (this.getDraggableData) {
+            this.dragdrop?.setDraggable(value);
         }
     }
 
@@ -110,6 +122,10 @@ export default class extends BaseComponent {
     validateDropData(dropdata) {
         // Course module validation.
         if (dropdata?.type === 'cm') {
+            // Prevent content loops with subsections.
+            if (this.section?.component && dropdata?.hasdelegatedsection === true) {
+                return false;
+            }
             // The first section element is already there so we can ignore it.
             const firstcmid = this.section?.cmlist[0];
             return dropdata.id !== firstcmid;
@@ -135,11 +151,13 @@ export default class extends BaseComponent {
      * Drop event handler.
      *
      * @param {Object} dropdata the accepted drop data
+     * @param {Event} event the drop event
      */
-    drop(dropdata) {
+    drop(dropdata, event) {
         // Call the move mutation.
         if (dropdata.type == 'cm') {
-            this.reactive.dispatch('cmMove', [dropdata.id], this.id, this.section?.cmlist[0]);
+            const mutation = (event.altKey) ? 'cmDuplicate' : 'cmMove';
+            this.reactive.dispatch(mutation, [dropdata.id], this.id, this.section?.cmlist[0]);
         }
     }
 }

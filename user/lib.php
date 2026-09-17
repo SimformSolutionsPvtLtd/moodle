@@ -22,6 +22,10 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+use core\di;
+use core\hook;
+use core_user\hook\extend_user_menu;
+
 define('USER_FILTER_ENROLMENT', 1);
 define('USER_FILTER_GROUP', 2);
 define('USER_FILTER_LAST_ACCESS', 3);
@@ -33,7 +37,7 @@ define('USER_FILTER_STRING', 6);
  * Creates a user
  *
  * @throws moodle_exception
- * @param stdClass $user user to create
+ * @param stdClass|array $user user to create
  * @param bool $updatepassword if true, authentication plugin will update password.
  * @param bool $triggerevent set false if user_created event should not be triggred.
  *             This will not affect user_password_updated event triggering.
@@ -144,7 +148,7 @@ function user_create_user($user, $updatepassword = true, $triggerevent = true) {
  * Update a user with a user object (will compare against the ID)
  *
  * @throws moodle_exception
- * @param stdClass $user the user to update
+ * @param stdClass|array $user the user to update
  * @param bool $updatepassword if true, authentication plugin will update password.
  * @param bool $triggerevent set false if user_updated event should not be triggred.
  *             This will not affect user_password_updated event triggering.
@@ -156,6 +160,15 @@ function user_update_user($user, $updatepassword = true, $triggerevent = true) {
     if (!is_object($user)) {
         $user = (object) $user;
     }
+
+    $currentrecord = $DB->get_record('user', ['id' => $user->id]);
+
+    // Dispatch the hook for pre user update actions.
+    $hook = new \core_user\hook\before_user_updated(
+        user: $user,
+        currentuserdata: $currentrecord,
+    );
+    \core\di::get(\core\hook\manager::class)->dispatch($hook);
 
     // Check username.
     if (isset($user->username)) {
@@ -186,7 +199,12 @@ function user_update_user($user, $updatepassword = true, $triggerevent = true) {
         unset($user->calendartype);
     }
 
-    $user->timemodified = time();
+    // Delete theme usage cache if the theme has been changed.
+    if (isset($user->theme)) {
+        if ($user->theme != $currentrecord->theme) {
+            theme_delete_used_in_context_cache($user->theme, $currentrecord->theme);
+        }
+    }
 
     // Validate user data object.
     $uservalidation = core_user::validate($user);
@@ -197,17 +215,36 @@ function user_update_user($user, $updatepassword = true, $triggerevent = true) {
         }
     }
 
-    $DB->update_record('user', $user);
+    $changedattributes = [];
+    foreach ($user as $attributekey => $attributevalue) {
+        // We explicitly want to ignore 'timemodified' attribute for checking, if an update is needed.
+        if (!property_exists($currentrecord, $attributekey) || $attributekey === 'timemodified') {
+            continue;
+        }
+        if ($currentrecord->{$attributekey} !== $attributevalue) {
+            $changedattributes[$attributekey] = $attributevalue;
+        }
+    }
+    if (!empty($changedattributes)) {
+        $changedattributes['timemodified'] = time();
+        $updaterecord = (object) $changedattributes;
+        $updaterecord->id = $currentrecord->id;
+        $DB->update_record('user', $updaterecord);
+    }
 
     if ($updatepassword) {
-        // Get full user record.
-        $updateduser = $DB->get_record('user', array('id' => $user->id));
+        // If there have been changes, update user record with changed attributes.
+        if (!empty($changedattributes)) {
+            foreach ($changedattributes as $attributekey => $attributevalue) {
+                $currentrecord->{$attributekey} = $attributevalue;
+            }
+        }
 
         // If password was set, then update its hash.
         if (isset($passwd)) {
-            $authplugin = get_auth_plugin($updateduser->auth);
+            $authplugin = get_auth_plugin($currentrecord->auth);
             if ($authplugin->can_change_password()) {
-                $authplugin->user_update_password($updateduser, $passwd);
+                $authplugin->user_update_password($currentrecord, $passwd);
             }
         }
     }
@@ -253,7 +290,7 @@ function user_get_default_fields() {
         'institution', 'interests', 'firstaccess', 'lastaccess', 'auth', 'confirmed',
         'idnumber', 'lang', 'theme', 'timezone', 'mailformat', 'description', 'descriptionformat',
         'city', 'country', 'profileimageurlsmall', 'profileimageurl', 'customfields',
-        'groups', 'roles', 'preferences', 'enrolledcourses', 'suspended', 'lastcourseaccess'
+        'groups', 'roles', 'preferences', 'enrolledcourses', 'suspended', 'lastcourseaccess', 'trackforums',
     );
 }
 
@@ -296,18 +333,41 @@ function user_get_user_details($user, $course = null, array $userfields = array(
         $userfields[] = 'fullname';
     }
 
+    // Callback check for plugins to allow or prevent access.
+    $forceallow = true;
+    $currentuser = ($user->id == $USER->id);
+    $isadmin = is_siteadmin($USER);
+    if (!$currentuser) {
+        $forceallow = false;
+        $callbackresult = user_process_profile_callbacks($user, $course);
+        if ($callbackresult === core_user::VIEWPROFILE_PREVENT) {
+            return null; // Access denied.
+        } else if ($callbackresult === core_user::VIEWPROFILE_FORCE_ALLOW) {
+            $forceallow = true;
+        }
+    }
+
     if (!empty($course)) {
         $context = context_course::instance($course->id);
         $usercontext = context_user::instance($user->id);
-        $canviewdetailscap = (has_capability('moodle/user:viewdetails', $context) || has_capability('moodle/user:viewdetails', $usercontext));
     } else {
         $context = context_user::instance($user->id);
         $usercontext = $context;
-        $canviewdetailscap = has_capability('moodle/user:viewdetails', $usercontext);
     }
 
-    $currentuser = ($user->id == $USER->id);
-    $isadmin = is_siteadmin($USER);
+    if (!$forceallow) {
+        // Existing capability checks.
+        if (!empty($course)) {
+            $canviewdetailscap = (has_capability('moodle/user:viewdetails', $context) || has_capability('moodle/user:viewdetails', $usercontext));
+        } else {
+            $canviewdetailscap = has_capability('moodle/user:viewdetails', $usercontext);
+        }
+
+        if (!$currentuser && !$canviewdetailscap && !has_coursecontact_role($user->id)) {
+            // Skip this user details.
+            return null;
+        }
+    }
 
     // This does not need to include custom profile fields as it is only used to check specific
     // fields below.
@@ -331,49 +391,42 @@ function user_get_user_details($user, $course = null, array $userfields = array(
         $canaccessallgroups = false;
     }
 
-    if (!$currentuser && !$canviewdetailscap && !has_coursecontact_role($user->id)) {
-        // Skip this user details.
-        return null;
-    }
+    // User ID and fullname are always included.
+    $userdetails = [
+        'id' => $user->id,
+        'fullname' => fullname($user, $canviewfullnames),
+    ];
 
-    $userdetails = array();
-    $userdetails['id'] = $user->id;
+    // User first/lastname included if capability check passes, or the same is present in fullname.
+    $dummyusername = core_user::get_dummy_fullname($context, ['override' => $canviewfullnames]);
+    if (in_array('firstname', $userfields) &&
+            ($canviewfullnames || core_text::strrpos($dummyusername, 'firstname') !== false)) {
+        $userdetails['firstname'] = $user->firstname;
+    }
+    if (in_array('lastname', $userfields) &&
+            ($canviewfullnames || core_text::strrpos($dummyusername, 'lastname') !== false)) {
+        $userdetails['lastname'] = $user->lastname;
+    }
 
     if (in_array('username', $userfields)) {
         if ($currentuser or has_capability('moodle/user:viewalldetails', $context)) {
             $userdetails['username'] = $user->username;
         }
     }
-    if ($isadmin or $canviewfullnames) {
-        if (in_array('firstname', $userfields)) {
-            $userdetails['firstname'] = $user->firstname;
-        }
-        if (in_array('lastname', $userfields)) {
-            $userdetails['lastname'] = $user->lastname;
-        }
-    }
-    $userdetails['fullname'] = fullname($user, $canviewfullnames);
 
     if (in_array('customfields', $userfields)) {
         $categories = profile_get_user_fields_with_data_by_category($user->id);
         $userdetails['customfields'] = array();
         foreach ($categories as $categoryid => $fields) {
             foreach ($fields as $formfield) {
-                if ($formfield->is_visible() and !$formfield->is_empty()) {
-
-                    // TODO: Part of MDL-50728, this conditional coding must be moved to
-                    // proper profile fields API so they are self-contained.
-                    // We only use display_data in fields that require text formatting.
-                    if ($formfield->field->datatype == 'text' or $formfield->field->datatype == 'textarea') {
-                        $fieldvalue = $formfield->display_data();
-                    } else {
-                        // Cases: datetime, checkbox and menu.
-                        $fieldvalue = $formfield->data;
-                    }
-
-                    $userdetails['customfields'][] =
-                        array('name' => $formfield->field->name, 'value' => $fieldvalue,
-                            'type' => $formfield->field->datatype, 'shortname' => $formfield->field->shortname);
+                if ($formfield->show_field_content()) {
+                    $userdetails['customfields'][] = [
+                        'name' => $formfield->display_name(),
+                        'value' => $formfield->data,
+                        'displayvalue' => $formfield->display_data(),
+                        'type' => $formfield->field->datatype,
+                        'shortname' => $formfield->field->shortname
+                    ];
                 }
             }
         }
@@ -404,9 +457,7 @@ function user_get_user_details($user, $course = null, array $userfields = array(
         $hiddenfields = array_flip(explode(',', $CFG->hiddenuserfields));
     }
 
-
-    if (!empty($user->address) && (in_array('address', $userfields)
-            && in_array('address', $showuseridentityfields) || $isadmin)) {
+    if (!empty($user->address) && (in_array('address', $userfields) || $isadmin)) {
         $userdetails['address'] = $user->address;
     }
     if (!empty($user->phone1) && (in_array('phone1', $userfields)
@@ -423,8 +474,8 @@ function user_get_user_details($user, $course = null, array $userfields = array(
         if (in_array('description', $userfields)) {
             // Always return the descriptionformat if description is requested.
             list($userdetails['description'], $userdetails['descriptionformat']) =
-                    external_format_text($user->description, $user->descriptionformat,
-                            $usercontext->id, 'user', 'profile', null);
+                    \core_external\util::format_text($user->description, $user->descriptionformat,
+                            $usercontext, 'user', 'profile', null);
         }
     }
 
@@ -534,10 +585,13 @@ function user_get_user_details($user, $course = null, array $userfields = array(
                     }
                 }
 
+                $groupdescription = file_rewrite_pluginfile_urls($group->description, 'pluginfile.php', $context->id, 'group',
+                    'description', $group->id);
+
                 $userdetails['groups'][] = [
                     'id' => $group->id,
-                    'name' => format_string($group->name),
-                    'description' => format_text($group->description, $group->descriptionformat, ['context' => $context]),
+                    'name' => format_string($group->name, true, ['context' => $context]),
+                    'description' => format_text($groupdescription, $group->descriptionformat, ['context' => $context]),
                     'descriptionformat' => $group->descriptionformat
                 ];
             }
@@ -572,7 +626,7 @@ function user_get_user_details($user, $course = null, array $userfields = array(
     }
 
     if ($currentuser or has_capability('moodle/user:viewalldetails', $context)) {
-        $extrafields = ['auth', 'confirmed', 'lang', 'theme', 'mailformat'];
+        $extrafields = ['auth', 'confirmed', 'lang', 'theme', 'mailformat', 'trackforums'];
         foreach ($extrafields as $extrafield) {
             if (in_array($extrafield, $userfields) && isset($user->$extrafield)) {
                 $userdetails[$extrafield] = $user->$extrafield;
@@ -696,13 +750,7 @@ function user_count_login_failures($user, $reset = true) {
  * @return array
  */
 function user_convert_text_to_menu_items($text, $page) {
-    global $OUTPUT, $CFG;
-
     $lines = explode("\n", $text);
-    $items = array();
-    $lastchild = null;
-    $lastdepth = null;
-    $lastsort = 0;
     $children = array();
     foreach ($lines as $line) {
         $line = trim($line);
@@ -730,8 +778,9 @@ function user_convert_text_to_menu_items($text, $page) {
         // Name processing.
         $namebits = explode(',', $bits[0], 2);
         if (count($namebits) == 2) {
+            $namebits[1] = $namebits[1] ?: 'core';
             // Check the validity of the identifier part of the string.
-            if (clean_param($namebits[0], PARAM_STRINGID) !== '') {
+            if (clean_param($namebits[0], PARAM_STRINGID) !== '' && clean_param($namebits[1], PARAM_COMPONENT) !== '') {
                 // Treat this as a language string.
                 $child->title = get_string($namebits[0], $namebits[1]);
                 $child->titleidentifier = implode(',', $namebits);
@@ -869,7 +918,7 @@ function user_get_user_navigation_info($user, $page, $options = array()) {
 
                 // Get login failures string.
                 $a = new stdClass();
-                $a->attempts = html_writer::tag('span', $count, array('class' => 'value mr-1 font-weight-bold'));
+                $a->attempts = html_writer::tag('span', $count, array('class' => 'value me-1 font-weight-bold'));
                 $returnobject->metadata['userloginfail'] =
                     get_string('failedloginattempts', '', $a);
 
@@ -888,6 +937,14 @@ function user_get_user_navigation_info($user, $page, $options = array()) {
         if ($item->itemtype !== 'divider' && $item->itemtype !== 'invalid') {
             $custommenucount++;
         }
+    }
+
+    // Call to hook to add menu items.
+    $hook = new extend_user_menu();
+    di::get(core\hook\manager::class)->dispatch($hook);
+    $hookitems = $hook->get_navitems();
+    foreach ($hookitems as $menuitem) {
+        $returnobject->navitems[] = $menuitem;
     }
 
     if ($custommenucount > 0) {
@@ -989,7 +1046,7 @@ function user_get_user_navigation_info($user, $page, $options = array()) {
  * @param string $password plaintext password
  * @return void
  */
-function user_add_password_history($userid, $password) {
+function user_add_password_history(int $userid, #[\SensitiveParameter] string $password): void {
     global $CFG, $DB;
 
     if (empty($CFG->passwordreuselimit) or $CFG->passwordreuselimit < 0) {
@@ -997,12 +1054,18 @@ function user_add_password_history($userid, $password) {
     }
 
     // Note: this is using separate code form normal password hashing because
-    //       we need to have this under control in the future. Also the auth
-    //       plugin might not store the passwords locally at all.
+    // we need to have this under control in the future. Also, the auth
+    // plugin might not store the passwords locally at all.
+
+    // First generate a cryptographically suitable salt.
+    $randombytes = random_bytes(16);
+    $salt = substr(strtr(base64_encode($randombytes), '+', '.'), 0, 16);
+    // Then create the hash.
+    $generatedhash = crypt($password, '$6$rounds=10000$' . $salt . '$');
 
     $record = new stdClass();
     $record->userid = $userid;
-    $record->hash = password_hash($password, PASSWORD_DEFAULT);
+    $record->hash = $generatedhash;
     $record->timecreated = time();
     $DB->insert_record('user_password_history', $record);
 
@@ -1162,29 +1225,10 @@ function user_can_view_profile($user, $course = null, $usercontext = null) {
     }
 
     // Use callbacks so that (primarily) local plugins can prevent or allow profile access.
-    $forceallow = false;
-    $plugintypes = get_plugins_with_function('control_view_profile');
-    foreach ($plugintypes as $plugins) {
-        foreach ($plugins as $pluginfunction) {
-            $result = $pluginfunction($user, $course, $usercontext);
-            switch ($result) {
-                case core_user::VIEWPROFILE_DO_NOT_PREVENT:
-                    // If the plugin doesn't stop access, just continue to next plugin or use
-                    // default behaviour.
-                    break;
-                case core_user::VIEWPROFILE_FORCE_ALLOW:
-                    // Record that we are definitely going to allow it (unless another plugin
-                    // returns _PREVENT).
-                    $forceallow = true;
-                    break;
-                case core_user::VIEWPROFILE_PREVENT:
-                    // If any plugin returns PREVENT then we return false, regardless of what
-                    // other plugins said.
-                    return false;
-            }
-        }
-    }
-    if ($forceallow) {
+    $callbackresult = user_process_profile_callbacks($user, $course, $usercontext);
+    if ($callbackresult === core_user::VIEWPROFILE_PREVENT) {
+        return false; // Access denied.
+    } else if ($callbackresult === core_user::VIEWPROFILE_FORCE_ALLOW) {
         return true;
     }
 
@@ -1231,6 +1275,34 @@ function user_can_view_profile($user, $course = null, $usercontext = null) {
 }
 
 /**
+ * Process plugin callbacks for profile visibility.
+ *
+ * @param stdClass $user The user whose profile is being checked.
+ * @param stdClass|null $course The course context, if applicable.
+ * @param context|null $usercontext The user context, if applicable.
+ * @return int One of the core_user::VIEWPROFILE_* constants.
+ */
+function user_process_profile_callbacks(stdClass $user, ?stdClass $course = null, ?stdClass $usercontext = null): int {
+    $plugintypes = get_plugins_with_function('control_view_profile');
+    $forceallow = false;
+
+    foreach ($plugintypes as $plugins) {
+        foreach ($plugins as $pluginfunction) {
+            $result = $pluginfunction($user, $course, $usercontext);
+            switch ($result) {
+                case core_user::VIEWPROFILE_FORCE_ALLOW:
+                    $forceallow = true;
+                    break;
+                case core_user::VIEWPROFILE_PREVENT:
+                    return core_user::VIEWPROFILE_PREVENT;
+            }
+        }
+    }
+
+    return $forceallow ? core_user::VIEWPROFILE_FORCE_ALLOW : core_user::VIEWPROFILE_DO_NOT_PREVENT;
+}
+
+/**
  * Returns users tagged with a specified tag.
  *
  * @param core_tag_tag $tag
@@ -1246,23 +1318,64 @@ function user_can_view_profile($user, $course = null, $usercontext = null) {
 function user_get_tagged_users($tag, $exclusivemode = false, $fromctx = 0, $ctx = 0, $rec = 1, $page = 0) {
     global $PAGE;
 
-    if ($ctx && $ctx != context_system::instance()->id) {
-        $usercount = 0;
-    } else {
-        // Users can only be displayed in system context.
-        $usercount = $tag->count_tagged_items('core', 'user',
-                'it.deleted=:notdeleted', array('notdeleted' => 0));
-    }
     $perpage = $exclusivemode ? 24 : 5;
-    $content = '';
-    $totalpages = ceil($usercount / $perpage);
+    $filteredusers = []; // Initialize an array to hold users that pass filtering.
 
-    if ($usercount) {
-        $userlist = $tag->get_tagged_items('core', 'user', $page * $perpage, $perpage,
-                'it.deleted=:notdeleted', array('notdeleted' => 0));
-        $renderer = $PAGE->get_renderer('core', 'user');
-        $content .= $renderer->user_list($userlist, $exclusivemode);
+    $totalusers = $tag->count_tagged_items('core', 'user', 'it.deleted=:notdeleted', ['notdeleted' => 0]);
+    $withinuserlimit = ($page * $perpage < $totalusers);
+    // Check if the requested page is within the user limit and if the context is valid or matches the system context.
+    if ($withinuserlimit && (!$ctx || $ctx == context_system::instance()->id)) {
+        // The output from get_tagged_items() will be filtered to check if users are visible to the current user.
+        // It’s possible that the count of users meeting the filtering criteria may fall short of the per-page limit,
+        // necessitating additional data beyond this limit.
+        // Implementing a batch approach addressed this issue by minimizing database queries.
+        $batch = 0;
+        // Increase the per-page limit to create a batch size for chunked querying.
+        // If the first chunk $perpagebatch doesn't return enough users, fetch the next chunk without re-querying the database.
+        $perpagebatch = $perpage * 2;
+
+        do {
+            $userlist = $tag->get_tagged_items(
+                component: 'core',
+                itemtype: 'user',
+                limitfrom: $perpagebatch * $batch,
+                limitnum: $perpagebatch,
+                subquery: 'it.deleted=:notdeleted',
+                params: ['notdeleted' => 0],
+            );
+
+            foreach ($userlist as $user) {
+                // Check if the user profile can be viewed.
+                if (user_can_view_profile($user)) {
+                    $filteredusers[] = $user;
+                    // If enough users have been collected for the requested page, exit both loops.
+                    if (count($filteredusers) > $perpage * ($page + 1)) {
+                        break 2;
+                    }
+                }
+            }
+
+            $batch++;
+
+        } while (count($userlist) > 0); // If all the data is still insufficient, run another batch.
+
     }
+
+    $usercount = count($filteredusers);
+
+    // Initialize the content to display tagged users.
+    $content = '';
+    if ($usercount > 0) {
+        // Prepare the paginated list of users, limiting it to the number of users per page.
+        $paginatedusers = array_slice($filteredusers, $page * $perpage, $perpage);
+
+        // Get the renderer for the user module to create the user list content.
+        $renderer = $PAGE->get_renderer('core', 'user');
+        $content = $renderer->user_list($paginatedusers, $exclusivemode);
+    }
+
+    // Calculate the total number of pages.
+    $totalpages = ceil($usercount / $perpage);
 
     return new core_tag\output\tagindex($tag, 'core', 'user', $content,
             $exclusivemode, $fromctx, $ctx, $rec, $page, $totalpages);
@@ -1339,7 +1452,7 @@ function user_get_lastaccess_sql($columnname, $accesssince, $tableprefix, $havea
  * @param string $itemtype - Only user_roles is supported.
  * @param string $itemid - Courseid and userid separated by a :
  * @param string $newvalue - json encoded list of roleids.
- * @return \core\output\inplace_editable
+ * @return \core\output\inplace_editable|null
  */
 function core_user_inplace_editable($itemtype, $itemid, $newvalue) {
     if ($itemtype === 'user_roles') {
@@ -1382,3 +1495,27 @@ function user_edit_map_field_purpose($userid, $fieldname) {
     return $purpose;
 }
 
+/**
+ * Update the users public key for the specified device and app.
+ *
+ * @param string $uuid The device UUID.
+ * @param string $appid The app id, usually something like com.moodle.moodlemobile.
+ * @param string $publickey The app generated public key.
+ * @return bool
+ * @since Moodle 4.2
+ */
+function user_update_device_public_key(string $uuid, string $appid, string $publickey): bool {
+    global $USER, $DB;
+
+    if (!$DB->get_record('user_devices',
+        ['uuid' => $uuid, 'appid' => $appid, 'userid' => $USER->id]
+    )) {
+        return false;
+    }
+
+    $DB->set_field('user_devices', 'publickey', $publickey,
+        ['uuid' => $uuid, 'appid' => $appid, 'userid' => $USER->id]
+    );
+
+    return true;
+}

@@ -41,12 +41,14 @@ define([
     'jquery',
     'core/dragdrop',
     'core/key_codes',
-    'core_form/changechecker'
+    'core_form/changechecker',
+    'core_filters/events',
 ], function(
     $,
     dragDrop,
     keys,
-    FormChangeChecker
+    FormChangeChecker,
+    filterEvent
 ) {
 
     "use strict";
@@ -59,14 +61,22 @@ define([
      * @constructor
      */
     function DragDropToTextQuestion(containerId, readOnly) {
+        const thisQ = this;
         this.containerId = containerId;
         this.questionAnswer = {};
+        this.questionDragDropWidthHeight = [];
         if (readOnly) {
             this.getRoot().addClass('qtype_ddwtos-readonly');
         }
         this.resizeAllDragsAndDrops();
         this.cloneDrags();
         this.positionDrags();
+        // Wait for all dynamic content loaded by filter to be completed.
+        document.addEventListener(filterEvent.eventTypes.filterContentRenderingComplete, (elements) => {
+            elements.detail.nodes.forEach((element) => {
+                thisQ.changeAllDragsAndDropsToFilteredContent(element);
+            });
+        });
     }
 
     /**
@@ -87,12 +97,12 @@ define([
      */
     DragDropToTextQuestion.prototype.resizeAllDragsAndDropsInGroup = function(group) {
         var thisQ = this,
-            dragHomes = this.getRoot().find('.draggrouphomes' + group + ' span.draghome'),
+            dragDropItems = this.getRoot().find('span.group' + group),
             maxWidth = 0,
             maxHeight = 0;
 
         // Find the maximum size of any drag in this groups.
-        dragHomes.each(function(i, drag) {
+        dragDropItems.each(function(i, drag) {
             maxWidth = Math.max(maxWidth, Math.ceil(drag.offsetWidth));
             maxHeight = Math.max(maxHeight, Math.ceil(0 + drag.offsetHeight));
         });
@@ -100,16 +110,85 @@ define([
         // The size we will want to set is a bit bigger than this.
         maxWidth += 8;
         maxHeight += 2;
-
+        thisQ.questionDragDropWidthHeight[group] = {maxWidth: maxWidth, maxHeight: maxHeight};
         // Set each drag home to that size.
-        dragHomes.each(function(i, drag) {
+        dragDropItems.each(function(i, drag) {
             thisQ.setElementSize(drag, maxWidth, maxHeight);
         });
+    };
 
-        // Set each drop to that size.
-        this.getRoot().find('span.drop.group' + group).each(function(i, drop) {
-            thisQ.setElementSize(drop, maxWidth, maxHeight);
+    /**
+     * Change all the drags and drops related to the item that has been changed by filter to correct size and content.
+     *
+     *  @param {object} filteredElement the element has been modified by filter.
+     */
+    DragDropToTextQuestion.prototype.changeAllDragsAndDropsToFilteredContent = function(filteredElement) {
+        let currentFilteredItem = $(filteredElement);
+        const parentIsDD = currentFilteredItem.parent().closest('span').hasClass('placed') ||
+            currentFilteredItem.parent().closest('span').hasClass('draghome');
+        const isDD = currentFilteredItem.hasClass('placed') || currentFilteredItem.hasClass('draghome');
+        // The filtered element or parent element should a drag or drop item.
+        if (!parentIsDD && !isDD) {
+            return;
+        }
+        if (parentIsDD) {
+            currentFilteredItem = currentFilteredItem.parent().closest('span');
+        }
+        const thisQ = this;
+        if (thisQ.getRoot().find(currentFilteredItem).length <= 0) {
+            // If the DD item doesn't belong to this question
+            // In case we have multiple questions in the same page.
+            return;
+        }
+        const group = thisQ.getGroup(currentFilteredItem),
+              choice = thisQ.getChoice(currentFilteredItem);
+        let listOfModifiedDragDrop = [];
+        // Get the list of drag and drop item within the same group and choice.
+        this.getRoot().find('.group' + group + '.choice' + choice).each(function(i, node) {
+            // Same modified item, skip it.
+            if ($(node).get(0) === currentFilteredItem.get(0)) {
+                return;
+            }
+            const originalClass = $(node).attr('class');
+            const originalStyle = $(node).attr('style');
+            // We want to keep all the handler and event for filtered item, so using clone is the only choice.
+            const filteredDragDropClone = currentFilteredItem.clone();
+            // Replace the class and style of the drag drop item we want to replace for the clone.
+            filteredDragDropClone.attr('class', originalClass);
+            filteredDragDropClone.attr('style', originalStyle);
+            // Insert into DOM.
+            $(node).before(filteredDragDropClone);
+            // Add the item has been replaced to a list so we can remove it later.
+            listOfModifiedDragDrop.push(node);
         });
+
+        listOfModifiedDragDrop.forEach(function(node) {
+            $(node).remove();
+        });
+        // Save the current height and width.
+        const currentHeight = currentFilteredItem.height();
+        const currentWidth = currentFilteredItem.width();
+        // Set to auto so we can get the real height and width of the filtered item.
+        currentFilteredItem.height('auto');
+        currentFilteredItem.width('auto');
+        // We need to set display block so we can get height and width.
+        // Some browser can't get the offsetWidth/Height if they are an inline element like span tag.
+        if (!filteredElement.offsetWidth || !filteredElement.offsetHeight) {
+            filteredElement.classList.add('d-block');
+        }
+        if (thisQ.questionDragDropWidthHeight[group].maxWidth < Math.ceil(filteredElement.offsetWidth) ||
+            thisQ.questionDragDropWidthHeight[group].maxHeight < Math.ceil(0 + filteredElement.offsetHeight)) {
+            // Remove the d-block class before calculation.
+            filteredElement.classList.remove('d-block');
+            // Now resize all the items in the same group if we have new maximum width or height.
+            thisQ.resizeAllDragsAndDropsInGroup(group);
+        } else {
+            // Return the original height and width in case the real height and width is not the maximum.
+            currentFilteredItem.height(currentHeight);
+            currentFilteredItem.width(currentWidth);
+        }
+        // Remove the d-block class after resize.
+        filteredElement.classList.remove('d-block');
     };
 
     /**
@@ -363,10 +442,21 @@ define([
      * @param {jQuery} drop the place to put it.
      */
     DragDropToTextQuestion.prototype.sendDragToDrop = function(drag, drop) {
+        // Send drag home if there is no place in drop.
+        if (this.getPlace(drop) === null) {
+            this.sendDragHome(drag);
+            return;
+        }
+
         // Is there already a drag in this drop? if so, evict it.
         var oldDrag = this.getCurrentDragInPlace(this.getPlace(drop));
         if (oldDrag.length !== 0) {
             var currentPlace = this.getClassnameNumericSuffix(oldDrag, 'inplace');
+            // When infinite group and there is already a drag in a drop, reject the exact clone in the same drop.
+            if (this.hasDropSameDrag(currentPlace, drop, oldDrag, drag)) {
+                this.sendDragHome(drag);
+                return;
+            }
             var hiddenDrop = this.getDrop(oldDrag, currentPlace);
             hiddenDrop.addClass('active');
             oldDrag.addClass('beingdragged');
@@ -391,6 +481,25 @@ define([
             drag.attr('tabindex', 0);
             this.animateTo(drag, drop);
         }
+    };
+
+    /**
+     * When infinite group and there is already a drag in a drop, reject the exact clone in the same drop.
+     *
+     * @param {int} currentPlace  the position of the current drop.
+     * @param {jQuery} drop the drop containing a drag.
+     * @param {jQuery} oldDrag the drag already placed in drop.
+     * @param {jQuery} drag the new drag which is exactly the same (clone) as oldDrag .
+     * @returns {boolean}
+     */
+    DragDropToTextQuestion.prototype.hasDropSameDrag = function(currentPlace, drop, oldDrag, drag) {
+        if (drag.hasClass('infinite')) {
+            return drop.hasClass('place' + currentPlace) &&
+                this.getGroup(drag) === this.getGroup(drop) &&
+                this.getChoice(drag) === this.getChoice(oldDrag) &&
+                this.getGroup(drag) === this.getGroup(oldDrag);
+        }
+        return false;
     };
 
     /**
@@ -663,7 +772,7 @@ define([
      */
     DragDropToTextQuestion.prototype.getClassnameNumericSuffix = function(node, prefix) {
         var classes = node.attr('class');
-        if (classes !== '') {
+        if (classes !== undefined && classes !== '') {
             var classesArr = classes.split(' ');
             for (var index = 0; index < classesArr.length; index++) {
                 var patt1 = new RegExp('^' + prefix + '([0-9])+$');

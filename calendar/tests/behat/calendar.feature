@@ -11,12 +11,15 @@ Feature: Perform basic calendar functionality
       | student2 | Student | 2 | student2@example.com |
       | student3 | Student | 3 | student3@example.com |
       | teacher1 | Teacher | 1 | teacher1@example.com |
+    And the following "categories" exist:
+      | name     | category | idnumber |
+      | CatA     | 0        | cata     |
     And the following "courses" exist:
-      | fullname | shortname | format |
-      | Course 1 | C1 | topics |
-      | Course 2 | C2 | topics |
-      | Course 3 | C3 | topics |
-      | Course 4 | C4 | topics |
+      | fullname | shortname | format | category |
+      | Course 1 | C1        | topics | cata     |
+      | Course 2 | C2        | topics | cata     |
+      | Course 3 | C3        | topics | cata     |
+      | Course 4 | C4        | topics | cata     |
     And the following "course enrolments" exist:
       | user | course | role |
       | student1 | C1 | student |
@@ -24,16 +27,16 @@ Feature: Perform basic calendar functionality
       | teacher1 | C1 | teacher |
       | admin    | C1 | editingteacher |
     And the following "groups" exist:
-      | name | course | idnumber |
-      | Group 1 | C1 | G1 |
+      | name                                                                                           | course | idnumber |
+      | <span lang="en" class="multilang">Group</span><span lang="es" class="multilang">Grupo</span> 1 | C1     | G1       |
     And the following "group members" exist:
       | user | group |
       | student1 | G1 |
       | teacher1 | G1 |
-    And I log in as "admin"
-    And I am on "Course 1" course homepage with editing mode on
-    And I add the "Calendar" block
-    And I log out
+    And the following "blocks" exist:
+      | blockname         | contextlevel | reference | pagetypepattern | defaultregion |
+      | calendar_month    | Course       | C1        | course-view-*   | side-pre      |
+      | calendar_upcoming | Course       | C4        | course-view-*   | side-pre      |
 
   @javascript
   Scenario: Create a site event
@@ -43,14 +46,13 @@ Feature: Perform basic calendar functionality
       | Event title | Really awesome event! |
       | Description | Come join this awesome event, sucka! |
     And I log out
-    And I log in as "student1"
-    And I am on "Course 1" course homepage
-    And I follow "Full calendar"
+    When I am on the "Course 1" course page logged in as student1
+    And I follow "Course calendar"
     And I should see "Really awesome event!"
     And I log out
     And I log in as "student2"
     And I follow "Full calendar"
-    And I should see "Really awesome event!"
+    Then I should see "Really awesome event!"
 
   @javascript
   Scenario: Create a course event
@@ -61,9 +63,8 @@ Feature: Perform basic calendar functionality
       | Event title | Really awesome event! |
       | Description | Come join this awesome event, sucka! |
     And I log out
-    And I log in as "student1"
-    When I am on "Course 1" course homepage
-    And I follow "Full calendar"
+    When I am on the "Course 1" course page logged in as student1
+    And I follow "Course calendar"
     And I click on "Really awesome event!" "link"
     And "Course 1" "link" should exist in the "Really awesome event!" "dialogue"
     And I click on "Close" "button" in the "Really awesome event!" "dialogue"
@@ -74,18 +75,19 @@ Feature: Perform basic calendar functionality
 
   @javascript
   Scenario: Create a group event
-    Given I log in as "teacher1"
+    Given the "multilang" filter is "on"
+    And the "multilang" filter applies to "content and headings"
+    And I log in as "teacher1"
     And I follow "Full calendar"
-    And I set the field "course" to "C1"
+    And I set the field "course" to "Course 1"
     And I create a calendar event:
       | Type of event | group |
       | Group         | Group 1 |
       | Event title | Really awesome event! |
       | Description | Come join this awesome event |
     And I log out
-    And I log in as "student1"
-    When I am on "Course 1" course homepage
-    And I follow "Full calendar"
+    When I am on the "Course 1" course page logged in as student1
+    And I follow "Course calendar"
     Then I follow "Really awesome event!"
 
   @javascript
@@ -96,9 +98,8 @@ Feature: Perform basic calendar functionality
       | Event title | Really awesome event! |
       | Description | Come join this awesome event, sucka! |
     And I log out
-    And I log in as "student1"
-    When I am on "Course 1" course homepage
-    And I follow "Full calendar"
+    When I am on the "Course 1" course page logged in as student1
+    And I follow "Course calendar"
     Then I should not see "Really awesome event!"
 
   @javascript
@@ -119,7 +120,7 @@ Feature: Perform basic calendar functionality
       | Event title | Really awesome event! |
       | Description | Come join this awesome event, sucka! |
     And I am on "Course 1" course homepage
-    When I follow "Full calendar"
+    When I follow "Course calendar"
     And I click on "Really awesome event!" "link"
     And I click on "Delete" "button" in the "Really awesome event!" "dialogue"
     And I click on "Delete event" "button"
@@ -135,7 +136,7 @@ Feature: Perform basic calendar functionality
       | Description | Come join this awesome event, sucka! |
       | Location | Cube office |
     And I am on "Course 1" course homepage
-    When I follow "Full calendar"
+    When I follow "Course calendar"
     And I click on "Really awesome event!" "link"
     And ".location-content" "css_element" should exist
     And I should see "Cube office"
@@ -150,6 +151,25 @@ Feature: Perform basic calendar functionality
     Then I should see "Mediocre event"
     And ".location-content" "css_element" should not exist
 
+  @javascript @editor_tiny
+  Scenario: Edit a newly created event using TinyMCE editor
+    Given I log in as "teacher1"
+    And I follow "Dashboard"
+    And I click on "New event" "button"
+    And I set the field "Event title" to "Newly created event"
+    When I press "Save"
+    Then I should see "Newly created event"
+    And I click on "Newly created event" "link"
+    And I click on "Edit" "button" in the "Newly created event" "dialogue"
+    And I click on "Show more..." "link"
+    And I click on the "Link" button for the "Description" TinyMCE editor
+    And I set the field "Text to display" to "Read more..."
+    And I set the field "Enter a URL" to "https://moodle.org/"
+    And I click on "Create link" "button" in the "Create link" "dialogue"
+    And I press "Save"
+    And I click on "Newly created event" "link"
+    And I should see "Read more..."
+
   @javascript
   Scenario: Module events editing
     Given I log in as "teacher1"
@@ -157,8 +177,7 @@ Feature: Perform basic calendar functionality
     And the following "activities" exist:
       | activity | course | idnumber | name        | intro                   | timeopen      | timeclose     |
       | choice   | C1     | choice1  | Test choice | Test choice description | ##today## | ##today##  |
-    When I follow "Full calendar"
-    And I set the field "course" to "C1"
+    When I follow "Course calendar"
     Then I should see "Test choice opens"
     And I should see "Test choice closes"
     When I click on "Test choice opens" "link"
@@ -169,7 +188,7 @@ Feature: Perform basic calendar functionality
     And I wait to be redirected
     Then I should see "Test choice"
     And I am on "Course 1" course homepage
-    And I follow "Full calendar"
+    And I follow "Course calendar"
     When I click on "Test choice closes" "link"
     Then "Delete" "button" should not exist in the "Test choice closes" "dialogue"
     And "Edit" "button" should not exist in the "Test choice closes" "dialogue"
@@ -180,9 +199,8 @@ Feature: Perform basic calendar functionality
 
   @javascript
   Scenario: Attempt to create event without fill required fields should display validation errors
-    Given I log in as "teacher1"
-    And I am on "Course 1" course homepage
-    And I follow "Full calendar"
+    Given I am on the "Course 1" course page logged in as teacher1
+    And I follow "Course calendar"
     And I click on "New event" "button"
     When I click on "Save" "button"
     Then I should see "Required" in the "Event title" "form_row"
@@ -191,7 +209,7 @@ Feature: Perform basic calendar functionality
     And I click on "New event" "button"
     And I set the field "Event title" to "Really awesome event!"
     And I set the field "Type of event" to "Course"
-    When I click on "Save" "button"
+    And I click on "Save" "button"
     And I should see "Select a course" in the "Course" "form_row"
 
   @javascript
@@ -201,14 +219,13 @@ Feature: Perform basic calendar functionality
     And I click on "New event" "button"
     Then the field "Type of event" matches value "User"
     And I click on "Close" "button" in the "New event" "dialogue"
-    And I set the field "course" to "C1"
+    And I set the field "course" to "Course 1"
     When I click on "New event" "button"
     Then the field "Type of event" matches value "Course"
 
   @javascript
   Scenario: Admin can only see all courses if calendar_adminseesall setting is enabled.
-    Given I log in as "admin"
-    And I am on "Course 1" course homepage
+    Given I am on the "Course 1" course page logged in as admin
     And I am viewing site calendar
     And I click on "New event" "button"
     And I set the field "Type of event" to "Course"
@@ -264,9 +281,8 @@ Feature: Perform basic calendar functionality
 
   @javascript @accessibility
   Scenario: The calendar page must be accessible
-    Given I log in as "student1"
-    And I am on "Course 1" course homepage
-    When I follow "Full calendar"
+    Given I am on the "Course 1" course page logged in as student1
+    When I follow "Course calendar"
     Then the page should meet accessibility standards
     And the page should meet "wcag131, wcag143, wcag412" accessibility standards
     And the page should meet accessibility standards with "wcag131, wcag143, wcag412" extra tests
@@ -285,7 +301,7 @@ Feature: Perform basic calendar functionality
     # We need to give the browser a couple seconds to re-render the page after the screen has been resized.
     And I wait "1" seconds
     And I should not see "Event 1:1"
-    And I hover over day "1" of this month in the full calendar page
+    And I hover over day "1" of this month in the full calendar page responsive view
     And I should see "Event 1:1"
 
   @javascript
@@ -294,7 +310,6 @@ Feature: Perform basic calendar functionality
     And the following config values are set as admin:
       | calendar_adminseesall | 0 |
     And I am on "Course 4" course homepage with editing mode on
-    And I add the "Upcoming events" block
     And I click on "Go to calendar..." "link" in the "Upcoming events" "block"
     And I click on "New event" "button"
     And I should see "Course" in the "Type of event" "select"
@@ -309,21 +324,24 @@ Feature: Perform basic calendar functionality
 
   @javascript
   Scenario: Changing the event type should clear previous data
-    Given I log in as "admin"
-    And I am on "Course 1" course homepage
-    And I follow "Full calendar"
-    And I set the field "course" to "C1"
+    Given the "multilang" filter is "on"
+    And the "multilang" filter applies to "content and headings"
+    And I am on the "Course 1" course page logged in as admin
+    And I follow "Course calendar"
     And I press "New event"
     And I set the following fields to these values:
       | Event title | Group 1 event |
       | Type of event | Group       |
+    And I should see "Group 1"
+    And I should not see "GroupGrupo 1"
     And I press "Save"
     And I am on "Course 1" course homepage
-    And I follow "Full calendar"
+    And I follow "Course calendar"
     And I click on "Group 1 event" "link"
     And I should see "Group event"
     And I should see "Group 1"
-    When I click on "Edit" "button"
+    And I should not see "GroupGrupo 1"
+    When I click on "Edit" "button" in the "Group 1 event" "dialogue"
     And I set the following fields to these values:
       | Event title | My own user event |
       | Type of event | user |
@@ -349,36 +367,34 @@ Feature: Perform basic calendar functionality
     And I should see "Course event"
     And I click on "Edit" "button" in the "Course 1 event" "dialogue"
     And I set the following fields to these values:
-      | Event title | Category event |
-      | Type of event | category |
+      | Event title   | Category event |
+      | Type of event | category       |
+      | Category      | CatA           |
     And I press "Save"
     And I click on "Category event" "link"
     And I should see "Category event"
 
   @javascript
   Scenario: Changing the event type from user to anything else should work
-    Given I log in as "teacher1"
+    Given the "multilang" filter is "on"
+    And the "multilang" filter applies to "content and headings"
+    And I log in as "teacher1"
     # We need this so we can see the groups.
     And the following "course enrolments" exist:
       | user     | course | role           |
       | teacher1 | C1     | editingteacher |
-    # We need this so we can make a category event.
-    And the following "categories" exist:
-      | name | category | idnumber |
-      | CatA | 0        | cata     |
     And the following "role assigns" exist:
       | user     | role    | contextlevel  | reference |
       | teacher1 | manager | Category      | cata      |
     And I am on "Course 1" course homepage
-    And I follow "Full calendar"
-    And I set the field "course" to "C1"
+    And I follow "Course calendar"
     And I press "New event"
     And I set the following fields to these values:
       | Event title   | type change test event |
       | Type of event | User                   |
     And I press "Save"
     And I am on "Course 1" course homepage
-    And I follow "Full calendar"
+    And I follow "Course calendar"
     And I click on "type change test event" "link"
     And I should see "User event"
     When I click on "Edit" "button"
@@ -391,7 +407,7 @@ Feature: Perform basic calendar functionality
     And I click on "type change test event" "link"
     Then I should see "Course event"
     # Reset to user event
-    And I click on "Edit" "button"
+    And I click on "Edit" "button" in the "type change test event" "dialogue"
     And I set the following fields to these values:
       | Event title   | type change test event |
       | Type of event | User                   |
@@ -400,7 +416,7 @@ Feature: Perform basic calendar functionality
     And I should see "User event"
     # Now test changing from user to group event.
     And I am on "Course 1" course homepage
-    And I follow "Full calendar"
+    And I follow "Course calendar"
     And I click on "type change test event" "link"
     And I click on "Edit" "button"
     And I set the following fields to these values:
@@ -414,7 +430,7 @@ Feature: Perform basic calendar functionality
     And I click on "type change test event" "link"
     And I should see "Group event"
     # Reset to user event
-    And I click on "Edit" "button"
+    And I click on "Edit" "button" in the "type change test event" "dialogue"
     And I set the following fields to these values:
       | Event title | type change test event |
       | Type of event | User |
@@ -422,7 +438,7 @@ Feature: Perform basic calendar functionality
     And I click on "type change test event" "link"
     And I should see "User event"
     # Now test changing from user to course event.
-    And I click on "Edit" "button"
+    And I click on "Edit" "button" in the "type change test event" "dialogue"
     And I set the following fields to these values:
       | Event title   | Course 1 event |
       | Type of event | Course         |
@@ -432,7 +448,7 @@ Feature: Perform basic calendar functionality
     And I click on "Course 1 event" "link"
     And I should see "Course event"
     # Reset to user event
-    And I click on "Edit" "button"
+    And I click on "Edit" "button" in the "Course 1 event" "dialogue"
     And I set the following fields to these values:
       | Event title   | type change test event |
       | Type of event | User                   |
@@ -440,7 +456,7 @@ Feature: Perform basic calendar functionality
     And I click on "type change test event" "link"
     And I should see "User event"
     # Now test changing from user to category event.
-    And I click on "Edit" "button"
+    And I click on "Edit" "button" in the "type change test event" "dialogue"
     And I set the following fields to these values:
       | Event title   | type change test event |
       | Type of event | Category               |

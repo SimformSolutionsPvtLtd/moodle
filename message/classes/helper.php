@@ -59,7 +59,7 @@ class helper {
      */
     public static function get_conversation_messages(int $userid, int $convid, int $timedeleted = 0, int $limitfrom = 0,
                                                      int $limitnum = 0, string $sort = 'timecreated ASC', int $timefrom = 0,
-                                                     int $timeto = 0) : array {
+                                                     int $timeto = 0): array {
         global $DB;
 
         $sql = "SELECT m.id, m.useridfrom, m.subject, m.fullmessage, m.fullmessagehtml,
@@ -124,7 +124,7 @@ class helper {
      * @param array $messages The formated array messages.
      * @return array A conversation array with the messages and the involved members.
      */
-    public static function format_conversation_messages(int $userid, int $convid, array $messages) : array {
+    public static function format_conversation_messages(int $userid, int $convid, array $messages): array {
         global $USER;
 
         // Create the conversation array.
@@ -309,14 +309,21 @@ class helper {
      * @param object $user User object.
      * @param bool $iscontact
      * @param bool $displaytextlabel Instructs whether to display a text label.
+     * @param bool $isrequested Whether the contact request is sent or not.
      * @return array
      */
-    public static function togglecontact_link_params($user, $iscontact = false, bool $displaytextlabel = true) {
+    public static function togglecontact_link_params(
+        $user,
+        $iscontact = false,
+        bool $displaytextlabel = true,
+        bool $isrequested = false,
+    ) {
         global $USER;
         $params = array(
             'data-currentuserid' => $USER->id,
             'data-userid' => $user->id,
             'data-is-contact' => $iscontact,
+            'data-is-requested' => $isrequested,
             'data-display-text-label' => $displaytextlabel,
             'id' => 'toggle-contact-button',
             'role' => 'button',
@@ -349,7 +356,7 @@ class helper {
      * @param int $useridto
      * @return array
      */
-    public static function messageuser_link_params(int $useridto) : array {
+    public static function messageuser_link_params(int $useridto): array {
         global $USER;
 
         return [
@@ -422,7 +429,7 @@ class helper {
      * @throws \dml_exception
      */
     public static function get_member_info(int $referenceuserid, array $userids, bool $includecontactrequests = false,
-                                           bool $includeprivacyinfo = false) : array {
+                                           bool $includeprivacyinfo = false): array {
         global $DB, $PAGE;
 
         // Prevent exception being thrown when array is empty.
@@ -471,6 +478,9 @@ class helper {
 
             // Set contact and blocked status indicators.
             $data->iscontact = ($member->contactid) ? true : false;
+
+            // Set permission to create a contact request.
+            $data->cancreatecontact = api::can_create_contact($referenceuserid, $member->id);
 
             // We don't want that a user has been blocked if they can message the user anyways.
             $canmessageifblocked = api::can_send_message($referenceuserid, $member->id, true);
@@ -545,9 +555,9 @@ class helper {
      */
     public static function render_messaging_widget(
         bool $isdrawer,
-        int $sendtouser = null,
-        int $conversationid = null,
-        string $view = null
+        ?int $sendtouser = null,
+        ?int $conversationid = null,
+        ?string $view = null
     ) {
         global $USER, $CFG, $PAGE;
 
@@ -666,7 +676,7 @@ class helper {
      *                          subset of user_get_default_fields (optional)
      * @return array the array of userdetails, if visible, or an empty array otherwise.
      */
-    public static function search_get_user_details(\stdClass $user, array $userfields = []) : array {
+    public static function search_get_user_details(\stdClass $user, array $userfields = []): array {
         global $CFG, $USER;
         require_once($CFG->dirroot . '/user/lib.php');
 
@@ -697,18 +707,30 @@ class helper {
     public static function prevent_unclosed_html_tags(
         string $message,
         bool $removebody = false
-    ) : string {
+    ): string {
         $html = '';
         if (!empty($message)) {
             $doc = new DOMDocument();
             $olderror = libxml_use_internal_errors(true);
-            $doc->loadHTML('<?xml version="1.0" encoding="UTF-8" ?>' . $message);
+            // Use meta charset tag to properly handle UTF-8 instead of XML declaration hack.
+            // The XML declaration approach no longer works with libxml2 >= 2.14.0.
+            $doc->loadHTML('<meta http-equiv="Content-Type" content="text/html; charset=utf-8">' . $message);
             libxml_clear_errors();
             libxml_use_internal_errors($olderror);
-            $html = $doc->getElementsByTagName('body')->item(0)->C14N(false, true);
-            if ($removebody) {
-                // Remove <body> element added in C14N function.
-                $html = preg_replace('~<(/?(?:body))[^>]*>\s*~i', '', $html);
+            $body = $doc->getElementsByTagName('body')->item(0);
+            if ($body) {
+                $html = $body->C14N(false, true);
+                if ($removebody) {
+                    // Remove <body> element added in C14N function.
+                    $html = preg_replace('~<(/?(?:body))[^>]*>\s*~i', '', $html);
+                    // Libxml2 >= 2.14.0 doesn't wrap plain text in <p> tags, so add them for consistency.
+                    if (LIBXML_VERSION >= 21400) {
+                        $trimmed = trim($html);
+                        if ($trimmed !== '' && !preg_match('/^</', $trimmed)) {
+                            $html = '<p>' . $html . '</p>';
+                        }
+                    }
+                }
             }
         }
 

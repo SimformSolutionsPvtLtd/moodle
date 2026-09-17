@@ -44,10 +44,12 @@ class block_section_links extends block_base {
      * @return array
      */
     public function applicable_formats() {
-        return array(
+        return [
             'course-view-weeks' => true,
-            'course-view-topics' => true
-        );
+            'course-view-topics' => true,
+            'course-view-section-weeks' => true,
+            'course-view-section-topics' => true,
+        ];
     }
 
     /**
@@ -109,7 +111,7 @@ class block_section_links extends block_base {
         $showsectionname = !empty($config->showsectionname) ? true : false;
 
         // Prepare an array of sections to create links for.
-        $sections = array();
+        $sections = [];
         $canviewhidden = has_capability('moodle/course:update', $context);
         $coursesections = $courseformat->get_sections();
         $coursesectionscount = count($coursesections);
@@ -119,12 +121,16 @@ class block_section_links extends block_base {
                 continue;
             }
             $section = $coursesections[$i];
+            // Delegated sections (like subsections) are not listed in the block.
+            if ($section->get_component_instance() !== null) {
+                continue;
+            }
             if ($section->section && ($section->visible || $canviewhidden)) {
-                $sections[$i] = (object)array(
+                $sections[$i] = (object) [
                     'section' => $section->section,
                     'visible' => $section->visible,
                     'highlight' => false
-                );
+                ];
                 if ($courseformat->is_section_current($section)) {
                     $sections[$i]->highlight = true;
                     $sectiontojumpto = $section->section;
@@ -179,5 +185,3 @@ class block_section_links extends block_base {
         ];
     }
 }
-
-

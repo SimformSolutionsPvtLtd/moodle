@@ -25,9 +25,11 @@
  */
 define(['jquery', 'core/ajax', 'core/templates', 'core/str', 'core/url',
             'core/notification', 'core/custom_interaction_events', 'core/popover_region_controller',
-            'message_popup/notification_repository', 'message_popup/notification_area_events'],
+            'message_popup/notification_repository', 'message_popup/notification_area_events',
+            'core/local/aria/focuslock',
+        ],
         function($, Ajax, Templates, Str, URL, DebugNotification, CustomEvents,
-            PopoverController, NotificationRepo, NotificationAreaEvents) {
+            PopoverController, NotificationRepo, NotificationAreaEvents, FocusLock) {
 
     var SELECTORS = {
         MARK_ALL_READ_BUTTON: '[data-action="mark-all-read"]',
@@ -37,6 +39,8 @@ define(['jquery', 'core/ajax', 'core/templates', 'core/str', 'core/url',
         NOTIFICATION_LINK: '[data-action="content-item-link"]',
         EMPTY_MESSAGE: '[data-region="empty-message"]',
         COUNT_CONTAINER: '[data-region="count-container"]',
+        NOTIFICATION_READ_FEEDBACK: '[data-region="notification-read-feedback"]',
+        CLOSE_NOTIFICATION_POPOVER: '[data-action="close-notification-popover"]',
     };
 
     /**
@@ -313,6 +317,12 @@ define(['jquery', 'core/ajax', 'core/templates', 'core/str', 'core/url',
             .then(function() {
                 this.unreadCount = 0;
                 this.root.find(SELECTORS.UNREAD_NOTIFICATION).removeClass('unread');
+
+                // Set the ARIA live region's contents with the feedback.
+                const readFeedback = this.root.get(0).querySelector(SELECTORS.NOTIFICATION_READ_FEEDBACK);
+                Str.get_string('notificationsmarkedasread', 'message').done((notificationsmarkedasread) => {
+                    readFeedback.innerHTML = notificationsmarkedasread;
+                });
             }.bind(this))
             .always(function() {
                 this.markAllReadButton.removeClass('loading');
@@ -331,7 +341,10 @@ define(['jquery', 'core/ajax', 'core/templates', 'core/str', 'core/url',
 
         // Mark all notifications read if the user activates the mark all as read button.
         this.root.on(CustomEvents.events.activate, SELECTORS.MARK_ALL_READ_BUTTON, function(e, data) {
-            this.markAllAsRead();
+            if (this.unreadCount > 0) {
+                this.markAllAsRead();
+            }
+
             e.stopPropagation();
             data.originalEvent.preventDefault();
         }.bind(this));
@@ -348,6 +361,12 @@ define(['jquery', 'core/ajax', 'core/templates', 'core/str', 'core/url',
             e.stopPropagation();
         }.bind(this));
 
+        this.root.on(CustomEvents.events.activate, SELECTORS.CLOSE_NOTIFICATION_POPOVER, function(e) {
+            e.preventDefault();
+            $(this.root).trigger(CustomEvents.events.escape);
+            e.stopPropagation();
+        }.bind(this));
+
         // Update the notification information when the menu is opened.
         this.root.on(this.events().menuOpened, function() {
             this.hideUnreadCount();
@@ -356,12 +375,19 @@ define(['jquery', 'core/ajax', 'core/templates', 'core/str', 'core/url',
             if (!this.hasDoneInitialLoad()) {
                 this.loadMoreNotifications();
             }
+
+            // Lock focus to the popover when it is opened, it is the parent of the container.
+            const contentContainer = this.getContentContainer()[0].parentNode;
+            FocusLock.trapFocus(contentContainer);
+
         }.bind(this));
 
         // Update the unread notification count when the menu is closed.
         this.root.on(this.events().menuClosed, function() {
             this.renderUnreadCount();
             this.updateButtonAriaLabel();
+            // Lock focus to the popover when it is opened, it is the parent of the container.
+            FocusLock.untrapFocus();
         }.bind(this));
 
         // Set aria attributes when popover is loading.

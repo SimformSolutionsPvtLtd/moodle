@@ -27,8 +27,6 @@ namespace mod_lesson\event;
 
 defined('MOODLE_INTERNAL') || die();
 
-debugging('mod_lesson\event\highscores_viewed has been deprecated. Since the functionality no longer resides in the lesson module.',
-        DEBUG_DEVELOPER);
 /**
  * The mod_lesson highscores viewed class.
  *
@@ -43,6 +41,10 @@ class highscores_viewed extends \core\event\base {
      * Set basic properties for the event.
      */
     protected function init() {
+        // phpcs:ignore moodle.Files.LineLength.TooLong
+        debugging('mod_lesson\event\highscores_viewed has been deprecated. Since the functionality no longer resides in the lesson module.',
+            DEBUG_DEVELOPER);
+
         $this->data['objecttable'] = 'lesson';
         $this->data['crud'] = 'r';
         $this->data['edulevel'] = self::LEVEL_PARTICIPATING;
@@ -74,18 +76,6 @@ class highscores_viewed extends \core\event\base {
     public function get_description() {
         return "The user with id '$this->userid' viewed the highscores for the lesson activity with course module " .
             "id '$this->contextinstanceid'.";
-    }
-
-    /**
-     * Replace add_to_log() statement.
-     *
-     * @return array of parameters to be passed to legacy add_to_log() function.
-     */
-    protected function get_legacy_logdata() {
-        $lesson = $this->get_record_snapshot('lesson', $this->objectid);
-
-        return array($this->courseid, 'lesson', 'view highscores', 'highscores.php?id=' . $this->contextinstanceid,
-            $lesson->name, $this->contextinstanceid);
     }
 
     public static function get_objectid_mapping() {

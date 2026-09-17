@@ -61,6 +61,19 @@ class oauth_helper {
     protected $http;
     /** @var array options to pass to the next curl request */
     protected $http_options;
+    /** @var moodle_url oauth callback URL. */
+    protected $oauth_callback;
+     /** @var string access token. */
+    protected $access_token;
+    /** @var  string access secret token. */
+    protected $access_token_secret;
+    /** @var  string sign secret. */
+    protected $sign_secret;
+    /** @var  string nonce. */
+    protected $nonce;
+    /** @var  int timestamp. */
+    protected $timestamp;
+
 
     /**
      * Contructor for oauth_helper.
@@ -449,7 +462,7 @@ abstract class oauth2_client extends curl {
     public function is_logged_in() {
         // Has the token expired?
         if (isset($this->accesstoken->expires) && time() >= $this->accesstoken->expires) {
-            $this->log_out();
+            $this->store_token(null);
             return false;
         }
 
@@ -568,6 +581,11 @@ abstract class oauth2_client extends curl {
             $params['client_secret'] = $this->clientsecret;
         }
 
+        // If we have additional parameters, add them to the request.
+        if ($this->get_additional_upgrade_token_parameters()) {
+            $params = array_merge($params, $this->get_additional_upgrade_token_parameters());
+        }
+
         // Requests can either use http GET or POST.
         if ($this->use_http_get()) {
             $response = $this->get($this->token_url(), $params);
@@ -626,7 +644,7 @@ abstract class oauth2_client extends curl {
      * @param string $url The URL to request
      * @param array $options
      * @param mixed $acceptheader mimetype (as string) or false to skip sending an accept header.
-     * @return bool
+     * @return string
      */
     protected function request($url, $options = array(), $acceptheader = 'application/json') {
         $murl = new moodle_url($url);
@@ -726,11 +744,11 @@ abstract class oauth2_client extends curl {
     }
 
     /**
-     * Get access token.
+     * Get access token object.
      *
      * This is just a getter to read the private property.
      *
-     * @return string
+     * @return stdClass
      */
     public function get_accesstoken() {
         return $this->accesstoken;
@@ -767,5 +785,14 @@ abstract class oauth2_client extends curl {
      */
     protected function use_http_get() {
         return false;
+    }
+
+    /**
+     * An additional array of url params to pass with upgrade token request.
+     *
+     * @return array of name value pairs.
+     */
+    public function get_additional_upgrade_token_parameters(): array {
+        return [];
     }
 }

@@ -53,9 +53,9 @@
     $loginsite = get_string("loginsite");
 
     $PAGE->set_url('/auth/shibboleth/login.php');
-    $PAGE->set_context(context_system::instance());
+    $PAGE->set_context(\core\context\system::instance());
     $PAGE->navbar->add($loginsite);
-    $PAGE->set_title("$site->fullname: $loginsite");
+    $PAGE->set_title($loginsite);
     $PAGE->set_heading($site->fullname);
     $PAGE->set_pagelayout('login');
 
@@ -110,7 +110,7 @@
             'guestloginurl' => new moodle_url('/login/index.php'),
             'idps' => $idps,
             'instructions' => $instructions,
-            'loginname' => $config->login_name ?? null,
+            'loginname' => format_string($config->login_name ?? '', options: ['context' => $PAGE->context]),
             'logintoken' => \core\session\manager::get_login_token(),
             'loginurl' => new moodle_url('/auth/shibboleth/login.php'),
             'showinstructions' => $showinstructions,

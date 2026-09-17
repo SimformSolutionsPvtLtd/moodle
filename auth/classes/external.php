@@ -24,9 +24,14 @@
  * @since      Moodle 3.2
  */
 
+use core_external\external_api;
+use core_external\external_function_parameters;
+use core_external\external_single_structure;
+use core_external\external_value;
+use core_external\external_warnings;
+
 defined('MOODLE_INTERNAL') || die;
 
-require_once($CFG->libdir . '/externallib.php');
 require_once($CFG->libdir . '/authlib.php');
 
 /**
@@ -365,7 +370,7 @@ class core_auth_external extends external_api {
      * @throws moodle_exception
      */
     public static function resend_confirmation_email($username, $password, $redirect = '') {
-        global $PAGE;
+        global $PAGE, $CFG;
 
         $warnings = array();
         $params = self::validate_parameters(
@@ -382,18 +387,25 @@ class core_auth_external extends external_api {
         $username = trim(core_text::strtolower($params['username']));
         $password = $params['password'];
 
+        $user = core_user::get_user_by_username($username);
+
+        if (!empty($user) && $user->confirmed) {
+            if (!empty($CFG->protectusernames)) {
+                throw new moodle_exception('invalidlogin');
+            }
+            throw new moodle_exception('alreadyconfirmed');
+        }
+
         if (is_restored_user($username)) {
+            if (!empty($CFG->protectusernames)) {
+                throw new moodle_exception('invalidlogin');
+            }
             throw new moodle_exception('restoredaccountresetpassword', 'webservice');
         }
 
         $user = authenticate_user_login($username, $password);
-
         if (empty($user)) {
             throw new moodle_exception('invalidlogin');
-        }
-
-        if ($user->confirmed) {
-            throw new moodle_exception('alreadyconfirmed');
         }
 
         // Check if we should redirect the user once the user is confirmed.

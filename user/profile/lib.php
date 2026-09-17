@@ -147,6 +147,19 @@ class profile_field_base {
     }
 
     /**
+     * Display the name of the profile field.
+     *
+     * @param bool $escape
+     * @return string
+     */
+    public function display_name(bool $escape = true): string {
+        return format_string($this->field->name, true, [
+            'context' => context_system::instance(),
+            'escape' => $escape,
+        ]);
+    }
+
+    /**
      * Print out the form field in the edit profile page
      * @param MoodleQuickForm $mform instance of the moodleform class
      * @return bool
@@ -258,7 +271,7 @@ class profile_field_base {
      * @param MoodleQuickForm $mform instance of the moodleform class
      */
     public function edit_field_set_default($mform) {
-        if (!empty($this->field->defaultdata)) {
+        if (isset($this->field->defaultdata)) {
             $mform->setDefault($this->inputname, $this->field->defaultdata);
         }
     }
@@ -459,7 +472,10 @@ class profile_field_base {
                     return true;
                 } else if ($this->userid > 0) {
                     return has_capability('moodle/user:viewalldetails', $context);
+                } else if ($context instanceof context_course) {
+                    return has_capability('moodle/site:viewuseridentity', $context);
                 } else {
+                    // Fall back to the global course object.
                     $coursecontext = context_course::instance($COURSE->id);
                     return has_capability('moodle/site:viewuseridentity', $coursecontext);
                 }
@@ -585,6 +601,16 @@ class profile_field_base {
      */
     public function get_field_properties() {
         return array(PARAM_RAW, NULL_NOT_ALLOWED);
+    }
+
+    /**
+     * Whether to display the field and content to the user
+     *
+     * @param context|null $context
+     * @return bool
+     */
+    public function show_field_content(?context $context = null): bool {
+        return $this->is_visible($context) && !$this->is_empty();
     }
 
     /**
@@ -741,29 +767,6 @@ function profile_save_data(stdClass $usernew): void {
     $fields = profile_get_user_fields_with_data($usernew->id);
     foreach ($fields as $formfield) {
         $formfield->edit_save_data($usernew);
-    }
-}
-
-/**
- * Display profile fields.
- *
- * @deprecated since Moodle 3.11 MDL-71051 - please do not use this function any more.
- * @todo MDL-71413 This will be deleted in Moodle 4.3.
- *
- * @param int $userid
- */
-function profile_display_fields($userid) {
-    debugging('Function profile_display_fields() is deprecated because it is no longer used and will be '.
-        'removed in future versions of Moodle', DEBUG_DEVELOPER);
-
-    $categories = profile_get_user_fields_with_data_by_category($userid);
-    foreach ($categories as $categoryid => $fields) {
-        foreach ($fields as $formfield) {
-            if ($formfield->is_visible() and !$formfield->is_empty()) {
-                echo html_writer::tag('dt', format_string($formfield->field->name));
-                echo html_writer::tag('dd', $formfield->display_data());
-            }
-        }
     }
 }
 
@@ -1010,7 +1013,7 @@ function get_profile_field_list(): array {
             if (!isset($data[$categoryname])) {
                 $data[$categoryname] = [];
             }
-            $data[$categoryname][$field->inputname] = $field->field->name;
+            $data[$categoryname][$field->inputname] = $field->display_name();
         }
     }
     return $data;

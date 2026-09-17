@@ -14,35 +14,45 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * Tests for the dataformat plugins
- *
- * @package    core
- * @copyright  2020 Paul Holden <paulh@moodle.com>
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-
 namespace core;
 
+use coding_exception;
 use context_system;
 use core_component;
 
 /**
- * Dataformat tests
+ * Tests for the dataformat plugins
  *
  * @package    core
  * @covers     \core\dataformat
  * @copyright  2020 Paul Holden <paulh@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class dataformat_test extends \advanced_testcase {
+final class dataformat_test extends \advanced_testcase {
+
+    /**
+     * Test getting writer instance for given dataformat
+     */
+    public function test_get_format_instance(): void {
+        $instance = dataformat::get_format_instance('pdf');
+        $this->assertInstanceOf(\dataformat_pdf\writer::class, $instance);
+    }
+
+    /**
+     * Test getting writer instance for invalid dataformat
+     */
+    public function test_get_format_instance_invalid(): void {
+        $this->expectException(coding_exception::class);
+        $this->expectExceptionMessage('Invalid dataformat (weird)');
+        dataformat::get_format_instance('weird');
+    }
 
     /**
      * Data provider to return array of dataformat types
      *
      * @return array
      */
-    public function write_data_provider(): array {
+    public static function write_data_provider(): array {
         $data = [];
 
         $dataformats = core_component::get_plugin_list('dataformat');
@@ -111,5 +121,81 @@ class dataformat_test extends \advanced_testcase {
         $this->assertEquals($filerecord['filepath'], $file->get_filepath());
         $this->assertStringStartsWith($filerecord['filename'], $file->get_filename());
         $this->assertGreaterThan(0, $file->get_filesize());
+    }
+
+    /**
+     * Data provider for test_escape_spreadsheet_formula.
+     *
+     * @return array
+     */
+    public static function escape_spreadsheet_formula_provider(): array {
+        return [
+            'null stays null' => [
+                null,
+                null,
+            ],
+            'empty string stays empty' => [
+                '',
+                '',
+            ],
+            'Formula with tab' => [
+                'value' => "\t=SUM(1+1)",
+                'expected' => "'\t=SUM(1+1)",
+            ],
+            'Formula with carriage return' => [
+                'value' => "\r=SUM(1+1)",
+                'expected' => "'\r=SUM(1+1)",
+            ],
+            'Formula with new line' => [
+                'value' => "\n=SUM(1+1)",
+                'expected' => "'\n=SUM(1+1)",
+            ],
+            'Formula starting with "="' => [
+                'value' => "=SUM(1+1)",
+                'expected' => "'=SUM(1+1)",
+            ],
+            'Formula starting with "+"' => [
+                'value' => "+1+1",
+                'expected' => "'+1+1",
+            ],
+            'Formula starting with "-"' => [
+                'value' => "-1+1",
+                'expected' => "'-1+1",
+            ],
+            'Formula starting with "@"' => [
+                'value' => "@A5",
+                'expected' => "'@A5",
+            ],
+            'Null placeholder' => [
+                'value' => "-",
+                'expected' => "-",
+            ],
+            'dash with leading space is not placeholder, so escaped' => [
+                ' -',
+                "' -",
+            ],
+            'dash with trailing space is not placeholder, so escaped' => [
+                '- ',
+                "'- ",
+            ],
+            'Non-formula' => [
+                'value' => "Hello there",
+                'expected' => "Hello there",
+            ],
+        ];
+    }
+
+    /**
+     * Test escape_spreadsheet_formula.
+     *
+     * @dataProvider escape_spreadsheet_formula_provider
+     * @param string|null $value The value to test.
+     * @param string|null $expected The expected value after escaping.
+     */
+    public function test_escape_spreadsheet_formula(?string $value, ?string $expected): void {
+        $this->resetAfterTest();
+
+        $escapedvalue = dataformat::escape_spreadsheet_formula($value);
+        $this->assertEquals($expected, $escapedvalue);
     }
 }

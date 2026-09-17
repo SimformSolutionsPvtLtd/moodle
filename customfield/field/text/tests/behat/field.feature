@@ -1,4 +1,4 @@
-@customfield @customfield_text @javascript
+@core_customfield @customfield_text @javascript
 Feature: Managers can manage course custom fields text
   In order to have additional data on the course
   As a manager
@@ -9,7 +9,7 @@ Feature: Managers can manage course custom fields text
       | name              | component   | area   | itemid |
       | Category for test | core_course | course | 0      |
     And I log in as "admin"
-    And I navigate to "Courses > Course custom fields" in site administration
+    And I navigate to "Courses > Default settings > Course custom fields" in site administration
 
   Scenario: Create a custom course text field
     When I click on "Add a new custom field" "link"
@@ -28,7 +28,7 @@ Feature: Managers can manage course custom fields text
       | Name       | Test field |
       | Short name | testfield  |
     And I click on "Save changes" "button" in the "Adding a new Short text" "dialogue"
-    And I click on "Edit" "link" in the "Test field" "table_row"
+    And I press "Edit custom field: Test field"
     And I set the following fields to these values:
       | Name | Edited field |
     And I click on "Save changes" "button" in the "Updating Test field" "dialogue"
@@ -44,7 +44,7 @@ Feature: Managers can manage course custom fields text
       | Name       | Test field |
       | Short name | testfield  |
     And I click on "Save changes" "button" in the "Adding a new Short text" "dialogue"
-    And I click on "Delete" "link" in the "Test field" "table_row"
+    And I press "Delete custom field: Test field"
     And I click on "Yes" "button" in the "Confirm" "dialogue"
     And I wait until the page is ready
     And I wait until "Test field" "text" does not exist
@@ -61,7 +61,7 @@ Feature: Managers can manage course custom fields text
     And the following "course enrolments" exist:
       | user     | course | role           |
       | teacher1 | C1     | editingteacher |
-    And I navigate to "Courses > Course custom fields" in site administration
+    And I navigate to "Courses > Default settings > Course custom fields" in site administration
     And I click on "Add a new custom field" "link"
     And I click on "Short text" "link"
     And I set the following fields to these values:
@@ -91,7 +91,7 @@ Feature: Managers can manage course custom fields text
     And the following "course enrolments" exist:
       | user     | course | role           |
       | teacher1 | C1     | editingteacher |
-    And I navigate to "Courses > Course custom fields" in site administration
+    And I navigate to "Courses > Default settings > Course custom fields" in site administration
     And I click on "Add a new custom field" "link"
     And I click on "Short text" "link"
     And I set the following fields to these values:
@@ -118,7 +118,7 @@ Feature: Managers can manage course custom fields text
     And the following "course enrolments" exist:
       | user     | course | role           |
       | teacher1 | C1     | editingteacher |
-    And I navigate to "Courses > Course custom fields" in site administration
+    And I navigate to "Courses > Default settings > Course custom fields" in site administration
     And I click on "Add a new custom field" "link"
     And I click on "Short text" "link"
     And I set the following fields to these values:

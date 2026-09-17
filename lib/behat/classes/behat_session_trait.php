@@ -346,7 +346,7 @@ trait behat_session_trait {
      * an exception.
      *
      * @throws Exception If it timeouts without receiving something != false from the closure
-     * @param Function|array|string $lambda The function to execute or an array passed to call_user_func (maps to a class method)
+     * @param callable $lambda The function to execute or an array passed to call_user_func (maps to a class method)
      * @param mixed $args Arguments to pass to the closure
      * @param int $timeout Timeout in seconds
      * @param Exception $exception The exception to throw in case it time outs.
@@ -528,7 +528,7 @@ trait behat_session_trait {
      * @return boolean
      */
     protected static function running_javascript_in_session(Session $session): bool {
-        return get_class($session->getDriver()) !== 'Behat\Mink\Driver\GoutteDriver';
+        return get_class($session->getDriver()) !== 'Behat\Mink\Driver\BrowserKitDriver';
     }
 
     /**
@@ -555,7 +555,7 @@ trait behat_session_trait {
      *
      * @return bool True if it's in the app
      */
-    protected function is_in_app() : bool {
+    protected function is_in_app(): bool {
         // Cannot be in the app if there's no @app tag on scenario.
         if (!$this->has_tag('app')) {
             return false;
@@ -571,9 +571,9 @@ trait behat_session_trait {
      * @throws ExpectationException
      * @param string $locator
      * @param string $selectortype
-     * @return void
+     * @param NodeElement $container Restrict the search to just children of the specified container
      */
-    protected function ensure_element_exists($locator, $selectortype) {
+    protected function ensure_element_exists($locator, $selectortype, $container = false) {
         // Exception if it timesout and the element is still there.
         $msg = "The '{$locator}' element does not exist and should";
         $exception = new ExpectationException($msg, $this->getSession());
@@ -583,7 +583,7 @@ trait behat_session_trait {
             'selector' => $selector,
             'locator' => $locator,
             'container' => $container,
-        ] = $this->normalise_selector($selectortype, $locator, $this->getSession()->getPage());
+        ] = $this->normalise_selector($selectortype, $locator, $container ?: $this->getSession()->getPage());
 
         // It will stop spinning once the find() method returns true.
         $this->spin(
@@ -606,9 +606,9 @@ trait behat_session_trait {
      * @throws ExpectationException
      * @param string $locator
      * @param string $selectortype
-     * @return void
+     * @param NodeElement $container Restrict the search to just children of the specified container
      */
-    protected function ensure_element_does_not_exist($locator, $selectortype) {
+    protected function ensure_element_does_not_exist($locator, $selectortype, $container = false) {
         // Exception if it timesout and the element is still there.
         $msg = "The '{$locator}' element exists and should not exist";
         $exception = new ExpectationException($msg, $this->getSession());
@@ -618,7 +618,7 @@ trait behat_session_trait {
             'selector' => $selector,
             'locator' => $locator,
             'container' => $container,
-        ] = $this->normalise_selector($selectortype, $locator, $this->getSession()->getPage());
+        ] = $this->normalise_selector($selectortype, $locator, $container ?: $this->getSession()->getPage());
 
         // It will stop spinning once the find() method returns false.
         $this->spin(
@@ -645,7 +645,6 @@ trait behat_session_trait {
      * @return void Throws an exception if it times out without the element being visible
      */
     protected function ensure_node_is_visible($node) {
-
         if (!$this->running_javascript()) {
             return;
         }
@@ -715,7 +714,6 @@ trait behat_session_trait {
      * @return NodeElement Throws an exception if it times out without being visible
      */
     protected function ensure_element_is_visible($element, $selectortype) {
-
         if (!$this->running_javascript()) {
             return;
         }
@@ -727,29 +725,12 @@ trait behat_session_trait {
     }
 
     /**
-     * Ensures that all the page's editors are loaded.
-     *
-     * @deprecated since Moodle 2.7 MDL-44084 - please do not use this function any more.
-     * @throws ElementNotFoundException
-     * @throws ExpectationException
-     * @return void
-     */
-    protected function ensure_editors_are_loaded() {
-        global $CFG;
-
-        if (empty($CFG->behat_usedeprecated)) {
-            debugging('Function behat_base::ensure_editors_are_loaded() is deprecated. It is no longer required.');
-        }
-        return;
-    }
-
-    /**
      * Checks if the current scenario, or its feature, has a specified tag.
      *
      * @param string $tag Tag to check
      * @return bool True if the tag exists in scenario or feature
      */
-    public function has_tag(string $tag) : bool {
+    public function has_tag(string $tag): bool {
         return array_key_exists($tag, behat_hooks::get_tags_for_scenario());
     }
 
@@ -763,9 +744,14 @@ trait behat_session_trait {
      *
      * @param string $windowsize size of window.
      * @param bool $viewport If true, changes viewport rather than window size
+     * @param bool $scalesize Whether to scale the size by the WINDOWSCALE environment variable
      * @throws ExpectationException
      */
-    protected function resize_window($windowsize, $viewport = false) {
+    protected function resize_window(
+        string $windowsize,
+        bool $viewport = false,
+        bool $scalesize = true,
+    ): void {
         global $CFG;
 
         // Non JS don't support resize window.
@@ -807,6 +793,16 @@ trait behat_session_trait {
         if (isset($CFG->behat_window_size_modifier) && is_numeric($CFG->behat_window_size_modifier)) {
             $width *= $CFG->behat_window_size_modifier;
             $height *= $CFG->behat_window_size_modifier;
+        }
+
+        if ($scalesize) {
+            // Scale the window size by the WINDOWSCALE environment variable.
+            // This is intended to be used for Behat reruns to negate the impact of browser window size issues.
+            // This allows a per-run, runtime configuration of the scaling, unlike behat_window_size_modifier which
+            // typically applies to all runs.
+            $scalefactor = getenv('WINDOWSCALE') ? floatval(getenv('WINDOWSCALE')) : 1;
+            $width *= $scalefactor;
+            $height *= $scalefactor;
         }
 
         if ($viewport) {
@@ -1025,6 +1021,79 @@ EOF;
     }
 
     /**
+     * Internal step definition to find deprecated styles.
+     *
+     * Part of behat_hooks class as is part of the testing framework, is auto-executed
+     * after each step so no features will splicitly use it.
+     *
+     * @throws Exception Unknown type, depending on what we caught in the hook or basic \Exception.
+     * @see Moodle\BehatExtension\Tester\MoodleStepTester
+     */
+    public function look_for_deprecated_styles() {
+        if (!behat_config_manager::get_behat_run_config_value('scss-deprecations')) {
+            return;
+        }
+
+        if (!$this->running_javascript()) {
+            return;
+        }
+
+        // Look for DOM elements with deprecated message in before pseudo-element.
+        $js = <<<EOF
+            [...document.querySelectorAll('*')].flatMap(el => {
+                const beforeContent = window.getComputedStyle(el, ':before').content;
+                if (beforeContent.startsWith('"Deprecated style in use')) {
+                    const deprecatedClass = beforeContent.match(/\(([^)]+)\)/)?.[1] ?? 'unknown';
+                    return [deprecatedClass + ' (found in: ' + el.classList + ')'];
+                }
+                return [];
+            });
+        EOF;
+
+        $deprecations = $this->evaluate_script($js);
+        if ($deprecations) {
+            $deprecationdata = "Deprecated styles found:\n";
+            foreach ($deprecations as $deprecation) {
+                $deprecationdata .= "  {$deprecation}\n";
+            }
+            throw new \Exception(html_entity_decode($deprecationdata, ENT_COMPAT));
+        }
+    }
+
+
+    /**
+     * Internal step definition to find deprecated icons.
+     *
+     * Part of behat_hooks class as is part of the testing framework, is auto-executed
+     * after each step so no features will splicitly use it.
+     *
+     * @throws Exception Unknown type, depending on what we caught in the hook or basic \Exception.
+     * @see Moodle\BehatExtension\Tester\MoodleStepTester
+     */
+    public function look_for_deprecated_icons() {
+        if (behat_config_manager::get_behat_run_config_value('no-icon-deprecations')) {
+            return;
+        }
+
+        if (!$this->running_javascript()) {
+            return;
+        }
+
+        // Look for any DOM element with deprecated icon.
+        $js = <<<EOF
+            [...document.querySelectorAll('.icon.deprecated')].some(
+                deprecatedicon => true
+            );
+        EOF;
+        if ($this->evaluate_script($js)) {
+            throw new \Exception(html_entity_decode(
+                "Deprecated icon in use. Enable \$CFG->debugdisplay for detailed debugging information in the console",
+                ENT_COMPAT,
+            ));
+        }
+    }
+
+    /**
      * Converts HTML tags to line breaks to display the info in CLI
      *
      * @param string $html
@@ -1040,19 +1109,37 @@ EOF;
     /**
      * Helper function to execute api in a given context.
      *
-     * @param string $contextapi context in which api is defined.
-     * @param array $params list of params to pass.
+     * Note: The contextapi does not support a callback.
+     *
+     * @param string|array $contextapi context in which api is defined.
+     * @param array|mixed $params list of params to pass or a single parameter
      * @throws Exception
+     * @throws DriverException
      */
-    protected function execute($contextapi, $params = array()) {
+    protected function execute(
+        string|array $contextapi,
+        mixed $params = [],
+    ): void {
         if (!is_array($params)) {
-            $params = array($params);
+            $params = [$params];
+        }
+
+        if (is_string($contextapi)) {
+            $contextapi = explode('::', $contextapi);
+        }
+
+        if (count($contextapi) !== 2) {
+            throw new DriverException('Invalid contextapi format, expected "context::api" or ["context", "api"]');
         }
 
         // Get required context and execute the api.
-        $contextapi = explode("::", $contextapi);
-        $context = behat_context_helper::get($contextapi[0]);
-        call_user_func_array(array($context, $contextapi[1]), $params);
+        [$classname, $method] = $contextapi;
+        if (!is_string($classname) || !is_string($method)) {
+            throw new DriverException('Invalid contextapi format, expected "context::api" or ["context", "api"]');
+        }
+
+        $context = behat_context_helper::get($classname);
+        call_user_func_array([$context, $method], $params);
 
         // NOTE: Wait for pending js and look for exception are not optional, as this might lead to unexpected results.
         // Don't make them optional for performance reasons.
@@ -1062,6 +1149,12 @@ EOF;
 
         // Look for exceptions.
         $this->look_for_exceptions();
+
+        // Look for deprecated styles.
+        $this->look_for_deprecated_styles();
+
+        // Look for deprecated icons.
+        $this->look_for_deprecated_icons();
     }
 
     /**
@@ -1099,11 +1192,11 @@ EOF;
         if (empty($sid)) {
             throw new coding_exception('failed to get moodle session');
         }
-        $userid = $DB->get_field('sessions', 'userid', ['sid' => $sid]);
-        if (empty($userid)) {
-            throw new coding_exception('failed to get user from seession id '.$sid);
+        $session = \core\session\manager::get_session_by_sid($sid);
+        if (empty($session->userid)) {
+            throw new coding_exception('failed to get user from session id: '.$sid);
         }
-        return $DB->get_record('user', ['id' => $userid]);
+        return $DB->get_record('user', ['id' => $session->userid]);
     }
 
     /**
@@ -1148,53 +1241,12 @@ EOF;
      * @return context
      */
     public static function get_context(string $levelname, string $contextref): context {
-        global $DB;
-
-        // Getting context levels and names (we will be using the English ones as it is the test site language).
-        $contextlevels = context_helper::get_all_levels();
-        $contextnames = array();
-        foreach ($contextlevels as $level => $classname) {
-            $contextnames[context_helper::get_level_name($level)] = $level;
+        $context = \core\context_helper::resolve_behat_reference($levelname, $contextref);
+        if ($context) {
+            return $context;
         }
 
-        if (empty($contextnames[$levelname])) {
-            throw new Exception('The specified "' . $levelname . '" context level does not exist');
-        }
-        $contextlevel = $contextnames[$levelname];
-
-        // Return it, we don't need to look for other internal ids.
-        if ($contextlevel == CONTEXT_SYSTEM) {
-            return context_system::instance();
-        }
-
-        switch ($contextlevel) {
-
-            case CONTEXT_USER:
-                $instanceid = $DB->get_field('user', 'id', array('username' => $contextref));
-                break;
-
-            case CONTEXT_COURSECAT:
-                $instanceid = $DB->get_field('course_categories', 'id', array('idnumber' => $contextref));
-                break;
-
-            case CONTEXT_COURSE:
-                $instanceid = $DB->get_field('course', 'id', array('shortname' => $contextref));
-                break;
-
-            case CONTEXT_MODULE:
-                $instanceid = $DB->get_field('course_modules', 'id', array('idnumber' => $contextref));
-                break;
-
-            default:
-                break;
-        }
-
-        $contextclass = $contextlevels[$contextlevel];
-        if (!$context = $contextclass::instance($instanceid, IGNORE_MISSING)) {
-            throw new Exception('The specified "' . $contextref . '" context reference does not exist');
-        }
-
-        return $context;
+        throw new Exception("The specified context \"$levelname, $contextref\" does not exist");
     }
 
     /**
@@ -1321,7 +1373,7 @@ EOF;
      * @param int $timeout One of the TIMEOUT constants
      * @return int Actual timeout (in seconds)
      */
-    protected static function get_real_timeout(int $timeout) : int {
+    protected static function get_real_timeout(int $timeout): int {
         global $CFG;
         if (!empty($CFG->behat_increasetimeout)) {
             return $timeout * $CFG->behat_increasetimeout;
@@ -1337,7 +1389,7 @@ EOF;
      *
      * @return int Timeout in seconds
      */
-    public static function get_timeout() : int {
+    public static function get_timeout(): int {
         return self::get_real_timeout(6);
     }
 
@@ -1350,7 +1402,7 @@ EOF;
      *
      * @return int Timeout in seconds
      */
-    public static function get_reduced_timeout() : int {
+    public static function get_reduced_timeout(): int {
         return self::get_real_timeout(2);
     }
 
@@ -1361,7 +1413,7 @@ EOF;
      *
      * @return int Timeout in seconds
      */
-    public static function get_extended_timeout() : int {
+    public static function get_extended_timeout(): int {
         return self::get_real_timeout(10);
     }
 
@@ -1697,6 +1749,32 @@ EOF;
     }
 
     /**
+     * Get the user object from an identifier.
+     *
+     * The user username and email fields are checked.
+     *
+     * @param string $identifier The user's username or email.
+     * @return stdClass|null The user id or null if not found.
+     */
+    protected function get_user_by_identifier(string $identifier): ?stdClass {
+        global $DB;
+
+        $sql = <<<EOF
+            SELECT *
+              FROM {user}
+             WHERE username = :username
+                OR email = :email
+        EOF;
+
+        $result = $DB->get_record_sql($sql, [
+            'username' => $identifier,
+            'email' => $identifier,
+        ]);
+
+        return $result ?: null;
+    }
+
+    /**
      * Get the user id from an identifier.
      *
      * The user username and email fields are checked.
@@ -1720,5 +1798,20 @@ EOF;
         ]);
 
         return $result ?: null;
+    }
+
+    /**
+     * Prepare an xpath for insertion into Selenium JavaScript.
+     *
+     * @param string $xpath
+     * @return string
+     */
+    protected function prepare_xpath_for_javascript(string $xpath): string {
+        $newlines = [
+            "\r\n",
+            "\r",
+            "\n",
+        ];
+        return str_replace($newlines, ' ', $xpath);
     }
 }

@@ -65,6 +65,21 @@ if (($hassiteconfig || has_any_capability(array(
             new lang_string('allowexternalbackpack', 'badges'),
             new lang_string('allowexternalbackpack_desc', 'badges'), 1));
 
+    $defaultcanvasregions = [
+        'Australia|https://au.badgr.io|https://api.au.badgr.io/v2',
+        'Canada|https://ca.badgr.io|https://api.ca.badgr.io/v2',
+        'Europe|https://eu.badgr.io|https://api.eu.badgr.io/v2',
+        'Singapore|https://sg.badgr.io|https://api.sg.badgr.io/v2',
+        'United States|https://badgr.io|https://api.badgr.io/v2',
+    ];
+    $globalsettings->add(new admin_setting_configtextarea(
+        'badges_canvasregions',
+        new lang_string('canvasregions', 'badges'),
+        new lang_string('canvasregions_desc', 'badges'),
+        implode("\n", $defaultcanvasregions),
+        PARAM_RAW,
+    ));
+
     $ADMIN->add('badges', $globalsettings);
 
     $ADMIN->add('badges',
@@ -87,7 +102,7 @@ if (($hassiteconfig || has_any_capability(array(
     $ADMIN->add('badges',
         new admin_externalpage('newbadge',
             new lang_string('newbadge', 'badges'),
-            new moodle_url('/badges/newbadge.php', array('type' => BADGE_TYPE_SITE)),
+            new moodle_url('/badges/edit.php', ['action' => 'new']),
             array('moodle/badges:createbadge'), empty($CFG->enablebadges)
         )
     );

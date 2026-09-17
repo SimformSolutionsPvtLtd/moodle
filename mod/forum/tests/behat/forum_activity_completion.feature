@@ -21,24 +21,25 @@ Feature: View activity completion in the forum activity
       | course   | C1            |
       | idnumber | mh1           |
       | name     | Music history |
-      | section  | 1             |
     And I am on the "Music history" "forum activity editing" page logged in as teacher1
     And I expand all fieldsets
     And I set the following fields to these values:
-      | Whole forum grading > Type   | Point                                             |
-      | Completion tracking          | Show activity as complete when conditions are met |
-      | Require view                 | 1                                                 |
-      | Require grade                | Whole forum                                       |
-      | completionpostsenabled       | 1                                                 |
-      | completionposts              | 2                                                 |
-      | completiondiscussionsenabled | 1                                                 |
-      | completiondiscussions        | 1                                                 |
-      | completionrepliesenabled     | 1                                                 |
-      | completionreplies            | 1                                                 |
+      | Whole forum grading > Type   | Point        |
+      | Add requirements             | 1            |
+      | View the activity            | 1            |
+      | Receive a grade              | 1            |
+      | completiongradeitemnumber    | Whole forum |
+      | Any grade                    | 1            |
+      | completionpostsenabled       | 1            |
+      | completionposts              | 2            |
+      | completiondiscussionsenabled | 1            |
+      | completiondiscussions        | 1            |
+      | completionrepliesenabled     | 1            |
+      | completionreplies            | 1            |
     And I press "Save and display"
-    And I log out
 
-  Scenario: View automatic completion items as a teacher
+  @javascript
+  Scenario: Forum module displays automatic completion conditions to teachers
     When I am on the "Music history" "forum activity" page logged in as teacher1
     Then "Music history" should have the "View" completion condition
     And "Music history" should have the "Start discussions: 1" completion condition
@@ -47,7 +48,7 @@ Feature: View activity completion in the forum activity
     And "Music history" should have the "Receive a grade" completion condition
 
   @javascript
-  Scenario: View automatic completion items as a student
+  Scenario: A student can complete a forum activity by meeting the completion conditions
     Given I am on the "Music history" "forum activity" page logged in as student1
     And the "View" completion condition of "Music history" is displayed as "done"
     And the "Start discussions: 1" completion condition of "Music history" is displayed as "todo"
@@ -72,14 +73,12 @@ Feature: View activity completion in the forum activity
     And the "Make forum posts: 2" completion condition of "Music history" is displayed as "done"
     And the "Post replies: 1" completion condition of "Music history" is displayed as "done"
     And the "Receive a grade" completion condition of "Music history" is displayed as "todo"
-    And I log out
     # Grade the student
     And I am on the "Music history" "forum activity" page logged in as teacher1
     And I press "Grade users"
     And I set the field "grade" to "33"
     And I press "Save"
     And I press "Close grader"
-    And I log out
     # All conditions should now be completed.
     When I am on the "Music history" "forum activity" page logged in as student1
     Then the "View" completion condition of "Music history" is displayed as "done"
@@ -89,15 +88,13 @@ Feature: View activity completion in the forum activity
     And the "Receive a grade" completion condition of "Music history" is displayed as "done"
 
   @javascript
-  Scenario: Use manual completion
-    Given I am on the "Music history" "forum activity" page logged in as teacher1
-    And I navigate to "Settings" in current page administration
+  Scenario: A student can manually mark the forum activity as done but a teacher cannot
+    Given I am on the "Music history" "forum activity editing" page logged in as teacher1
     And I expand all fieldsets
-    And I set the field "Completion tracking" to "Students can manually mark the activity as completed"
+    And I set the field "Students must manually mark the activity as done" to "1"
     And I press "Save and display"
     # Teacher view.
     And the manual completion button for "Music history" should be disabled
-    And I log out
     # Student view.
     When I am on the "Music history" "forum activity" page logged in as student1
     Then the manual completion button of "Music history" is displayed as "Mark as done"

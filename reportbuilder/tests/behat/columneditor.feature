@@ -1,4 +1,4 @@
-@core_reportbuilder @javascript
+@core @core_reportbuilder @javascript
 Feature: Manage custom report columns
   In order to manage the columns of custom reports
   As an admin
@@ -10,7 +10,7 @@ Feature: Manage custom report columns
       | My report | core_user\reportbuilder\datasource\users | 0       |
     And I am on the "My report" "reportbuilder > Editor" page logged in as "admin"
     When I click on "Add column 'Full name'" "link"
-    Then I should see "Added column 'Full name'"
+    Then "Added column 'Full name'" "toast_message" should be visible
     And I should see "Full name" in the "reportbuilder-table" "table"
 
   Scenario: Search for and add column to report
@@ -23,7 +23,7 @@ Feature: Manage custom report columns
     Then I should see "Last name" in the "[data-region=sidebar-menu]" "css_element"
     And I should not see "Email address" in the "[data-region=sidebar-menu]" "css_element"
     And I click on "Add column 'Last name'" "link"
-    And I should see "Added column 'Last name'"
+    And "Added column 'Last name'" "toast_message" should be visible
     And I should see "Last name" in the "reportbuilder-table" "table"
 
   Scenario: Rename column in report
@@ -66,8 +66,21 @@ Feature: Manage custom report columns
     And I am on the "My report" "reportbuilder > Editor" page logged in as "admin"
     When I click on "Move column 'Last access'" "button"
     And I click on "After \"Full name\"" "link" in the "Move column 'Last access'" "dialogue"
-    Then I should see "Moved column 'Last access'"
+    Then "Moved column 'Last access'" "toast_message" should be visible
     And "Last access" "text" should appear before "Email address" "text"
+
+  Scenario: Cancelling the move column dialogue returns focus to its move button
+    Given the following "core_reportbuilder > Reports" exist:
+      | name      | source                                   | default |
+      | My report | core_user\reportbuilder\datasource\users | 0       |
+    And the following "core_reportbuilder > Columns" exist:
+      | report    | uniqueidentifier |
+      | My report | user:fullname    |
+      | My report | user:email       |
+    And I am on the "My report" "reportbuilder > Editor" page logged in as "admin"
+    When I click on "Move column 'Full name'" "button"
+    And I click on "Cancel" "button" in the "Move column 'Full name'" "dialogue"
+    Then the focused element is "Move column 'Full name'" "button"
 
   Scenario: Delete column from report
     Given the following "core_reportbuilder > Reports" exist:
@@ -79,5 +92,5 @@ Feature: Manage custom report columns
     And I am on the "My report" "reportbuilder > Editor" page logged in as "admin"
     When I click on "Delete column 'Full name'" "button"
     And I click on "Delete" "button" in the "Delete column 'Full name'" "dialogue"
-    Then I should see "Deleted column 'Full name'"
+    Then "Deleted column 'Full name'" "toast_message" should be visible
     And I should see "Nothing to display"

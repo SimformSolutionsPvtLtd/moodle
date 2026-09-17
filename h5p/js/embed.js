@@ -72,26 +72,71 @@ H5PEmbedCommunicator = (function() {
             window.parent.postMessage(data, '*');
         };
 
+        /* eslint-disable promise/avoid-new */
+        const repositoryPromise = new Promise((resolve) => {
+            require(['core_h5p/repository'], (Repository) => {
+
+                // Replace the default versions.
+                self.post = Repository.postStatement;
+                self.postState = Repository.postState;
+                self.deleteState = Repository.deleteState;
+
+                // Resolve the Promise with Repository to allow any queued calls to be executed.
+                resolve(Repository);
+            });
+        });
+
         /**
          * Send a xAPI statement to LMS.
          *
          * @param {string} component
          * @param {Object} statements
+         * @returns {Promise}
          */
-        self.post = function(component, statements) {
-            require(['core/ajax'], function(ajax) {
-                var data = {
-                    component: component,
-                    requestjson: JSON.stringify(statements)
-                };
-                ajax.call([
-                   {
-                       methodname: 'core_xapi_statement_post',
-                       args: data
-                   }
-                ]);
-            });
-        };
+        self.post = (component, statements) => repositoryPromise.then((Repository) => Repository.postStatement(
+            component,
+            statements,
+        ));
+
+        /**
+         * Send a xAPI state to LMS.
+         *
+         * @param {string} component
+         * @param {string} activityId
+         * @param {Object} agent
+         * @param {string} stateId
+         * @param {string} stateData
+         * @returns {void}
+         */
+        self.postState = (
+            component,
+            activityId,
+            agent,
+            stateId,
+            stateData,
+        ) => repositoryPromise.then((Repository) => Repository.postState(
+            component,
+            activityId,
+            agent,
+            stateId,
+            stateData,
+        ));
+
+        /**
+         * Delete a xAPI state from LMS.
+         *
+         * @param {string} component
+         * @param {string} activityId
+         * @param {Object} agent
+         * @param {string} stateId
+         * @returns {Promise}
+         */
+        self.deleteState = (component, activityId, agent, stateId) => repositoryPromise.then((Repository) => Repository.deleteState(
+            component,
+            activityId,
+            agent,
+            stateId,
+        ));
     }
 
     return (window.postMessage && window.addEventListener ? new Communicator() : undefined);
@@ -114,11 +159,25 @@ var getH5PObject = async (iFrame) => {
     return H5P;
 };
 
+/* eslint-disable promise/no-native */
+/**
+ * Load the core/pending module.
+ * @returns {Promise<Pending>}
+ */
+const getPendingClass = () => new Promise((resolve) => {
+    require(['core/pending'], (Pending) => {
+        resolve(Pending);
+    });
+});
+
 document.onreadystatechange = async() => {
     // Wait for instances to be initialize.
     if (document.readyState !== 'complete') {
         return;
     }
+
+    /** @var {boolean} statementPosted Whether the statement has been sent or not, to avoid sending xAPI State after it. */
+    var statementPosted = false;
 
     // Check for H5P iFrame.
     var iFrame = document.querySelector('.h5p-iframe');
@@ -164,6 +223,51 @@ document.onreadystatechange = async() => {
         H5P.trigger(instance, 'resize');
     });
 
+    const Pending = await getPendingClass();
+    var resizePending = new Pending('core_h5p/iframe:resize');
+
+    // Track when the embedded H5P content is fully attached.
+    const contentLoadedPending = new Pending('core_h5p/iframe:contentLoaded');
+    let contentLoaded = false;
+    const markContentLoaded = function() {
+        const body = iFrame?.contentDocument?.body;
+        const hasContent = body && body.querySelector('.h5p-container, .h5p-content');
+
+        // Check that H5P instance is actually ready with proper initialization
+        if (contentLoaded || !hasContent || !H5P?.instances?.[0]) {
+            return false;
+        }
+
+        contentLoaded = true;
+        contentLoadedPending.resolve();
+        H5PEmbedCommunicator.send('contentLoaded');
+        return true;
+    };
+
+    // If the content is already there, mark it immediately.
+    markContentLoaded();
+
+    // Observe the iframe document for the first appearance of the H5P container.
+    if (!contentLoaded && iFrame.contentDocument?.body) {
+        const contentObserver = new MutationObserver(function() {
+            if (markContentLoaded()) {
+                contentObserver.disconnect();
+            }
+        });
+        contentObserver.observe(iFrame.contentDocument.body, {childList: true, subtree: true});
+    }
+
+    // Extended fallback timeout to ensure pending resolves even if content detection fails.
+    if (!contentLoaded) {
+        setTimeout(function() {
+            if (!contentLoaded) {
+                contentLoaded = true;
+                contentLoadedPending.resolve();
+                H5PEmbedCommunicator.send('contentLoaded');
+            }
+        }, 1000);
+    }
+
     H5P.on(instance, 'resize', function() {
         if (H5P.isFullscreen) {
             return; // Skip iframe resize.
@@ -183,11 +287,15 @@ document.onreadystatechange = async() => {
             } else {
                 H5PEmbedCommunicator.send('hello');
             }
-        }, 0);
+            resizePending.resolve();
+        }, 150);
     });
+
+    H5P.externalDispatcher.on('domChanged', markContentLoaded);
 
     // Get emitted xAPI data.
     H5P.externalDispatcher.on('xAPI', function(event) {
+        statementPosted = false;
         var moodlecomponent = H5P.getMoodleComponent();
         if (moodlecomponent == undefined) {
             return;
@@ -215,9 +323,35 @@ document.onreadystatechange = async() => {
         if (isCompleted && !isChild) {
             var statements = H5P.getXAPIStatements(this.contentId, statement);
             H5PEmbedCommunicator.post(moodlecomponent, statements);
+            // Mark the statement has been sent, to avoid sending xAPI State after it.
+            statementPosted = true;
         }
     });
 
-    // Trigger initial resize for instance.
+    H5P.externalDispatcher.on('xAPIState', function(event) {
+        var moodlecomponent = H5P.getMoodleComponent();
+        var contentId = event.data.activityId;
+        var stateId = event.data.stateId;
+        var state = event.data.state;
+        if (state === undefined) {
+            // When state is undefined, a call to the WS for getting the state could be done. However, for now, this is not
+            // required because the content state is initialised with PHP.
+            return;
+        }
+
+        if (state === null) {
+            // When this method is called from the H5P API with null state, the state must be deleted using the rest of attributes.
+            H5PEmbedCommunicator.deleteState(moodlecomponent, contentId, H5P.getxAPIActor(), stateId);
+        } else if (!statementPosted) {
+            // Only update the state if a statement hasn't been posted recently.
+            // When state is defined, it needs to be updated. As not all the H5P content types are returning a JSON, we need
+            // to simulate it because xAPI State defines statedata as a JSON.
+            var statedata = {
+                h5p: state
+            };
+            H5PEmbedCommunicator.postState(moodlecomponent, contentId, H5P.getxAPIActor(), stateId, JSON.stringify(statedata));
+        }
+    });
+
     H5P.trigger(instance, 'resize');
 };

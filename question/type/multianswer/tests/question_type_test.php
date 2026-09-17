@@ -20,7 +20,9 @@ use qtype_multianswer;
 use qtype_multianswer_edit_form;
 use qtype_multichoice_base;
 use question_bank;
+use stdClass;
 use test_question_maker;
+use core\context;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -34,20 +36,23 @@ require_once($CFG->dirroot . '/question/type/multianswer/edit_multianswer_form.p
 /**
  * Unit tests for the multianswer question definition class.
  *
- * @package    qtype_multianswer
- * @copyright  2011 The Open University
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package   qtype_multianswer
+ * @copyright 2011 The Open University
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @covers    \qtype_multianswer
  */
-class question_type_test extends \advanced_testcase {
+final class question_type_test extends \advanced_testcase {
     /** @var qtype_multianswer instance of the question type class to test. */
     protected $qtype;
 
     protected function setUp(): void {
+        parent::setUp();
         $this->qtype = new qtype_multianswer();
     }
 
     protected function tearDown(): void {
         $this->qtype = null;
+        parent::tearDown();
     }
 
     protected function get_test_question_data() {
@@ -76,11 +81,13 @@ class question_type_test extends \advanced_testcase {
         $q->timemodified = time();
         $q->createdby = $USER->id;
         $q->modifiedby = $USER->id;
+        $q->options = new stdClass();
 
         $sadata = new \stdClass();
         $sadata->id = 1;
         $sadata->qtype = 'shortanswer';
         $sadata->defaultmark = 1;
+        $sadata->options = new stdClass();
         $sadata->options->usecase = true;
         $sadata->options->answers[1] = (object) array('answer' => 'Bow-wow', 'fraction' => 0);
         $sadata->options->answers[2] = (object) array('answer' => 'Wiggly worm', 'fraction' => 0);
@@ -90,6 +97,7 @@ class question_type_test extends \advanced_testcase {
         $mcdata->id = 1;
         $mcdata->qtype = 'multichoice';
         $mcdata->defaultmark = 1;
+        $mcdata->options = new stdClass();
         $mcdata->options->single = true;
         $mcdata->options->answers[1] = (object) array('answer' => 'Dog', 'fraction' => 0);
         $mcdata->options->answers[2] = (object) array('answer' => 'Owl', 'fraction' => 1);
@@ -103,24 +111,55 @@ class question_type_test extends \advanced_testcase {
         return $q;
     }
 
-    public function test_name() {
+    public function test_name(): void {
         $this->assertEquals($this->qtype->name(), 'multianswer');
     }
 
-    public function test_can_analyse_responses() {
+    public function test_can_analyse_responses(): void {
         $this->assertFalse($this->qtype->can_analyse_responses());
     }
 
-    public function test_get_random_guess_score() {
-        $q = \test_question_maker::get_question_data('multianswer', 'twosubq');
+    public function test_get_random_guess_score(): void {
+        $q = test_question_maker::get_question_data('multianswer', 'twosubq');
         $this->assertEqualsWithDelta(0.1666667, $this->qtype->get_random_guess_score($q), 0.0000001);
     }
 
-    public function test_load_question() {
+    public function test_get_random_guess_score_with_missing_subquestion(): void {
+        global $DB;
+        $this->resetAfterTest();
+
+        // Create a question referring to a subquesion that has got lost (which happens some time).
+        /** @var \core_question_generator $generator */
+        $generator = $this->getDataGenerator()->get_plugin_generator('core_question');
+        $category = $generator->create_question_category();
+        $question = $generator->create_question('multianswer', 'twosubq', ['category' => $category->id]);
+        // Add a non-existent subquestion id to the list.
+        $sequence = $DB->get_field('question_multianswer', 'sequence', ['question' => $question->id], MUST_EXIST);
+        $DB->set_field('question_multianswer', 'sequence', $sequence . ',-1', ['question' => $question->id]);
+
+        // Verify that computing the random guess score does not give an error.
+        $questiondata = question_bank::load_question_data($question->id);
+        $this->assertEqualsWithDelta(0.1666667, $this->qtype->get_random_guess_score($questiondata), 0.0000001);
+    }
+
+    public function test_get_random_guess_score_with_all_missing_subquestions(): void {
+        $this->resetAfterTest();
+
+        // Create a question where all subquestions are missing.
+        $questiondata = test_question_maker::get_question_data('multianswer', 'twosubq');
+        foreach ($questiondata->options->questions as $subq) {
+            $subq->qtype = 'subquestion_replacement';
+        }
+
+        // Verify that computing the random guess score does not give an error.
+        $this->assertNull($this->qtype->get_random_guess_score($questiondata));
+    }
+
+    public function test_load_question(): void {
         $this->resetAfterTest();
 
         $syscontext = \context_system::instance();
-        /** @var core_question_generator $generator */
+        /** @var \core_question_generator $generator */
         $generator = $this->getDataGenerator()->get_plugin_generator('core_question');
         $category = $generator->create_question_category(['contextid' => $syscontext->id]);
 
@@ -234,7 +273,7 @@ class question_type_test extends \advanced_testcase {
         $this->assertEquals($expectedquestions, array_values($gotquestions));
     }
 
-    public function test_question_saving_twosubq() {
+    public function test_question_saving_twosubq(): void {
         $this->resetAfterTest(true);
         $this->setAdminUser();
 
@@ -281,7 +320,7 @@ class question_type_test extends \advanced_testcase {
             }
         }
 
-        $this->assertObjectHasAttribute('questions', $actualquestiondata->options);
+        $this->assertObjectHasProperty('questions', $actualquestiondata->options);
 
         $subqpropstoignore =
             ['id', 'category', 'parent', 'contextid', 'question', 'options', 'stamp', 'timemodified',
@@ -314,7 +353,7 @@ class question_type_test extends \advanced_testcase {
      *  Verify that the multiplechoice variants parameters are correctly interpreted from
      *  the question text
      */
-    public function test_questiontext_extraction_of_multiplechoice_subquestions_variants() {
+    public function test_questiontext_extraction_of_multiplechoice_subquestions_variants(): void {
         $questiontext = array();
         $questiontext['format'] = FORMAT_HTML;
         $questiontext['itemid'] = '';
@@ -367,7 +406,7 @@ class question_type_test extends \advanced_testcase {
      *
      * @covers \qtype_multianswer::get_question_options
      */
-    public function test_get_question_options() {
+    public function test_get_question_options(): void {
         global $DB;
 
         $this->resetAfterTest(true);
@@ -399,5 +438,59 @@ class question_type_test extends \advanced_testcase {
 
         $this->assertCount(2, $questiondata->options->questions);
         $this->assertEquals('subquestion_replacement', $questiondata->options->questions[$questiontodeletekey]->qtype);
+    }
+
+    /**
+     * Saving a new version of the question should retain the original subquestion versions, with their own qtype data.
+     */
+    public function test_save_question_options(): void {
+        global $DB;
+        $this->resetAfterTest(true);
+        $this->setAdminUser();
+
+        $generator = $this->getDataGenerator()->get_plugin_generator('core_question');
+        $cat = $generator->create_question_category([]);
+        $question = $generator->create_question('multianswer', 'twosubq', ['category' => $cat->id]);
+
+        get_question_options($question);
+        $originalsubq1 = reset($question->options->questions);
+        $originalsubq2 = next($question->options->questions);
+
+        // Assert that the original subquestions are the expected types, and they have options records.
+        $this->assertEquals('shortanswer', $originalsubq1->qtype);
+        $this->assertTrue($DB->record_exists('qtype_shortanswer_options', ['questionid' => $originalsubq1->id]));
+        $this->assertEquals('multichoice', $originalsubq2->qtype);
+        $this->assertTrue($DB->record_exists('qtype_multichoice_options', ['questionid' => $originalsubq2->id]));
+
+        // Edit the question, replacing the subquestions with two new questions of different types.
+        $editedquestion = test_question_maker::get_question_data('multianswer', 'twosubq');
+        $editedquestion->id = $question->id;
+        $editedquestion->category = $cat->id;
+        $editedquestion->context = context::instance_by_id($cat->contextid);
+        $editedsubq1 = test_question_maker::get_question_form_data('multichoice', 'one_of_four');
+        $editedsubq1->id = $originalsubq1->id;
+        $editedsubq1->qtype = 'multichoice';
+        $editedsubq2 = test_question_maker::get_question_form_data('shortanswer', 'frogtoad');
+        $editedsubq2->id = $originalsubq2->id;
+        $editedsubq2->qtype = 'shortanswer';
+        $editedquestion->options->questions = [$editedsubq1, $editedsubq2];
+        $this->qtype->save_question_options($editedquestion);
+
+        $newquestion = $DB->get_record('question', ['id' => $question->id]);
+        get_question_options($newquestion);
+        $newsubq1 = reset($newquestion->options->questions);
+        $newsubq2 = next($newquestion->options->questions);
+
+        // The new subquestions are different types, and did not re-use IDs from the original subquestions.
+        $this->assertEquals('multichoice', $newsubq1->qtype);
+        $this->assertFalse(in_array($newsubq1->id, [$originalsubq1->id, $originalsubq2->id]));
+        $this->assertEquals('shortanswer', $newsubq2->qtype);
+        $this->assertFalse(in_array($newsubq2->id, [$originalsubq1->id, $originalsubq2->id]));
+
+        // The original questions and option records still exist.
+        $this->assertTrue($DB->record_exists('question', ['id' => $originalsubq1->id]));
+        $this->assertTrue($DB->record_exists('qtype_shortanswer_options', ['questionid' => $originalsubq1->id]));
+        $this->assertTrue($DB->record_exists('question', ['id' => $originalsubq2->id]));
+        $this->assertTrue($DB->record_exists('qtype_multichoice_options', ['questionid' => $originalsubq2->id]));
     }
 }

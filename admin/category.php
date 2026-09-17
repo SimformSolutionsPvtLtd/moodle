@@ -118,6 +118,10 @@ foreach ($settingspage->children as $childpage) {
                 }
                 $outputhtml .= html_writer::tag('div', '<!-- -->', array('class' => 'clearer'));
                 $outputhtml .= $setting->output_html($data);
+                if ($childpage->has_dependencies()) {
+                    $opts = ['dependencies' => $childpage->get_dependencies_for_javascript()];
+                    $PAGE->requires->js_call_amd('core/showhidesettings', 'init', [$opts]);
+                }
             }
             $outputhtml .= html_writer::end_tag('fieldset');
         }
@@ -131,8 +135,7 @@ if ($savebutton) {
     $outputhtml .= html_writer::end_tag('div');
 }
 
-$visiblepathtosection = array_reverse($settingspage->visiblepath);
-$PAGE->set_title("$SITE->shortname: " . implode(": ",$visiblepathtosection));
+$PAGE->set_title(implode(moodle_page::TITLE_SEPARATOR, $settingspage->visiblepath));
 $PAGE->set_heading($SITE->fullname);
 if ($buttons) {
     $PAGE->set_button($buttons);

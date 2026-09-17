@@ -29,21 +29,26 @@ require_once($CFG->dirroot . '/repository/googledocs/lib.php');
  * @copyright  2021 Mihail Geshoski <mihail@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class googledocs_search_content_test extends \googledocs_content_testcase {
+final class googledocs_search_content_test extends \googledocs_content_testcase {
 
     /**
      * Test get_content_nodes().
      *
+     * @covers \repository_googledocs\googledocs_content_search
      * @dataProvider get_content_nodes_provider
      * @param string $query The query string
      * @param bool $sortcontent Whether the contents should be sorted in alphabetical order
      * @param array $filterextensions The array containing file extensions that should be disallowed (filtered)
-     * @param array $shareddrives The array containing the existing shared drives
      * @param array $searccontents The array containing the fetched google drive contents that match the search criteria
      * @param array $expected The expected array which contains the generated repository content nodes
      */
-    public function test_get_content_nodes(string $query, bool $sortcontent, array $filterextensions,
-            array $shareddrives, array $searccontents, array $expected) {
+    public function test_get_content_nodes(
+        string $query,
+        bool $sortcontent,
+        array $filterextensions,
+        array $searccontents,
+        array $expected
+    ): void {
 
         // Mock the service object.
         $servicemock = $this->createMock(rest::class);
@@ -52,40 +57,28 @@ class googledocs_search_content_test extends \googledocs_content_testcase {
             'q' => "fullText contains '" . str_replace("'", "\'", $query) . "' AND trashed = false",
             'fields' => 'files(id,name,mimeType,webContentLink,webViewLink,fileExtension,modifiedTime,size,iconLink)',
             'spaces' => 'drive',
+            'supportsAllDrives' => 'true',
+            'includeItemsFromAllDrives' => 'true',
+            'corpora' => 'allDrives',
         ];
 
-        if (!empty($shareddrives)) {
-            $searchparams['supportsAllDrives'] = 'true';
-            $searchparams['includeItemsFromAllDrives'] = 'true';
-            $searchparams['corpora'] = 'allDrives';
-        }
-
-        // Assert that the call() method is being called twice with the given arguments consecutively. In the first
-        // instance it is being called to fetch the shared drives (shared_drives_list), while in the second instance
-        // to fetch the relevant drive contents (list) that match the search criteria. Also, define the returned
-        // data objects by these calls.
-        $servicemock->expects($this->exactly(2))
+        // Assert that the call() method is being called to fetch the relevant drive contents (list),
+        // that match the search criteria. Also, define the returned data objects by these calls.
+        // This simulates the more restricted drive.file scope behavior.
+        $callinvocations = $this->exactly(1);
+        $servicemock->expects($callinvocations)
             ->method('call')
-            ->withConsecutive(
-                [
-                    'shared_drives_list',
-                    [],
-                ],
-                [
-                    'list',
-                    $searchparams,
-                ]
-            )
-            ->willReturnOnConsecutiveCalls(
-                (object)[
-                    'kind' => 'drive#driveList',
-                    'nextPageToken' => 'd838181f30b0f5',
-                    'drives' => $shareddrives,
-                ],
-                (object)[
+            ->willReturnCallback(function(string $method, array $params) use (
+                $searccontents,
+                $searchparams,
+            ) {
+                $this->assertEquals('list', $method);
+                $this->assertEquals($searchparams, $params);
+
+                return (object) [
                     'files' => $searccontents,
-                ]
-            );
+                ];
+            });
 
         // Construct the node path.
         $path = \repository_googledocs::REPOSITORY_ROOT_ID . '|' . urlencode('Google Drive') . '/' .
@@ -105,90 +98,82 @@ class googledocs_search_content_test extends \googledocs_content_testcase {
      *
      * @return array
      */
-    public function get_content_nodes_provider(): array {
+    public static function get_content_nodes_provider(): array {
 
         $rootid = \repository_googledocs::REPOSITORY_ROOT_ID;
         $searchnodeid = \repository_googledocs::SEARCH_ROOT_ID;
         $searchforstring = get_string('searchfor', 'repository_googledocs');
 
         return [
-            'Folders and files match the search criteria; shared drives exist; ordering applied.' =>
+            'Folders and files match the search criteria; ordering applied.' =>
                 [
                     'test',
                     true,
                     [],
                     [
-                        $this->create_google_drive_shared_drive_object('d85b21c0f86cb5', 'Shared Drive 1'),
-                    ],
-                    [
-                        $this->create_google_drive_file_object('d85b21c0f86cb0', 'Test file 3.pdf',
+                        self::create_google_drive_file_object('d85b21c0f86cb0', 'Test file 3.pdf',
                             'application/pdf', 'pdf', '1000', '',
                             'https://drive.google.com/uc?id=d85b21c0f86cb0&export=download'),
-                        $this->create_google_drive_folder_object('0c4ad262c65333', 'Test folder 1'),
-                        $this->create_google_drive_file_object('bed5a0f08d412a', 'Test file 1.pdf',
+                        self::create_google_drive_folder_object('0c4ad262c65333', 'Test folder 1'),
+                        self::create_google_drive_file_object('bed5a0f08d412a', 'Test file 1.pdf',
                             'application/pdf', 'pdf'),
-                        $this->create_google_drive_folder_object('9c4ad262c65333', 'Test folder 2'),
+                        self::create_google_drive_folder_object('9c4ad262c65333', 'Test folder 2'),
                     ],
                     [
-                        $this->create_folder_content_node_array('0c4ad262c65333', 'Test folder 1',
+                        self::create_folder_content_node_array('0c4ad262c65333', 'Test folder 1',
                             "{$rootid}|Google+Drive/{$searchnodeid}|" . urlencode("{$searchforstring} 'test'")),
-                        $this->create_folder_content_node_array('9c4ad262c65333', 'Test folder 2',
+                        self::create_folder_content_node_array('9c4ad262c65333', 'Test folder 2',
                             "{$rootid}|Google+Drive/{$searchnodeid}|" . urlencode("{$searchforstring} 'test'")),
-                        $this->create_file_content_node_array('bed5a0f08d412a', 'Test file 1.pdf',
+                        self::create_file_content_node_array('bed5a0f08d412a', 'Test file 1.pdf',
                             'Test file 1.pdf', null, '', 'https://googleusercontent.com/type/application/pdf',
                             '', 'download'),
-                        $this->create_file_content_node_array('d85b21c0f86cb0', 'Test file 3.pdf',
+                        self::create_file_content_node_array('d85b21c0f86cb0', 'Test file 3.pdf',
                             'Test file 3.pdf', '1000', '', 'https://googleusercontent.com/type/application/pdf',
                             'https://drive.google.com/uc?id=d85b21c0f86cb0&export=download', 'download'),
                     ],
                 ],
-            'Only folders match the search criteria; shared drives do not exist; ordering not applied.' =>
+            'Only folders match the search criteria; ordering not applied.' =>
                 [
                     'testing',
                     false,
                     [],
-                    [],
                     [
-                        $this->create_google_drive_folder_object('0c4ad262c65333', 'Testing folder 3'),
-                        $this->create_google_drive_folder_object('d85b21c0f86cb0', 'Testing folder 1'),
-                        $this->create_google_drive_folder_object('bed5a0f08d412a', 'Testing folder 2'),
+                        self::create_google_drive_folder_object('0c4ad262c65333', 'Testing folder 3'),
+                        self::create_google_drive_folder_object('d85b21c0f86cb0', 'Testing folder 1'),
+                        self::create_google_drive_folder_object('bed5a0f08d412a', 'Testing folder 2'),
                     ],
                     [
-                        $this->create_folder_content_node_array('0c4ad262c65333', 'Testing folder 3',
+                        self::create_folder_content_node_array('0c4ad262c65333', 'Testing folder 3',
                             "{$rootid}|Google+Drive/{$searchnodeid}|" . urlencode("{$searchforstring} 'testing'")),
-                        $this->create_folder_content_node_array('d85b21c0f86cb0', 'Testing folder 1',
+                        self::create_folder_content_node_array('d85b21c0f86cb0', 'Testing folder 1',
                             "{$rootid}|Google+Drive/{$searchnodeid}|" . urlencode("{$searchforstring} 'testing'")),
-                        $this->create_folder_content_node_array('bed5a0f08d412a', 'Testing folder 2',
+                        self::create_folder_content_node_array('bed5a0f08d412a', 'Testing folder 2',
                             "{$rootid}|Google+Drive/{$searchnodeid}|" . urlencode("{$searchforstring} 'testing'")),
                     ],
                 ],
-            'Only files match the search criteria; shared drives exist; ordering not applied; filter .doc and .txt.' =>
+            'Only files match the search criteria; ordering not applied; filter .doc and .txt.' =>
                 [
                     'root',
                     false,
                     ['doc', 'txt'],
                     [
-                        $this->create_google_drive_shared_drive_object('d85b21c0f86cb5', 'Shared Drive 1'),
-                    ],
-                    [
-                        $this->create_google_drive_file_object('d85b21c0f86cb0', 'Testing file 3.pdf',
+                        self::create_google_drive_file_object('d85b21c0f86cb0', 'Testing file 3.pdf',
                             'application/pdf', 'pdf', '1000'),
-                        $this->create_google_drive_file_object('a85b21c0f86cb0', 'Testing file 1.txt',
+                        self::create_google_drive_file_object('a85b21c0f86cb0', 'Testing file 1.txt',
                             'text/plain', 'txt', '3000'),
-                        $this->create_google_drive_file_object('f85b21c0f86cb0', 'Testing file 2.doc',
+                        self::create_google_drive_file_object('f85b21c0f86cb0', 'Testing file 2.doc',
                             'application/msword', 'doc', '2000'),
                     ],
                     [
-                        $this->create_file_content_node_array('d85b21c0f86cb0', 'Testing file 3.pdf',
+                        self::create_file_content_node_array('d85b21c0f86cb0', 'Testing file 3.pdf',
                             'Testing file 3.pdf', '1000', '',
                             'https://googleusercontent.com/type/application/pdf', '', 'download'),
                     ],
                 ],
-            'No content that matches the search criteria; shared drives do not exist.' =>
+            'No content that matches the search criteria.' =>
                 [
                     'root',
                     false,
-                    [],
                     [],
                     [],
                     [],

@@ -35,10 +35,12 @@ Feature: Test if the login form provides the correct feedback
     Given I log in as "admin"
     And I navigate to "Appearance > Logos" in site administration
     And I upload "course/tests/fixtures/image.jpg" file to "Logo" filemanager
+    And I upload "course/tests/fixtures/image.jpg" file to "Favicon" filemanager
     And I press "Save changes"
     And I log out
     And I follow "Log in"
-    Then "//img[@id='logoimage']" "xpath_element" should exist
+    Then "//img[@id='logoimage' and contains(@src, '/image.jpg')]" "xpath_element" should exist
+    And "//link[@rel='shortcut icon' and contains(@href, '/image.jpg')]" "xpath_element" should exist
 
   Scenario: Add a custom welcome message
     Given the following config values are set as admin:
@@ -46,12 +48,14 @@ Feature: Test if the login form provides the correct feedback
     And I follow "Log in"
     Then I should see "Lorem ipsum dolor sit amet"
 
+  @javascript @accessibility
   Scenario: Show the maintenance mode message
     Given the following config values are set as admin:
-      | maintenance_enabled | Disabled |
-      | maintenance_message | Back online tomorrow |
+      | maintenance_enabled | 1                     |
+      | maintenance_message | Back online tomorrow  |
     And I follow "Log in"
     Then I should see "Back online tomorrow"
+    And the page should meet accessibility standards with "best-practice" extra tests
 
   Scenario: User self registration
     Given the following config values are set as admin:
@@ -94,10 +98,30 @@ Feature: Test if the login form provides the correct feedback
     And I follow "Log in"
     Then the focused element is "Password" "field"
 
+  @accessibility
   Scenario: Test the login page focus after error feature
     Given I follow "Log in"
     And I set the field "Username" to "admin"
     And I set the field "Password" to "wrongpassword"
     And I press "Log in"
-    And I press the tab key
+    And I wait until the page is ready
     Then the focused element is "Username" "field"
+    And the page should meet accessibility standards with "best-practice" extra tests
+
+  Scenario: Display the password visibility toggle icon
+    Given the following config values are set as admin:
+      | loginpasswordtoggle | 1 |
+    When I follow "Log in"
+    Then "Toggle sensitive" "button" should be visible
+    And the following config values are set as admin:
+      | loginpasswordtoggle | 0 |
+    And I reload the page
+    And "Toggle sensitive" "button" should not be visible
+
+  Scenario: Display the password visibility toggle icon for small screens only
+    Given the following config values are set as admin:
+      | loginpasswordtoggle | 2 |
+    When I follow "Log in"
+    Then "Toggle sensitive" "button" should not be visible
+    And I change the viewport size to "mobile"
+    And "Toggle sensitive" "button" should be visible

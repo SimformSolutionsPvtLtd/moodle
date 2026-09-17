@@ -91,7 +91,10 @@ class report_schedules extends system_report {
      * @return bool
      */
     protected function can_view(): bool {
-        return permission::can_view_reports_list();
+        $reportid = $this->get_parameter('reportid', 0, PARAM_INT);
+        $report = report::get_record(['id' => $reportid], MUST_EXIST);
+
+        return permission::can_edit_report($report);
     }
 
     /**
@@ -113,12 +116,13 @@ class report_schedules extends system_report {
         // Enable toggle column.
         $this->add_column((new column(
             'enabled',
-            null,
+            new lang_string('enabled', 'core_reportbuilder'),
             $this->get_schedule_entity_name()
         ))
             ->set_type(column::TYPE_BOOLEAN)
             ->add_fields("{$tablealias}.enabled, {$tablealias}.id")
             ->set_is_sortable(false)
+            ->add_header_attributes(['class' => 'visually-hidden'])
             ->set_callback(static function(bool $enabled, stdClass $row): string {
                 global $PAGE;
 
@@ -307,7 +311,12 @@ class report_schedules extends system_report {
         $this->add_action((new action(
             new moodle_url('#'),
             new pix_icon('t/delete', ''),
-            ['data-action' => 'schedule-delete', 'data-schedule-id' => ':id', 'data-schedule-name' => ':name'],
+            [
+                'data-action' => 'schedule-delete',
+                'data-schedule-id' => ':id',
+                'data-schedule-name' => ':name',
+                'class' => 'text-danger',
+            ],
             false,
             new lang_string('deleteschedule', 'core_reportbuilder')
         ))

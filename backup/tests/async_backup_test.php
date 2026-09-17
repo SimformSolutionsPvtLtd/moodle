@@ -33,12 +33,12 @@ require_once($CFG->libdir . '/completionlib.php');
  * @copyright  2018 Matt Porritt <mattp@catalyst-au.net>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class async_backup_test extends \advanced_testcase {
+final class async_backup_test extends \advanced_testcase {
 
     /**
      * Tests the asynchronous backup.
      */
-    public function test_async_backup() {
+    public function test_async_backup(): void {
         global $CFG, $DB, $USER;
 
         $this->resetAfterTest(true);
@@ -87,7 +87,7 @@ class async_backup_test extends \advanced_testcase {
         set_config('buffersize', 0, 'logstore_standard');
         get_log_manager(true);
 
-        // Start backup process.
+        // Case 1: Make a course backup without users.
         $this->setUser($teacher->id);
 
         // Make the backup controller for an async backup.
@@ -105,20 +105,14 @@ class async_backup_test extends \advanced_testcase {
 
         // Create the adhoc task.
         $asynctask = new \core\task\asynchronous_backup_task();
-        $asynctask->set_blocking(false);
         $asynctask->set_custom_data(['backupid' => $backupid]);
         $asynctask->set_userid($USER->id);
-        \core\task\manager::queue_adhoc_task($asynctask);
 
         // We are expecting trace output during this test.
         $this->expectOutputRegex("/$backupid/");
 
         // Execute adhoc task.
-        $now = time();
-        $task = \core\task\manager::get_next_adhoc_task($now);
-        $this->assertInstanceOf('\\core\\task\\asynchronous_backup_task', $task);
-        $task->execute();
-        \core\task\manager::adhoc_task_complete($task);
+        $asynctask->execute();
 
         $postbackuprec = $DB->get_record('backup_controllers', ['backupid' => $backupid]);
 
@@ -132,12 +126,53 @@ class async_backup_test extends \advanced_testcase {
                 'target' => 'course_backup'], '*', MUST_EXIST);
         $otherdata = json_decode($logrec->other);
         $this->assertEquals($backupid, $otherdata->backupid);
+
+        // Check backup was stored in correct area.
+        $usercontextid = $DB->get_field('context', 'id', ['contextlevel' => CONTEXT_USER, 'instanceid' => $teacher->id]);
+        $this->assertEquals(1, $DB->count_records('files', ['contextid' => $usercontextid,
+                'component' => 'user', 'filearea' => 'backup', 'filename' => 'backup.mbz']));
+
+        // Case 2: Make a second backup with users and not anonymised.
+        $this->setAdminUser();
+        $bc = new backup_controller(backup::TYPE_1COURSE, $course->id, backup::FORMAT_MOODLE,
+                backup::INTERACTIVE_YES, backup::MODE_ASYNC, $USER->id);
+        $bc->get_plan()->get_setting('users')->set_status(\backup_setting::NOT_LOCKED);
+        $bc->get_plan()->get_setting('users')->set_value(true);
+        $bc->get_plan()->get_setting('anonymize')->set_value(false);
+        $bc->finish_ui();
+        $backupid = $bc->get_backupid();
+        $bc->destroy();
+
+        // Create the adhoc task.
+        $asynctask = new \core\task\asynchronous_backup_task();
+        $asynctask->set_custom_data(['backupid' => $backupid]);
+
+        // Execute adhoc task.
+        $asynctask->execute();
+
+        $postbackuprec = $DB->get_record('backup_controllers', ['backupid' => $backupid]);
+
+        // Check backup was created successfully.
+        $this->assertEquals(backup::STATUS_FINISHED_OK, $postbackuprec->status);
+        $this->assertEquals(1.0, $postbackuprec->progress);
+        $this->assertEquals($USER->id, $postbackuprec->userid);
+
+        // Check that the backupid was logged correctly.
+        $logrec = $DB->get_record('logstore_standard_log', ['userid' => $postbackuprec->userid,
+                'target' => 'course_backup'], '*', MUST_EXIST);
+        $otherdata = json_decode($logrec->other);
+        $this->assertEquals($backupid, $otherdata->backupid);
+
+        // Check backup was stored in correct area.
+        $coursecontextid = $DB->get_field('context', 'id', ['contextlevel' => CONTEXT_COURSE, 'instanceid' => $course->id]);
+        $this->assertEquals(1, $DB->count_records('files', ['contextid' => $coursecontextid,
+                'component' => 'backup', 'filearea' => 'course', 'filename' => 'backup.mbz']));
     }
 
     /**
      * Tests the asynchronous backup will resolve in duplicate cases.
      */
-    public function test_complete_async_backup() {
+    public function test_complete_async_backup(): void {
         global $CFG, $DB, $USER;
 
         $this->resetAfterTest(true);
@@ -196,21 +231,12 @@ class async_backup_test extends \advanced_testcase {
 
         // Now queue an adhoc task and check it handles and completes gracefully.
         $asynctask = new \core\task\asynchronous_backup_task();
-        $asynctask->set_blocking(false);
         $asynctask->set_custom_data(array('backupid' => $backupid));
-        \core\task\manager::queue_adhoc_task($asynctask);
 
         // We are expecting a specific message output during this test.
         $this->expectOutputRegex('/invalid controller/');
 
         // Execute adhoc task.
-        $now = time();
-        $task = \core\task\manager::get_next_adhoc_task($now);
-        $this->assertInstanceOf('\\core\\task\\asynchronous_backup_task', $task);
-        $task->execute();
-        \core\task\manager::adhoc_task_complete($task);
-
-        // Check the task record is removed.
-        $this->assertEquals(0, $DB->count_records('task_adhoc'));
+        $asynctask->execute();
     }
 }

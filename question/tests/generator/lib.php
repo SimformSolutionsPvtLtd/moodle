@@ -62,17 +62,24 @@ class core_question_generator extends component_generator_base {
             'info'       => '',
             'infoformat' => FORMAT_HTML,
             'stamp'      => make_unique_id_code(),
-            'sortorder'  => 999,
-            'idnumber'   => null
+            'idnumber'   => null,
         ];
 
         $record = $this->datagenerator->combine_defaults_and_record($defaults, $record);
 
         if (!isset($record['contextid'])) {
-            $record['contextid'] = context_system::instance()->id;
+            if (isset($record['parent'])) {
+                $record['contextid'] = $DB->get_field('question_categories', 'contextid', ['id' => $record['parent']]);
+            } else {
+                $record['contextid'] = context_system::instance()->id;
+            }
         }
         if (!isset($record['parent'])) {
             $record['parent'] = question_get_top_category($record['contextid'], true)->id;
+        }
+        if (!isset($record['sortorder'])) {
+            $manager = new \core_question\category_manager();
+            $record['sortorder'] = $manager->get_max_sortorder($record['parent']) + 1;
         }
         $record['id'] = $DB->insert_record('question_categories', $record);
         return (object) $record;
@@ -118,11 +125,12 @@ class core_question_generator extends component_generator_base {
      * @param string $which as for the corresponding argument of
      *      {@link question_test_helper::get_question_form_data}. null for the default one.
      * @param array|stdClass $overrides any fields that should be different from the base example.
-     * @return stdClass the question data.
+     * @return stdClass the question data, including version info and questionbankentryid
      */
     public function update_question($question, $which = null, $overrides = null) {
         global $CFG, $DB;
         require_once($CFG->dirroot . '/question/engine/tests/helpers.php');
+        $question = clone($question);
 
         $qtype = $question->qtype;
 
@@ -144,6 +152,11 @@ class core_question_generator extends component_generator_base {
             }
             $DB->update_record('question', $question);
         }
+        $questionversion = $DB->get_record('question_versions', ['questionid' => $question->id], '*', MUST_EXIST);
+        $question->versionid = $questionversion->id;
+        $question->questionbankentryid = $questionversion->questionbankentryid;
+        $question->version = $questionversion->version;
+        $question->status = $questionversion->status;
 
         return $question;
     }
@@ -192,13 +205,13 @@ class core_question_generator extends component_generator_base {
      * responses to a number of questions within a question usage.
      *
      * In the responses array, the array keys are the slot numbers for which a response will
-     * be submitted. You can submit a response to any number of responses within the usage.
+     * be submitted. You can submit a response to any number of questions within the usage.
      * There is no need to do them all. The values are a string representation of the response.
      * The exact meaning of that depends on the particular question type. These strings
      * are passed to the un_summarise_response method of the question to decode.
      *
      * @param question_usage_by_activity $quba the question usage.
-     * @param array $responses the resonses to submit, in the format described above.
+     * @param array $responses the responses to submit, in the format described above.
      * @param bool $checkbutton if simulate a click on the check button for each question, else simulate save.
      *      This should only be used with behaviours that have a check button.
      * @return array that can be passed to methods like $quba->process_all_actions as simulated POST data.

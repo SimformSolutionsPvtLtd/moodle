@@ -233,7 +233,7 @@ if ($userform->is_cancelled()) {
                 if (!empty($CFG->passwordchangelogout)) {
                     // We can use SID of other user safely here because they are unique,
                     // the problem here is we do not want to logout admin here when changing own password.
-                    \core\session\manager::kill_user_sessions($usernew->id, session_id());
+                    \core\session\manager::destroy_user_sessions($usernew->id, session_id());
                 }
                 if (!empty($usernew->signoutofotherservices)) {
                     webservice::delete_user_ws_tokens($usernew->id);
@@ -243,7 +243,7 @@ if ($userform->is_cancelled()) {
 
         // Force logout if user just suspended.
         if (isset($usernew->suspended) and $usernew->suspended and !$user->suspended) {
-            \core\session\manager::kill_user_sessions($user->id);
+            \core\session\manager::destroy_user_sessions($user->id);
         }
     }
 
@@ -332,7 +332,8 @@ if ($user->id == -1 or ($user->id != $USER->id)) {
         $streditmyprofile = get_string('editmyprofile');
         $userfullname = fullname($user, true);
         $PAGE->set_heading($userfullname);
-        $PAGE->set_title("$course->shortname: $streditmyprofile - $userfullname");
+        $coursename = $course->id !== SITEID ? "$course->shortname" : '';
+        $PAGE->set_title("$streditmyprofile: $userfullname" . moodle_page::TITLE_SEPARATOR . $coursename);
         echo $OUTPUT->header();
         echo $OUTPUT->heading($userfullname);
     }

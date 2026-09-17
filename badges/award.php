@@ -82,9 +82,24 @@ if (!$badge->is_active()) {
     die();
 }
 
+if (!empty($role)) {
+    if (!user_has_role_assignment($USER->id, $role, $context->id) && !$isadmin) {
+        // User does not have the role passed by the parameter.
+        echo $OUTPUT->header();
+        echo $OUTPUT->notification(get_string('wrongrole', 'badges'));
+        echo $OUTPUT->footer();
+        die();
+    }
+}
+
 $returnurl = new moodle_url('recipients.php', array('id' => $badge->id));
 $returnlink = html_writer::link($returnurl, $strrecipients);
-$actionbar = new \core_badges\output\standard_action_bar($PAGE, $badge->type, false, false, $returnurl);
+$actionbar = new \core_badges\output\standard_action_bar(
+    page: $PAGE,
+    type: $badge->type,
+    showaddbadge: false,
+    backurl: $returnurl
+);
 $output = $PAGE->get_renderer('core', 'badges');
 $tertiarynav = $output->render_tertiary_navigation($actionbar);
 

@@ -76,8 +76,8 @@ class api {
     /**
      * Create one of the standard issuers.
      *
-     * @param string $type One of google, facebook, microsoft, nextcloud or imsobv2p1
-     * @param string|false $baseurl Baseurl (only required for nextcloud and imsobv2p1)
+     * @param string $type One of google, facebook, microsoft, MoodleNet, nextcloud or imsobv2p1
+     * @param string|false $baseurl Baseurl (only required for nextcloud, imsobv2p1 and moodlenet)
      * @return \core\oauth2\issuer
      */
     public static function create_standard_issuer($type, $baseurl = false) {
@@ -91,6 +91,10 @@ class api {
             case 'nextcloud':
                 if (!$baseurl) {
                     throw new moodle_exception('Nextcloud service type requires the baseurl parameter.');
+                }
+            case 'moodlenet':
+                if (!$baseurl) {
+                    throw new moodle_exception('MoodleNet service type requires the baseurl parameter.');
                 }
             case 'google':
             case 'facebook':
@@ -637,8 +641,20 @@ class api {
         $record->issuerid = $issuer->get('id');
         $record->refreshtoken = $refreshtoken;
         $record->grantedscopes = $scopes;
-        $record->email = isset($userinfo['email']) ? $userinfo['email'] : '';
-        $record->username = $userinfo['username'];
+        // Get email.
+        if (isset($userinfo['email'])) {
+            $record->email = $userinfo['email'];
+        } else if ($issuer->get_system_email()) {
+            $record->email = $issuer->get_system_email();
+        } else {
+            $record->email = '';
+        }
+        // Get username.
+        if (isset($userinfo['username'])) {
+            $record->username = $userinfo['username'];
+        } else if ($issuer->get_system_email()) {
+            $record->username = $issuer->get_system_email();
+        }
 
         $systemaccount = new system_account(0, $record);
 

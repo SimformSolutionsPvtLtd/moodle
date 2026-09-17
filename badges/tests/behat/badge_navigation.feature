@@ -1,4 +1,4 @@
-@core @core_badges @_file_upload @javascript
+@core @core_badges @javascript
 Feature: Test tertiary navigation as various users
 
   Background:
@@ -15,65 +15,45 @@ Feature: Test tertiary navigation as various users
       | teacher | C1     | editingteacher |
       | student1 | C1     | student        |
       | nonediting | C1     | teacher        |
-    # Create system badge and define a criterion.
-    And I log in as "admin"
-    And I am on "Course 1" course homepage
-    And I navigate to "Badges > Add a new badge" in current page administration
-    And I set the following fields to these values:
-      | Name | Testing course badge |
-      | Version | 1.1 |
-      | Language | Catalan |
-      | Description | Testing course badge description |
-      | Image author | http://author.example.com |
-      | Image caption | Test caption image |
-    And I upload "badges/tests/behat/badge.png" file to "Image" filemanager
-    And I press "Create badge"
-    And I set the field "type" to "Manual issue by role"
-    And I expand all fieldsets
-    And I set the field "Teacher" to "1"
-    And I press "Save"
-    And I am on site homepage
-    And I navigate to "Badges > Add a new badge" in site administration
-    And I set the following fields to these values:
-      | Name | Testing site badge |
-      | Version | 1.1 |
-      | Language | Catalan |
-      | Description | Testing site badge description |
-      | Image author | http://author.example.com |
-      | Image caption | Test caption image |
-    And I upload "badges/tests/behat/badge.png" file to "Image" filemanager
-    And I press "Create badge"
-    And I set the field "type" to "Manual issue by role"
-    And I expand all fieldsets
-    And I set the field "Teacher" to "1"
-    And I press "Save"
+    # Create a course badge in our test course.
+    And the following "core_badges > Badge" exists:
+      | name           | Testing course badge             |
+      | status         | inactive                         |
+      | type           | 2                                |
+      | course         | C1                               |
+      | version        | 1.1                              |
+      | language       | ca                               |
+      | description    | Testing course badge description |
+      | image          | badges/tests/behat/badge.png     |
+      | imageauthorurl | http://author.example.com        |
+      | imagecaption   | Test caption image               |
+    # Create a site badge.
+    And the following "core_badges > Badge" exists:
+      | name           | Testing site badge               |
+      | status         | inactive                         |
+      | version        | 1.1                              |
+      | language       | ca                               |
+      | description    | Testing site badge description   |
+      | image          | badges/tests/behat/badge.png     |
+      | imageauthorurl | http://author.example.com        |
+      | imagecaption   | Test caption image               |
+    And the following "core_badges > Criterias" exist:
+      | badge                | role           |
+      | Testing course badge | editingteacher |
+      | Testing site badge   | editingteacher |
 
   Scenario Outline: Check navigation as different users in a course context
     Given I log in as "<user>"
     And I am on "Course 1" course homepage
     When I navigate to "Badges" in current page administration
-    Then "Manage badges" "button" should exist
-    And "Add a new badge" "button" <createbutton>
+    Then "Add a new badge" "button" <createbutton>
     And I should see "<activetab>" is active in secondary navigation
-    And I click on "Manage badges" "button"
-    And "Manage badges" "button" should not exist
-    And "Back" "button" should exist
-    And "Add a new badge" "button" <createbutton>
-    And I should see "<activetab>" is active in secondary navigation
-    And I click on "Back" "button"
     And "Back" "button" should not exist
-    And "Manage badges" "button" should exist
-    And "Add a new badge" "button" <createbutton>
-    And I should see "<activetab>" is active in secondary navigation
-    And I click on "Manage badges" "button"
     And I click on "Testing course badge" "link"
-    And "Manage badges" "button" should not exist
     And "Add a new badge" "button" should not exist
     And "Back" "button" should exist
     And I should see "<activetab>" is active in secondary navigation
     And I click on "Back" "button"
-    And "Back" "button" should exist
-    And "Manage badges" "button" should not exist
     And "Add a new badge" "button" <createbutton>
     And I should see "<activetab>" is active in secondary navigation
 
@@ -90,33 +70,28 @@ Feature: Test tertiary navigation as various users
     # Enable one badge.
     When I am on the "C1" "Course" page logged in as "admin"
     And I navigate to "Badges" in current page administration
-    And I click on "Manage badges" "button"
-    And I click on "Enable access" "link" in the "Testing course badge" "table_row"
-    And I press "Continue"
+    And I press "Enable access" action in the "Testing course badge" report row
+    And I click on "Enable" "button" in the "Confirm" "dialogue"
     And I log out
     # Now student should see the Badges link.
     And I am on the "C1" "Course" page logged in as "student1"
     Then "Badges" "link" should exist in current page administration
     And I navigate to "Badges" in current page administration
     And "Back" "button" should not exist
-    And "Manage badges" "button" should not exist
     And "Add a new badge" "button" should not exist
     And I should see "Badges" is active in secondary navigation
 
   Scenario: Check navigation as an admin in a site context
     Given I log in as "admin"
     When I navigate to "Badges > Manage badges" in site administration
-    Then "Manage badges" "button" should not exist
-    And "Add a new badge" "button" should exist
+    Then "Add a new badge" "button" should exist
     And I should see "General" is active in secondary navigation
     And I click on "Testing site badge" "link"
-    And "Manage badges" "button" should not exist
     And "Add a new badge" "button" should not exist
     And "Back" "button" should exist
     And I should see "General" is active in secondary navigation
     And I click on "Back" "button"
     And "Back" "button" should not exist
-    And "Manage badges" "button" should not exist
     And "Add a new badge" "button" should exist
 
   Scenario Outline: Check secondary navigation highlights after tertiary nav jumps in site admin
@@ -141,7 +116,6 @@ Feature: Test tertiary navigation as various users
     Given I log in as "admin"
     And I am on "Course 1" course homepage
     And I navigate to "Badges" in current page administration
-    And I click on "Manage badges" "button"
     And I click on "Testing course badge" "link"
     When I select "<option>" from the "jump" singleselect
     Then I should see "More" is active in secondary navigation

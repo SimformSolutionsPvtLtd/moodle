@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+use mod_quiz\quiz_attempt;
+use mod_quiz\quiz_settings;
+
 defined('MOODLE_INTERNAL') || die();
 
 /**
@@ -25,13 +28,13 @@ defined('MOODLE_INTERNAL') || die();
  */
 class mod_quiz_generator extends testing_module_generator {
 
-    public function create_instance($record = null, array $options = null) {
+    public function create_instance($record = null, ?array $options = null) {
         global $CFG;
 
         require_once($CFG->dirroot.'/mod/quiz/locallib.php');
         $record = (object)(array)$record;
 
-        $defaultquizsettings = array(
+        $defaultquizsettings = [
             'timeopen'               => 0,
             'timeclose'              => 0,
             'preferredbehaviour'     => 'deferredfeedback',
@@ -42,6 +45,7 @@ class mod_quiz_generator extends testing_module_generator {
             'questiondecimalpoints'  => -1,
             'attemptduring'          => 1,
             'correctnessduring'      => 1,
+            'maxmarksduring'         => 1,
             'marksduring'            => 1,
             'specificfeedbackduring' => 1,
             'generalfeedbackduring'  => 1,
@@ -49,6 +53,7 @@ class mod_quiz_generator extends testing_module_generator {
             'overallfeedbackduring'  => 0,
             'attemptimmediately'          => 1,
             'correctnessimmediately'      => 1,
+            'maxmarksimmediately'         => 1,
             'marksimmediately'            => 1,
             'specificfeedbackimmediately' => 1,
             'generalfeedbackimmediately'  => 1,
@@ -56,6 +61,7 @@ class mod_quiz_generator extends testing_module_generator {
             'overallfeedbackimmediately'  => 1,
             'attemptopen'            => 1,
             'correctnessopen'        => 1,
+            'maxmarksopen'           => 1,
             'marksopen'              => 1,
             'specificfeedbackopen'   => 1,
             'generalfeedbackopen'    => 1,
@@ -63,6 +69,7 @@ class mod_quiz_generator extends testing_module_generator {
             'overallfeedbackopen'    => 1,
             'attemptclosed'          => 1,
             'correctnessclosed'      => 1,
+            'maxmarksclosed'         => 1,
             'marksclosed'            => 1,
             'specificfeedbackclosed' => 1,
             'generalfeedbackclosed'  => 1,
@@ -85,7 +92,7 @@ class mod_quiz_generator extends testing_module_generator {
             'showuserpicture'        => 0,
             'showblocks'             => 0,
             'navmethod'              => QUIZ_NAVMETHOD_FREE,
-        );
+        ];
 
         foreach ($defaultquizsettings as $name => $value) {
             if (!isset($record->{$name})) {
@@ -115,7 +122,7 @@ class mod_quiz_generator extends testing_module_generator {
     public function create_attempt($quizid, $userid, array $forcedrandomquestions = [],
             array $forcedvariants = []) {
         // Build quiz object and load questions.
-        $quizobj = quiz::create($quizid, $userid);
+        $quizobj = quiz_settings::create($quizid, $userid);
 
         $attemptnumber = 1;
         $attempt = null;
@@ -144,8 +151,9 @@ class mod_quiz_generator extends testing_module_generator {
      * @param bool $checkbutton if simulate a click on the check button for each question, else simulate save.
      *      This should only be used with behaviours that have a check button.
      * @param bool $finishattempt if true, the attempt will be submitted.
+     * @param int|null $timefinish the time to set as the time finished for the attempt.
      */
-    public function submit_responses($attemptid, array $responses, $checkbutton, $finishattempt) {
+    public function submit_responses($attemptid, array $responses, $checkbutton, $finishattempt, ?int $timefinish = null) {
         $questiongenerator = $this->datagenerator->get_plugin_generator('core_question');
 
         $attemptobj = quiz_attempt::create($attemptid);
@@ -174,7 +182,9 @@ class mod_quiz_generator extends testing_module_generator {
         }
 
         if ($finishattempt) {
-            $attemptobj->process_finish(time(), false);
+            // If a timefinish is not specified, use the current time.
+            $timefinish = $timefinish ?? time();
+            $attemptobj->process_finish($timefinish, false);
         }
     }
 
@@ -204,5 +214,159 @@ class mod_quiz_generator extends testing_module_generator {
 
         // Update any associated calendar events, if necessary.
         quiz_update_events($DB->get_record('quiz', ['id' => $data['quiz']], '*', MUST_EXIST));
+    }
+
+    /**
+     * Create a quiz override (either user or group).
+     *
+     * @param array $data must specify quizid and a name.
+     * @return stdClass the newly created quiz_grade_items row.
+     */
+    public function create_grade_item(array $data): stdClass {
+        global $DB;
+
+        // Validate.
+        if (!isset($data['quizid'])) {
+            throw new coding_exception('Must specify quizid when creating a quiz grade item.');
+        }
+
+        if (!isset($data['name'])) {
+            throw new coding_exception('Must specify a name when creating a quiz grade item.');
+        }
+
+        if (clean_param($data['name'], PARAM_TEXT) !== $data['name']) {
+            throw new coding_exception('Grade item name must be PARAM_TEXT.');
+        }
+
+        $data['sortorder'] = $DB->get_field('quiz_grade_items',
+                'COALESCE(MAX(sortorder) + 1, 1)',
+                ['quizid' => $data['quizid']]);
+
+        // Create the grade item.
+        $gradeitem = (object) $data;
+        $gradeitem->id = $DB->insert_record('quiz_grade_items', $gradeitem);
+        return $gradeitem;
+    }
+
+    /**
+     * Create the structure of a quiz according to the provided layout.
+     *
+     * @param stdClass $quiz The quiz object.
+     * @param array $layout Layout describing questions and sections.
+     * @param int|null $categoryid Optional question category id.
+     */
+    public function create_quiz_structure($quiz, array $layout, ?int $categoryid = null): void {
+        $questiongenerator = $this->datagenerator->get_plugin_generator('core_question');
+        $catid = $categoryid ?? $questiongenerator->create_question_category()->id;
+
+        $headings = [];
+        $lastpage = 0;
+        $cm = get_coursemodule_from_instance('quiz', $quiz->id, $quiz->course);
+        $course = get_course($quiz->course);
+        $quizobj = new quiz_settings($quiz, $cm, $course);
+
+        foreach ($layout as $item) {
+            if (is_string($item)) {
+                if (isset($headings[$lastpage + 1])) {
+                    throw new \coding_exception('Sections cannot be empty.');
+                }
+                $headings[$lastpage + 1] = $item;
+            } else {
+                [$name, $page, $qtype] = $item;
+                $structure = \mod_quiz\structure::create_for_quiz($quizobj);
+                if ($page === 0) {
+                    $slots = $structure->get_slots();
+                    $lastslot = end($slots);
+                    $page = $lastslot ? $lastslot->page : 1;
+                }
+                if ($page < 1 || !($page == $lastpage + 1 || (!isset($headings[$lastpage + 1]) && $page == $lastpage))) {
+                    throw new \coding_exception('Page numbers wrong.');
+                }
+                $q = $questiongenerator->create_question($qtype, null, ['name' => $name, 'category' => $catid]);
+                quiz_add_quiz_question($q->id, $quiz, $page);
+                $lastpage = $page;
+            }
+        }
+
+        // Section heading logic.
+        $structure = \mod_quiz\structure::create_for_quiz($quizobj);
+        if (isset($headings[1])) {
+            [$heading, $shuffle] = $this->parse_section_name($headings[1]);
+            $sections = $structure->get_sections();
+            $firstsection = reset($sections);
+            $structure->set_section_heading($firstsection->id, $heading);
+            $structure->set_section_shuffle($firstsection->id, $shuffle);
+            unset($headings[1]);
+        }
+        foreach ($headings as $startpage => $heading) {
+            [$heading, $shuffle] = $this->parse_section_name($heading);
+            $id = $structure->add_section_heading($startpage, $heading);
+            $structure->set_section_shuffle($id, $shuffle);
+        }
+    }
+
+    /**
+     * Creat a test quiz.
+     *
+     * $layout looks like this:
+     * $layout = [
+     *     'Heading 1'
+     *     ['TF1', 1, 'truefalse'],
+     *     'Heading 2*'
+     *     ['TF2', 2, 'truefalse'],
+     * ];
+     * That is, either a string, which represents a section heading,
+     * or an array that represents a question.
+     *
+     * If the section heading ends with *, that section is shuffled.
+     *
+     * The elements in the question array are name, page number, and question type.
+     *
+     * @param array $layout as above.
+     * @param array $settings optional quiz settings to override defaults.
+     * @return quiz_settings the created quiz.
+     */
+    public function create_test_quiz(array $layout, array $settings = []): quiz_settings {
+
+        // Default settings - only set defaults for keys not provided by the caller.
+        $defaults = [
+            'questionsperpage' => 0,
+            'grade' => 100.0,
+            'sumgrades' => 2,
+            'preferredbehaviour' => 'immediatefeedback',
+        ];
+
+        // Preserve any settings passed in, only add missing defaults.
+        $settings += $defaults;
+
+        // Create the course if needed.
+        if (empty($settings['course'])) {
+            $course = $this->datagenerator->create_course();
+            $settings['course'] = $course->id;
+        } else {
+            $course = get_course($settings['course']);
+        }
+
+        // Create the quiz, structure it, and return the quiz settings.
+        $quiz = $this->create_instance($settings);
+        $this->create_quiz_structure($quiz, $layout);
+        $cm = get_coursemodule_from_instance('quiz', $quiz->id, $settings['course']);
+
+        return new quiz_settings($quiz, $cm, $course);
+    }
+
+    /**
+     * Parse the section name, optionally followed by a * to mean shuffle, as
+     * used by create_test_quiz as assert_quiz_layout.
+     *
+     * @param string $heading the heading.
+     * @return array with two elements, the heading and the shuffle setting.
+     */
+    public function parse_section_name($heading): array {
+        if (str_ends_with($heading, '*')) {
+            return [substr($heading, 0, -1), 1];
+        } else {
+            return [$heading, 0];
+        }
     }
 }

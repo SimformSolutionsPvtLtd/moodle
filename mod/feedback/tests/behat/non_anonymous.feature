@@ -27,7 +27,7 @@ Feature: Non anonymous feedback
       | feedback   | Site feedback   | Acceptance test site | feedback0 | 2         | 1             | 1       |
       | feedback   | Course feedback | C1                   | feedback1 | 2         | 1             | 0       |
     When I am on the "Site feedback" "feedback activity" page logged in as manager
-    And I click on "Edit questions" "link" in the "[role=main]" "css_element"
+    And I navigate to "Questions" in current page administration
     And I add a "Multiple choice" question to the feedback with:
       | Question                       | Do you like our site?              |
       | Label                          | multichoice2                       |
@@ -54,11 +54,9 @@ Feature: Non anonymous feedback
 
   @javascript
   Scenario: Complete non anonymous feedback and view analysis on the front page as an authenticated user
-    And I log in as "admin"
-    And I set the following system permissions of "Authenticated user on site home" role:
-      | capability                   | permission |
-      | mod/feedback:viewanalysepage | Allow      |
-    And I log out
+    Given the following "role capability" exists:
+      | role                         | frontpage |
+      | mod/feedback:viewanalysepage | allow     |
     When I am on the "Site feedback" "feedback activity" page logged in as user1
     And I follow "Answer the questions"
     And I should see "Do you like our site?"
@@ -93,7 +91,7 @@ Feature: Non anonymous feedback
   @javascript
   Scenario: Non anonymous feedback in a course
     When I am on the "Course feedback" "feedback activity" page logged in as teacher
-    And I click on "Edit questions" "link" in the "[role=main]" "css_element"
+    And I navigate to "Questions" in current page administration
     And I add a "Multiple choice" question to the feedback with:
       | Question                       | Do you like this course?           |
       | Label                          | multichoice1                       |

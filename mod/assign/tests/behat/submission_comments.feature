@@ -12,7 +12,7 @@ Feature: In an assignment, students can comment in their submissions
       | username | firstname | lastname | email |
       | teacher1 | Teacher | 1 | teacher1@example.com |
       | student1 | Student | 1 | student1@example.com |
-      | student2 | Student | 1 | student2@example.com |
+      | student2 | Student | 2 | student2@example.com |
     And the following "course enrolments" exist:
       | user | course | role |
       | teacher1 | C1 | editingteacher |
@@ -32,7 +32,7 @@ Feature: In an assignment, students can comment in their submissions
     And I set the field "content" to "First student comment"
     And I follow "Save comment"
     Then I should see "First student comment"
-    And the field "content" matches value "Add a comment..."
+    And the field "content" matches value ""
     And I click on "Delete comment posted by Student 1" "link"
     # Wait for the animation to finish.
     And I wait "2" seconds
@@ -49,16 +49,11 @@ Feature: In an assignment, students can comment in their submissions
     Given the following "activities" exist:
       | activity  | course  | name                  | assignsubmission_onlinetext_enabled  |
       | assign    | C1      | Test assignment name  | 1                                    |
-    And I am on the "Test assignment name" Activity page logged in as student1
-    And I press "Add submission"
-    And I set the following fields to these values:
-      | Online text | I'm the student submission |
-    And I press "Save changes"
-    And I log out
-
+    And the following "mod_assign > submissions" exist:
+      | assign                | user      | onlinetext              |
+      | Test assignment name  | student1  | student one submission  |
     And I am on the "Test assignment name" Activity page logged in as teacher1
-    And I follow "View all submissions"
-    And I click on "Grade" "link" in the "Student 1" "table_row"
+    And I go to "Student 1" "Test assignment name" activity advanced grading page
     And I click on ".comment-link" "css_element"
     When I set the field "content" to "Teacher feedback first comment"
     And I press "Save changes"
@@ -75,8 +70,7 @@ Feature: In an assignment, students can comment in their submissions
       | Test assignment name  | student1  | I'm the student submission  |
 
     And I am on the "Test assignment name" Activity page logged in as teacher1
-    And I follow "View all submissions"
-    And I click on "Grade" "link" in the "Student 1" "table_row"
+    And I go to "Student 1" "Test assignment name" activity advanced grading page
     And I click on ".comment-link" "css_element"
     When I set the field "content" to "Teacher feedback first comment"
     # click the save and show next twice as we have only 2 students
@@ -92,8 +86,7 @@ Feature: In an assignment, students can comment in their submissions
       | activity  | course  | name                  | assignsubmission_onlinetext_enabled  | assignmentsubmission_file_enabled  | assignfeedback_comments_enabled  |
       | assign    | C1      | Test assignment name  | 0                                    | 0                                  | 1                                |
     And I am on the "Test assignment name" Activity page logged in as teacher1
-    And I follow "View all submissions"
-    And I click on "Grade" "link" in the "Student 1" "table_row"
+    And I go to "Student 1" "Test assignment name" activity advanced grading page
     When I set the following fields to these values:
       | Grade out of 100   | 50                        |
       | Feedback comments  | I'm the teacher feedback  |
@@ -107,8 +100,7 @@ Feature: In an assignment, students can comment in their submissions
       | activity  | course  | name                  | assignsubmission_onlinetext_enabled  | assignmentsubmission_file_enabled  | assignfeedback_comments_enabled  |
       | assign    | C1      | Test assignment name  | 0                                    | 0                                  | 1                                |
     And I am on the "Test assignment name" Activity page logged in as teacher1
-    And I follow "View all submissions"
-    And I click on "Grade" "link" in the "Student 1" "table_row"
+    And I go to "Student 1" "Test assignment name" activity advanced grading page
     And I set the following fields to these values:
       | Grade out of 100 | 0 |
     And I press "Save changes"

@@ -36,13 +36,13 @@ use mod_bigbluebuttonbn\test\testcase_helper_trait;
  * @covers \mod_bigbluebuttonbn\logger
  * @coversDefaultClass \mod_bigbluebuttonbn\logger
  */
-class logger_test extends \advanced_testcase {
+final class logger_test extends \advanced_testcase {
     use testcase_helper_trait;
 
     /**
      * Test delete instance logs
      */
-    public function test_log_instance_deleted() {
+    public function test_log_instance_deleted(): void {
         global $DB;
 
         $this->resetAfterTest();
@@ -59,7 +59,7 @@ class logger_test extends \advanced_testcase {
     /**
      * Test log method
      */
-    public function test_log_recording_played_event() {
+    public function test_log_recording_played_event(): void {
         global $DB;
 
         $this->resetAfterTest();
@@ -67,6 +67,119 @@ class logger_test extends \advanced_testcase {
         $instance = instance::get_from_instanceid($bbactivity->id);
 
         logger::log_recording_played_event($instance, 1);
+        $this->assertTrue($DB->record_exists('bigbluebuttonbn_logs', ['bigbluebuttonbnid' => $instance->get_instance_id()]));
+    }
+
+    /**
+     * Test recording link deleted log method.
+     */
+    public function test_log_recording_link_deleted_event(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+        [$bbactivitycontext, $bbactivitycm, $bbactivity] = $this->create_instance();
+        $instance = instance::get_from_instanceid($bbactivity->id);
+
+        logger::log_recording_link_deleted_event($instance, 1);
+        $this->assertTrue($DB->record_exists('bigbluebuttonbn_logs', ['bigbluebuttonbnid' => $instance->get_instance_id()]));
+    }
+
+
+    /**
+     * Test recording deleted log method.
+     */
+    public function test_log_recording_deleted_event(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+        [$bbactivitycontext, $bbactivitycm, $bbactivity] = $this->create_instance();
+        $instance = instance::get_from_instanceid($bbactivity->id);
+
+        logger::log_recording_deleted_event($instance, 1);
+        $this->assertTrue($DB->record_exists('bigbluebuttonbn_logs', ['bigbluebuttonbnid' => $instance->get_instance_id()]));
+    }
+
+    /**
+     * Test recording edited log method.
+     */
+    public function test_log_recording_edited_event(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+        [$bbactivitycontext, $bbactivitycm, $bbactivity] = $this->create_instance();
+        $instance = instance::get_from_instanceid($bbactivity->id);
+
+        logger::log_recording_edited_event($instance, 1);
+        $this->assertTrue($DB->record_exists('bigbluebuttonbn_logs', ['bigbluebuttonbnid' => $instance->get_instance_id()]));
+    }
+
+    /**
+     * Test recording imported log method.
+     */
+    public function test_log_recording_imported_event(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+        [$bbactivitycontext, $bbactivitycm, $bbactivity] = $this->create_instance();
+        $instance = instance::get_from_instanceid($bbactivity->id);
+
+        logger::log_recording_imported_event($instance, 1);
+        $this->assertTrue($DB->record_exists('bigbluebuttonbn_logs', ['bigbluebuttonbnid' => $instance->get_instance_id()]));
+    }
+
+    /**
+     * Test recording protected log method.
+     */
+    public function test_log_recording_protected_event(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+        [$bbactivitycontext, $bbactivitycm, $bbactivity] = $this->create_instance();
+        $instance = instance::get_from_instanceid($bbactivity->id);
+
+        logger::log_recording_protected_event($instance, 1);
+        $this->assertTrue($DB->record_exists('bigbluebuttonbn_logs', ['bigbluebuttonbnid' => $instance->get_instance_id()]));
+    }
+
+    /**
+     * Test recording unprotected log method.
+     */
+    public function test_log_recording_unprotected_event(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+        [$bbactivitycontext, $bbactivitycm, $bbactivity] = $this->create_instance();
+        $instance = instance::get_from_instanceid($bbactivity->id);
+
+        logger::log_recording_unprotected_event($instance, 1);
+        $this->assertTrue($DB->record_exists('bigbluebuttonbn_logs', ['bigbluebuttonbnid' => $instance->get_instance_id()]));
+    }
+
+    /**
+     * Test recording published log method.
+     */
+    public function test_log_recording_published_event(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+        [$bbactivitycontext, $bbactivitycm, $bbactivity] = $this->create_instance();
+        $instance = instance::get_from_instanceid($bbactivity->id);
+
+        logger::log_recording_published_event($instance, 1);
+        $this->assertTrue($DB->record_exists('bigbluebuttonbn_logs', ['bigbluebuttonbnid' => $instance->get_instance_id()]));
+    }
+
+    /**
+     * Test recording unpublished log method.
+     */
+    public function test_log_recording_unpublished_event(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+        [$bbactivitycontext, $bbactivitycm, $bbactivity] = $this->create_instance();
+        $instance = instance::get_from_instanceid($bbactivity->id);
+
+        logger::log_recording_unpublished_event($instance, 1);
         $this->assertTrue($DB->record_exists('bigbluebuttonbn_logs', ['bigbluebuttonbnid' => $instance->get_instance_id()]));
     }
 }

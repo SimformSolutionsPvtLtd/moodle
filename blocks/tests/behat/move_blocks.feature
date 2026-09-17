@@ -15,16 +15,18 @@ Feature: Block region moving
       | user | course | role |
       | teacher1 | C1 | editingteacher |
     And the following "activities" exist:
-      | activity | course | name             | template |
-      | survey   | C1     | Test survey name | 4        |
-      | book     | C1     | Test book name   |          |
+      | activity | course | name             |
+      | assign   | C1     | Test assign name |
+      | book     | C1     | Test book name   |
     And the following "mod_book > chapter" exists:
       | book    | Test book name         |
       | title   | Book title             |
       | content | Book content test test |
+    And the following "blocks" exist:
+      | blockname | contextlevel | reference | pagetypepattern | defaultregion |
+      | comments  | Course       | C1        | course-view-*   | side-pre      |
     And I log in as "teacher1"
     And I am on "Course 1" course homepage with editing mode on
-    And I add the "Comments" block
     And I configure the "Comments" block
     And I set the following fields to these values:
       | Display on page types | Any page |

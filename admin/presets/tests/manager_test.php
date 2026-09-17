@@ -16,6 +16,7 @@
 
 namespace core_adminpresets;
 
+use moodle_exception;
 use stdClass;
 
 /**
@@ -27,7 +28,16 @@ use stdClass;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @coversDefaultClass \core_adminpresets\manager
  */
-class manager_test extends \advanced_testcase {
+final class manager_test extends \advanced_testcase {
+    /**
+     * Include required libraries.
+     */
+    public static function setUpBeforeClass(): void {
+        global $CFG;
+        require_once($CFG->libdir.'/adminlib.php');
+        parent::setUpBeforeClass();
+    }
+
     /**
      * Test the behaviour of protected get_site_settings method.
      *
@@ -133,8 +143,8 @@ class manager_test extends \advanced_testcase {
         $settingpage = $adminroot->locate('modsettingquiz');
         $settingdata = $settingpage->settings->quizbrowsersecurity;;
         $result = $manager->get_setting($settingdata, '');
-        $this->assertInstanceOf('\mod_quiz\adminpresets\adminpresets_mod_quiz_admin_setting_browsersecurity', $result);
-        $this->assertNotEquals('core_adminpresets\local\setting\adminpresets_setting', get_class($result));
+        $this->assertInstanceOf(\mod_quiz\adminpresets\adminpresets_browser_security_setting::class, $result);
+        $this->assertNotEquals(\core_adminpresets\local\setting\adminpresets_setting::class, get_class($result));
 
         // Check the adminpresets_setting class is returned when no specific class exists.
         $settingpage = $adminroot->locate('managecustomfields');
@@ -358,7 +368,7 @@ class manager_test extends \advanced_testcase {
      *
      * @return array
      */
-    public function export_preset_provider(): array {
+    public static function export_preset_provider(): array {
         return [
             'Export settings and plugins, excluding sensible' => [
                 'includesensible' => false,
@@ -414,7 +424,7 @@ class manager_test extends \advanced_testcase {
      * @param string|null $expectedpresetname Expected preset name.
      */
     public function test_import_preset(string $filecontents, bool $expectedpreset, bool $expectedsettings = false,
-            bool $expectedplugins = false, bool $expecteddebugging = false, string $expectedexception = null,
+            bool $expectedplugins = false, bool $expecteddebugging = false, ?string $expectedexception = null,
             string $expectedpresetname = 'Imported preset'): void {
         global $DB;
 
@@ -521,26 +531,32 @@ class manager_test extends \advanced_testcase {
      *
      * @return array
      */
-    public function import_preset_provider(): array {
+    public static function import_preset_provider(): array {
         return [
             'Import settings from an empty file' => [
                 'filecontents' => '',
                 'expectedpreset' => false,
             ],
             'Import settings and plugins from a valid XML file' => [
-                'filecontents' => file_get_contents(__DIR__ . '/fixtures/import_settings_plugins.xml'),
+                'filecontents' => file_get_contents(
+                    filename: self::get_fixture_path(__NAMESPACE__, 'import_settings_plugins.xml')
+                ),
                 'expectedpreset' => true,
                 'expectedsettings' => true,
                 'expectedplugins' => true,
             ],
             'Import only settings from a valid XML file' => [
-                'filecontents' => file_get_contents(__DIR__ . '/fixtures/import_settings.xml'),
+                'filecontents' => file_get_contents(
+                    filename: self::get_fixture_path(__NAMESPACE__, 'import_settings.xml')
+                ),
                 'expectedpreset' => true,
                 'expectedsettings' => true,
                 'expectedplugins' => false,
             ],
             'Import settings and plugins from a valid XML file with Starter name, which will be marked as non-core' => [
-                'filecontents' => file_get_contents(__DIR__ . '/fixtures/import_starter_name.xml'),
+                'filecontents' => file_get_contents(
+                    filename: self::get_fixture_path(__NAMESPACE__, 'import_starter_name.xml')
+                ),
                 'expectedpreset' => true,
                 'expectedsettings' => true,
                 'expectedplugins' => true,
@@ -549,7 +565,9 @@ class manager_test extends \advanced_testcase {
                 'expectedpresetname' => 'Starter',
             ],
             'Import settings from an invalid XML file' => [
-                'filecontents' => file_get_contents(__DIR__ . '/fixtures/invalid_xml_file.xml'),
+                'filecontents' => file_get_contents(
+                    filename: self::get_fixture_path(__NAMESPACE__, 'invalid_xml_file.xml')
+                ),
                 'expectedpreset' => false,
                 'expectedsettings' => false,
                 'expectedplugins' => false,
@@ -557,20 +575,26 @@ class manager_test extends \advanced_testcase {
                 'expectedexception' => \Exception::class,
             ],
             'Import unexisting settings category' => [
-                'filecontents' => file_get_contents(__DIR__ . '/fixtures/unexisting_category.xml'),
+                'filecontents' => file_get_contents(
+                    filename: self::get_fixture_path(__NAMESPACE__, 'unexisting_category.xml')
+                ),
                 'expectedpreset' => false,
                 'expectedsettings' => false,
                 'expectedplugins' => false,
             ],
             'Import unexisting setting' => [
-                'filecontents' => file_get_contents(__DIR__ . '/fixtures/unexisting_setting.xml'),
+                'filecontents' => file_get_contents(
+                    filename: self::get_fixture_path(__NAMESPACE__, 'unexisting_setting.xml')
+                ),
                 'expectedpreset' => false,
                 'expectedsettings' => false,
                 'expectedplugins' => false,
                 'expecteddebugging' => true,
             ],
             'Import valid settings with one unexisting setting too' => [
-                'filecontents' => file_get_contents(__DIR__ . '/fixtures/import_settings_with_unexisting_setting.xml'),
+                'filecontents' => file_get_contents(
+                    filename: self::get_fixture_path(__NAMESPACE__, 'import_settings_with_unexisting_setting.xml'),
+                ),
                 'expectedpreset' => true,
                 'expectedsettings' => false,
                 'expectedplugins' => false,
@@ -578,7 +602,6 @@ class manager_test extends \advanced_testcase {
             ],
         ];
     }
-
 
     /**
      * Test the behaviour of delete_preset() method when the preset id doesn't exist.
@@ -599,8 +622,26 @@ class manager_test extends \advanced_testcase {
 
         $manager = new manager();
 
-        $this->expectException(\moodle_exception::class);
+        $this->expectException(moodle_exception::class);
+        $this->expectExceptionMessage('Error deleting from database');
         $manager->delete_preset($unexistingid);
+    }
+
+    /**
+     * Test trying to delete the core/pre-defined presets
+     *
+     * @covers ::delete_preset
+     */
+    public function test_delete_preset_core(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $starterpreset = $DB->get_record('adminpresets', ['iscore' => manager::STARTER_PRESET]);
+
+        $this->expectException(moodle_exception::class);
+        $this->expectExceptionMessage('Error deleting from database');
+        (new manager())->delete_preset($starterpreset->id);
     }
 
     /**
@@ -767,5 +808,152 @@ class manager_test extends \advanced_testcase {
         // This plugin won't change (because it had the same value than before the preset was applied).
         $enabledplugins = \core\plugininfo\qtype::get_enabled_plugins();
         $this->assertArrayHasKey('truefalse', $enabledplugins);
+    }
+
+    /**
+     * Test import_preset() behaviour for executable-path settings depending on $CFG->preventexecpath.
+     *
+     * @dataProvider import_preset_execpath_provider
+     * @covers ::import_preset
+     *
+     * @param bool $preventexecpath Whether to set $CFG->preventexecpath before importing.
+     * @param int $expecteditemcount Expected number of items stored in the preset.
+     * @param string[] $presentnames Setting names that must appear in the stored items.
+     * @param string[] $absentnames Setting names that must not appear in the stored items.
+     */
+    public function test_import_preset_execpath(
+        bool $preventexecpath,
+        int $expecteditemcount,
+        array $presentnames,
+        array $absentnames
+    ): void {
+        global $CFG, $DB;
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        if ($preventexecpath) {
+            $CFG->preventexecpath = true;
+        } else {
+            unset($CFG->preventexecpath);
+        }
+
+        $xml = file_get_contents(self::get_fixture_path(__NAMESPACE__, 'import_execpath_setting.xml'));
+        [, $preset, $settingsfound] = (new manager())->import_preset($xml);
+
+        $this->assertNotNull($preset);
+        $this->assertTrue($settingsfound);
+
+        $names = array_column($DB->get_records('adminpresets_it', ['adminpresetid' => $preset->id]), 'name');
+        $this->assertCount($expecteditemcount, $names);
+        foreach ($presentnames as $name) {
+            $this->assertContains($name, $names);
+        }
+        foreach ($absentnames as $name) {
+            $this->assertNotContains($name, $names);
+        }
+    }
+
+    /**
+     * Data provider for test_import_preset_execpath().
+     *
+     * @return array
+     */
+    public static function import_preset_execpath_provider(): array {
+        return [
+            'preventexecpath set: execpath and configfile settings dropped' => [
+                'preventexecpath'   => true,
+                'expecteditemcount' => 1,
+                'presentnames'      => ['enablebadges'],
+                'absentnames'       => ['aspellpath', 'geoip2file'],
+            ],
+            'preventexecpath not set: all settings stored' => [
+                'preventexecpath'   => false,
+                'expecteditemcount' => 3,
+                'presentnames'      => ['enablebadges', 'aspellpath', 'geoip2file'],
+                'absentnames'       => [],
+            ],
+        ];
+    }
+
+    /**
+     * Test apply_settings() behaviour for executable-path settings: verifies both the
+     * guard (skipped) and happy-path (applied) branches depending on $CFG->preventexecpath
+     * and whether the path is a valid executable.
+     *
+     * @dataProvider apply_settings_execpath_provider
+     * @covers ::apply_preset
+     *
+     * @param bool $preventexecpath Whether to set $CFG->preventexecpath.
+     * @param string $presetpath The executable path value stored in the preset.
+     * @param bool $expectedapplied Whether the setting should end up in $applied (true) or $skipped (false).
+     */
+    public function test_apply_settings_execpath(bool $preventexecpath, string $presetpath, bool $expectedapplied): void {
+        global $CFG;
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $pathtophp = '';
+        $isdefined = false;
+        if ($CFG->pathtophp != '') {
+            $pathtophp = $CFG->pathtophp;
+            $isdefined = true;
+        }
+
+        if ($preventexecpath) {
+            $CFG->preventexecpath = true;
+        } else {
+            unset($CFG->preventexecpath);
+        }
+
+        $generator = $this->getDataGenerator()->get_plugin_generator('core_adminpresets');
+        $presetid = $generator->create_preset();
+        helper::add_item($presetid, 'pathtophp', $presetpath);
+
+        [$applied, $skipped] = (new manager())->apply_preset($presetid);
+
+        $phpvisiblename = get_string('pathtophp', 'admin');
+        $appliednames = array_map('strval', array_column($applied, 'visiblename'));
+        $skippednames = array_map('strval', array_column($skipped, 'visiblename'));
+
+        if ($expectedapplied) {
+            $this->assertContains($phpvisiblename, $appliednames);
+            $this->assertNotContains($phpvisiblename, $skippednames);
+            if (!$isdefined) {
+                $this->assertEquals($presetpath, get_config('core', 'pathtophp'));
+            } else {
+                $this->assertEquals($pathtophp, get_config('core', 'pathtophp'));
+            }
+        } else {
+            $this->assertContains($phpvisiblename, $skippednames);
+            $this->assertNotContains($phpvisiblename, $appliednames);
+            $this->assertEquals($pathtophp, get_config('core', 'pathtophp'));
+        }
+    }
+
+    /**
+     * Data provider for test_apply_settings_execpath().
+     *
+     * @return array
+     */
+    public static function apply_settings_execpath_provider(): array {
+        return [
+            'preventexecpath set: execpath setting skipped' => [
+                'preventexecpath' => true,
+                'presetpath'      => PHP_BINARY,
+                'expectedapplied' => false,
+            ],
+            'preventexecpath not set, invalid path: execpath setting skipped' => [
+                'preventexecpath' => false,
+                'presetpath'      => '/this/path/does/not/exist/phpbinary',
+                'expectedapplied' => false,
+            ],
+            'preventexecpath not set, valid executable: execpath setting applied' => [
+                'preventexecpath' => false,
+                'presetpath'      => PHP_BINARY,
+                'expectedapplied' => true,
+            ],
+        ];
     }
 }

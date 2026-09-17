@@ -35,12 +35,12 @@ require_once($CFG->libdir . '/completionlib.php');
  * @copyright  2018 Matt Porritt <mattp@catalyst-au.net>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class async_restore_test extends \advanced_testcase {
+final class async_restore_test extends \advanced_testcase {
 
     /**
      * Tests the asynchronous backup.
      */
-    public function test_async_restore() {
+    public function test_async_restore(): void {
         global $CFG, $USER, $DB;
 
         $this->resetAfterTest(true);
@@ -116,7 +116,6 @@ class async_restore_test extends \advanced_testcase {
 
         // Create the adhoc task.
         $asynctask = new \core\task\asynchronous_restore_task();
-        $asynctask->set_blocking(false);
         $asynctask->set_custom_data(array('backupid' => $restoreid));
         $asynctask->set_userid($USER->id);
         \core\task\manager::queue_adhoc_task($asynctask);
@@ -142,7 +141,7 @@ class async_restore_test extends \advanced_testcase {
     /**
      * Tests the asynchronous restore will resolve in duplicate cases where the controller is already removed.
      */
-    public function test_async_restore_missing_controller() {
+    public function test_async_restore_missing_controller(): void {
         global $CFG, $USER, $DB;
 
         $this->resetAfterTest(true);
@@ -223,43 +222,25 @@ class async_restore_test extends \advanced_testcase {
 
         // Create the adhoc task.
         $asynctask = new \core\task\asynchronous_restore_task();
-        $asynctask->set_blocking(false);
         $asynctask->set_custom_data(['backupid' => $restoreid]);
-        \core\task\manager::queue_adhoc_task($asynctask);
 
         // We are expecting a specific message output during this test.
         $this->expectOutputRegex('/invalid controller/');
 
         // Execute adhoc task.
-        $now = time();
-        $task = \core\task\manager::get_next_adhoc_task($now);
-        $this->assertInstanceOf('\\core\\task\\asynchronous_restore_task', $task);
-        $task->execute();
-        \core\task\manager::adhoc_task_complete($task);
-
-        // Check the task record is removed.
-        $this->assertEquals(0, $DB->count_records('task_adhoc'));
+        $asynctask->execute();
 
         // Now delete the record and confirm an entirely missing controller is handled.
         $DB->delete_records('backup_controllers');
 
         // Create the adhoc task.
         $asynctask = new \core\task\asynchronous_restore_task();
-        $asynctask->set_blocking(false);
         $asynctask->set_custom_data(['backupid' => $restoreid]);
-        \core\task\manager::queue_adhoc_task($asynctask);
 
         // We are expecting a specific message output during this test.
         $this->expectOutputRegex('/Unable to find restore controller/');
 
         // Execute adhoc task.
-        $now = time();
-        $task = \core\task\manager::get_next_adhoc_task($now);
-        $this->assertInstanceOf('\\core\\task\\asynchronous_restore_task', $task);
-        $task->execute();
-        \core\task\manager::adhoc_task_complete($task);
-
-        // Check the task record is removed.
-        $this->assertEquals(0, $DB->count_records('task_adhoc'));
+        $asynctask->execute();
     }
 }

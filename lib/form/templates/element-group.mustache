@@ -7,24 +7,34 @@
         {{/element.hiddenlabel}}
     {{/label}}
     {{$element}}
-        <fieldset class="w-100 m-0 p-0 border-0">
-            {{#label}}
-                <legend class="sr-only">{{label}}</legend>
-            {{/label}}
-            <div class="d-flex flex-wrap align-items-center">
-            {{#element.elements}}
-                {{{separator}}}
-                {{{html}}}
-            {{/element.elements}}
+        {{#label}}
+            <fieldset class="w-100 m-0 p-0 border-0">
+                <legend class="sr-only">{{{label}}}</legend>
+                <div class="d-flex flex-wrap align-items-center">
+                {{#element.elements}}
+                    {{{separator}}}
+                    {{{html}}}
+                {{/element.elements}}
+                </div>
+            </fieldset>
+        {{/label}}
+        {{^label}}
+            <div class="w-100 m-0 p-0 border-0">
+                <div class="d-flex flex-wrap align-items-center">
+                {{#element.elements}}
+                    {{{separator}}}
+                    {{{html}}}
+                {{/element.elements}}
+                </div>
             </div>
-        </fieldset>
+        {{/label}}
     {{/element}}
 {{/ core_form/element-template }}
 {{#js}}
 require(['jquery'], function($) {
     $('#{{element.id}}_label').css('cursor', 'default');
     $('#{{element.id}}_label').click(function() {
-        $('#{{element.id}}')
+        $('#{{element.id}}, [data-groupname="{{element.name}}"]')
             .find('button, a, input:not([type="hidden"]), select, textarea, [tabindex]')
             .filter(':not([disabled]):not([tabindex="0"]):not([tabindex="-1"])')
             .first().focus();

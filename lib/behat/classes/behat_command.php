@@ -40,7 +40,7 @@ class behat_command {
     /**
      * Docs url
      */
-    const DOCS_URL = 'https://docs.moodle.org/dev/Running_acceptance_test';
+    const DOCS_URL = 'https://moodledev.io/general/development/tools/behat';
 
     /**
      * Ensures the behat dir exists in moodledata
@@ -104,7 +104,7 @@ class behat_command {
      * @param bool $absolutepath return command with absolute path.
      * @return string
      */
-    public final static function get_behat_command($custombyterm = false, $parallerun = false, $absolutepath = false) {
+    final public static function get_behat_command($custombyterm = false, $parallerun = false, $absolutepath = false) {
 
         $separator = DIRECTORY_SEPARATOR;
         $exec = 'behat';
@@ -146,7 +146,7 @@ class behat_command {
      * @param  string $options  Defaults to '' so tests would be executed
      * @return array            CLI command outputs [0] => string, [1] => integer
      */
-    public final static function run($options = '') {
+    final public static function run($options = '') {
         global $CFG;
 
         $currentcwd = getcwd();

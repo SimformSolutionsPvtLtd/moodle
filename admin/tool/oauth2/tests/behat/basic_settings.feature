@@ -54,13 +54,17 @@ Feature: Basic OAuth2 functionality
     And I should see "Testing service"
     And "Allow login" "icon" should exist in the "Testing service" "table_row"
     And "Allow services" "icon" should exist in the "Testing service" "table_row"
-    And I should see "-" in the "Testing service" "table_row"
+    And "Service discovery successful" "icon" should exist in the "Testing service" "table_row"
     And I click on "Configure endpoints" "link" in the "Testing service" "table_row"
     And I should see "authorization_endpoint"
-    And I should not see "discovery_endpoint"
+    And I should see "discovery_endpoint"
+    And I should see "device_authorization_endpoint"
     And I navigate to "Server > OAuth 2 services" in site administration
     And I click on "Configure user field mappings" "link" in the "Testing service" "table_row"
-    And I should see "firstname" in the "givenName" "table_row"
+    And I should see "firstname" in the "givenname" "table_row"
+    And I should see "idnumber" in the "sub" "table_row"
+    And I should see "email" in the "email" "table_row"
+    And I should see "lang" in the "locale" "table_row"
     And I navigate to "Server > OAuth 2 services" in site administration
     And I click on "Edit" "link" in the "Testing service" "table_row"
     And I set the following fields to these values:
@@ -141,40 +145,6 @@ Feature: Basic OAuth2 functionality
     And I press "Continue"
     And I should see "Identity issuer deleted"
     And I should not see "Testing service modified"
-
-  Scenario: Create, edit and delete standard service for Open Badges
-    Given I press "Open Badges"
-    And I should see "Create new service: Open Badges"
-    And I set the following fields to these values:
-      | Client ID                  | thisistheclientid                         |
-      | Client secret              | supersecret                               |
-      | Service base URL           | https://dc.imsglobal.org/                 |
-    When I press "Save changes"
-    Then I should see "Changes saved"
-    And I should see "Open Badges"
-    And "Allow services" "icon" should exist in the "Open Badges" "table_row"
-    And "Do not allow login" "icon" should exist in the "Open Badges" "table_row"
-    And "Service discovery successful" "icon" should exist in the "Open Badges" "table_row"
-    And the "src" attribute of "table.admintable th img" "css_element" should contain "IMS-Global-Logo.png"
-    And I click on "Configure endpoints" "link" in the "Open Badges" "table_row"
-    And I should see "https://dc.imsglobal.org/.well-known/badgeconnect.json" in the "discovery_endpoint" "table_row"
-    And I should see "authorization_endpoint"
-    And I navigate to "Server > OAuth 2 services" in site administration
-    And I click on "Configure user field mappings" "link" in the "Open Badges" "table_row"
-    And I should not see "given_name"
-    And I should not see "middle_name"
-    And I navigate to "Server > OAuth 2 services" in site administration
-    And I click on "Edit" "link" in the "Open Badges" "table_row"
-    And I set the following fields to these values:
-      | Name                       | IMS Global                                |
-    And I press "Save changes"
-    And I should see "Changes saved"
-    And I should see "IMS Global"
-    And I click on "Delete" "link" in the "IMS Global" "table_row"
-    And I should see "Are you sure you want to delete the identity issuer \"IMS Global\"?"
-    And I press "Continue"
-    And I should see "Identity issuer deleted"
-    And I should not see "IMS Global"
 
   Scenario: Create, edit and delete valid custom OIDC service
     Given I press "Custom"

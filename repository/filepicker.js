@@ -336,16 +336,14 @@ YUI.add('moodle-core_filepicker', function(Y) {
          */
         var formatCheckbox = function(o) {
             var el = Y.Node.create('<div/>');
-
+            var parentid = scope.one('.' + classname).get('id');
             var checkbox = Y.Node.create('<input/>')
                 .setAttribute('type', 'checkbox')
                 .setAttribute('data-fieldtype', 'checkbox')
                 .setAttribute('data-fullname', o.data.fullname)
                 .setAttribute('data-action', 'toggle')
                 .setAttribute('data-toggle', 'slave')
-                .setAttribute('data-togglegroup', 'file-selections')
-                .setAttribute('data-toggle-selectall', M.util.get_string('selectall', 'moodle'))
-                .setAttribute('data-toggle-deselectall', M.util.get_string('deselectall', 'moodle'));
+                .setAttribute('data-togglegroup', 'file-selections-' + parentid);
 
             var checkboxLabel = Y.Node.create('<label>')
                 .setHTML("Select file '" + o.data.fullname + "'")
@@ -384,12 +382,13 @@ YUI.add('moodle-core_filepicker', function(Y) {
 
             // Generate a checkbox based on toggleall's specification
             var div = Y.Node.create('<div/>');
+            var parentid = scope.one('.' + classname).get('id');
             var checkbox = Y.Node.create('<input/>')
                 .setAttribute('type', 'checkbox')
                 // .setAttribute('title', M.util.get_string('selectallornone', 'form'))
                 .setAttribute('data-action', 'toggle')
                 .setAttribute('data-toggle', 'master')
-                .setAttribute('data-togglegroup', 'file-selections');
+                .setAttribute('data-togglegroup', 'file-selections-' + parentid);
 
             var checkboxLabel = Y.Node.create('<label>')
                 .setHTML(M.util.get_string('selectallornone', 'form'))
@@ -689,13 +688,30 @@ M.core_filepicker.init = function(Y, options) {
                         }
                         // error checking
                         if (data && data.error) {
-                            Y.use('moodle-core-notification-ajaxexception', function () {
-                                return new M.core.ajaxException(data);
-                            });
-                            this.fpnode.one('.fp-content').setContent('');
+                            if (data.errorcode === 'invalidfiletype') {
+                                // File type errors are not really errors, so report them less scarily.
+                                Y.use('moodle-core-notification-alert', function() {
+                                    return new M.core.alert({
+                                        title: M.util.get_string('error', 'moodle'),
+                                        message: data.error,
+                                    });
+                                });
+                            } else {
+                                Y.use('moodle-core-notification-ajaxexception', function() {
+                                    return new M.core.ajaxException(data);
+                                });
+                            }
+                            if (args.onerror) {
+                                args.onerror(id, data, p);
+                            } else {
+                                // Don't know what to do, so blank the dialogue to ensure it is not left in an inconsistent state.
+                                // This is not great. The user needs to re-click 'Upload file' to reset the display.
+                                this.fpnode.one('.fp-content').setContent('');
+                            }
                             return;
                         } else {
                             if (data.msg) {
+                                // As far as I can tell, msg will never be set by any PHP code. -- Tim Oct 2024.
                                 scope.print_msg(data.msg, 'info');
                             }
                             // cache result if applicable
@@ -1282,7 +1298,12 @@ M.core_filepicker.init = function(Y, options) {
                 var title = selectnode.one('.fp-saveas input').get('value');
                 var filesource = selectnode.one('form #filesource-'+client_id).get('value');
                 var filesourcekey = selectnode.one('form #filesourcekey-'+client_id).get('value');
-                var params = {'title':title, 'source':filesource, 'savepath': this.options.savepath, sourcekey: filesourcekey};
+                var params = {
+                    'title': title,
+                    'source': filesource,
+                    'savepath': this.options.savepath || '/',
+                    'sourcekey': filesourcekey,
+                };
                 var license = selectnode.one('.fp-setlicense select');
                 if (license) {
                     params['license'] = license.get('value');
@@ -1603,6 +1624,8 @@ M.core_filepicker.init = function(Y, options) {
             this.active_repo.message = (data.message || '');
             this.active_repo.help = data.help?data.help:null;
             this.active_repo.manage = data.manage?data.manage:null;
+            this.active_repo.uploadfile = data.uploadfile ? data.uploadfile : null;
+            this.active_repo.uploadevent = data.uploadevent ? data.uploadevent : null;
             // Warning message related to the file reference option, if applicable to the given repository.
             this.active_repo.filereferencewarning = data.filereferencewarning ? data.filereferencewarning : null;
             this.print_header();
@@ -1887,7 +1910,7 @@ M.core_filepicker.init = function(Y, options) {
                         scope: scope,
                         action:'upload',
                         client_id: client_id,
-                        params: {'savepath':scope.options.savepath},
+                        params: {'savepath': scope.options.savepath || '/'},
                         repository_id: scope.active_repo.id,
                         form: {id: id, upload:true},
                         onerror: function(id, o, args) {
@@ -1966,6 +1989,28 @@ M.core_filepicker.init = function(Y, options) {
                     managelnk.simulate('click')
                 });
 
+            // Repository upload.
+            // If repository supports upload, it needs to provide 'uploadevent' in its response to 'list' command.
+            // This event will be used to trigger the upload process.
+            // Repository will need to subscribe to this event and launch its own upload process.
+            toolbar.one('.fp-tb-uploadfile').one('a,button').on('click', (e) => {
+                if (this.active_repo.uploadevent) {
+                    e.preventDefault();
+                    require(['core/pubsub'], (PubSub) => {
+                        PubSub.publish(this.active_repo.uploadevent, {
+                            repoId: this.active_repo.id,
+                            contextId: this.options.context.id,
+                            callback: () => {
+                                // Refresh the file list after upload is done.
+                                if (!this.active_repo.norefresh) {
+                                    this.list({path: this.currentpath});
+                                }
+                            }
+                        });
+                    });
+                }
+            }, this);
+
             // same with .fp-tb-help
             var helplnk = Y.Node.create('<a/>').
                 setAttrs({id:'fp-tb-help-'+client_id+'-link', target:'_blank'}).
@@ -2042,6 +2087,9 @@ M.core_filepicker.init = function(Y, options) {
             enable_tb_control(toolbar.one('.fp-tb-manage'), r.manage);
             Y.one('#fp-tb-manage-'+client_id+'-link').set('href', r.manage);
 
+            // Upload file.
+            enable_tb_control(toolbar.one('.fp-tb-uploadfile'), r.uploadfile);
+
             // help url
             enable_tb_control(toolbar.one('.fp-tb-help'), r.help);
             Y.one('#fp-tb-help-'+client_id+'-link').set('href', r.help);
@@ -2107,13 +2155,20 @@ M.core_filepicker.init = function(Y, options) {
         show_recent_repository: function() {
             this.hide_header();
             this.viewbar_set_enabled(false);
-            var repository_id = this.get_preference('recentrepository');
+            var repositoryid = this.get_preference('recentrepository');
+            // If no user preference for a selected repository exists then default to the first repo on the list.
+            if (!repositoryid) {
+                var repokeys = Object.keys(this.options.repositories);
+                if (repokeys.length) {
+                    repositoryid = repokeys[0];
+                }
+            }
             this.viewmode = this.get_preference('recentviewmode');
             if (this.viewmode != 2 && this.viewmode != 3) {
                 this.viewmode = 1;
             }
-            if (this.options.repositories[repository_id]) {
-                this.list({'repo_id':repository_id});
+            if (this.options.repositories[repositoryid]) {
+                this.list({'repo_id': repositoryid});
             }
         },
         get_preference: function (name) {
@@ -2125,8 +2180,10 @@ M.core_filepicker.init = function(Y, options) {
         },
         set_preference: function(name, value) {
             if (this.options.userprefs[name] != value) {
-                M.util.set_user_preference('filepicker_' + name, value);
-                this.options.userprefs[name] = value;
+                require(['core_user/repository'], function(UserRepository) {
+                    UserRepository.setUserPreference('filepicker_' + name, value);
+                    this.options.userprefs[name] = value;
+                }.bind(this));
             }
         },
         in_iframe: function () {

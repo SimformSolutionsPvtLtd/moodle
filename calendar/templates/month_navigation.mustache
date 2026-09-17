@@ -15,7 +15,7 @@
     along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 }}
 {{!
-    @template calendar/month_navigation
+    @template core_calendar/month_navigation
 
     Calendar month navigation.
 
@@ -36,12 +36,13 @@
         <a{{!
             }} href="{{previousperiodlink}}"{{!
             }} class="arrow_link previous"{{!
-            }} title="{{#str}}monthprev, calendar{{/str}}"{{!
+            }} {{#viewinginblock}}title="{{#str}}monthprevwithname, calendar, {{previousperiodname}}{{/str}}" {{/viewinginblock}} {{!
             }} data-year="{{previousperiod.year}}"{{!
             }} data-month="{{previousperiod.mon}}"{{!
             }} data-drop-zone="nav-link" {{!
+            }} aria-label="{{#str}}monthprevwithname, calendar, {{previousperiodname}}{{/str}}" {{!
         }}>
-            <span class="arrow">{{{larrow}}}</span>
+            <span class="arrow" aria-hidden="true">{{{larrow}}}</span>
             &nbsp;
             <span class="arrow_text">{{previousperiodname}}</span>
         </a>
@@ -56,14 +57,15 @@
         <a{{!
             }} href="{{nextperiodlink}}"{{!
             }} class="arrow_link next"{{!
-            }} title="{{#str}}monthnext, calendar{{/str}}"{{!
+            }} {{#viewinginblock}}title="{{#str}}monthnextwithname, calendar, {{nextperiodname}}{{/str}}" {{/viewinginblock}} {{!
             }} data-year="{{nextperiod.year}}"{{!
             }} data-month="{{nextperiod.mon}}"{{!
             }} data-drop-zone="nav-link" {{!
+            }} aria-label="{{#str}}monthnextwithname, calendar, {{nextperiodname}}{{/str}}" {{!
         }}>
             <span class="arrow_text">{{nextperiodname}}</span>
             &nbsp;
-            <span class="arrow">{{{rarrow}}}</span>
+            <span class="arrow" aria-hidden="true">{{{rarrow}}}</span>
         </a>
     </div>
 </div>

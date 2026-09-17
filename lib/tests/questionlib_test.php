@@ -16,6 +16,8 @@
 
 namespace core;
 
+use core_question\local\bank\question_bank_helper;
+use mod_quiz\quiz_settings;
 use question_bank;
 
 defined('MOODLE_INTERNAL') || die();
@@ -37,7 +39,7 @@ require_once($CFG->dirroot . '/backup/util/includes/restore_includes.php');
  * @copyright  2006 The Open University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class questionlib_test extends \advanced_testcase {
+final class questionlib_test extends \advanced_testcase {
 
     /**
      * Test set up.
@@ -45,6 +47,7 @@ class questionlib_test extends \advanced_testcase {
      * This is executed before running any test in this file.
      */
     public function setUp(): void {
+        parent::setUp();
         $this->resetAfterTest();
     }
 
@@ -72,6 +75,7 @@ class questionlib_test extends \advanced_testcase {
         // Generate an assignment with due date (will generate a course event).
         $quiz = $this->getDataGenerator()->create_module('quiz', $options);
 
+        /** @var \core_question_generator $qgen */
         $qgen = $this->getDataGenerator()->get_plugin_generator('core_question');
 
         switch ($type) {
@@ -116,7 +120,7 @@ class questionlib_test extends \advanced_testcase {
         $this->assertEquals($numberofquestions, count($questionsid));
     }
 
-    public function test_question_reorder_qtypes() {
+    public function test_question_reorder_qtypes(): void {
         $this->assertEquals(
             array(0 => 't2', 1 => 't1', 2 => 't3'),
             question_reorder_qtypes(array('t1' => '', 't2' => '', 't3' => ''), 't1', +1));
@@ -134,7 +138,7 @@ class questionlib_test extends \advanced_testcase {
             question_reorder_qtypes(array('t1' => '', 't2' => '', 't3' => ''), 'missing', +1));
     }
 
-    public function test_match_grade_options() {
+    public function test_match_grade_options(): void {
         $gradeoptions = question_bank::fraction_options_full();
 
         $this->assertEquals(0.3333333, match_grade_options($gradeoptions, 0.3333333, 'error'));
@@ -154,7 +158,7 @@ class questionlib_test extends \advanced_testcase {
      * This function tests that the functions responsible for moving questions to
      * different contexts also updates the tag instances associated with the questions.
      */
-    public function test_altering_tag_instance_context() {
+    public function test_altering_tag_instance_context(): void {
         global $CFG, $DB;
 
         // Set to admin user.
@@ -168,6 +172,7 @@ class questionlib_test extends \advanced_testcase {
         // Create a couple of categories and questions.
         $context1 = \context_coursecat::instance($coursecat1->id);
         $context2 = \context_coursecat::instance($coursecat2->id);
+        /** @var \core_question_generator $questiongenerator */
         $questiongenerator = $this->getDataGenerator()->get_plugin_generator('core_question');
         $questioncat1 = $questiongenerator->create_question_category(array('contextid' =>
             $context1->id));
@@ -276,11 +281,12 @@ class questionlib_test extends \advanced_testcase {
     /**
      * Test that deleting a question from the question bank works in the normal case.
      */
-    public function test_question_delete_question() {
+    public function test_question_delete_question(): void {
         global $DB;
 
         // Setup.
         $context = \context_system::instance();
+        /** @var \core_question_generator $qgen */
         $qgen = $this->getDataGenerator()->get_plugin_generator('core_question');
         $qcat = $qgen->create_question_category(array('contextid' => $context->id));
         $q1 = $qgen->create_question('shortanswer', null, array('category' => $qcat->id));
@@ -298,11 +304,12 @@ class questionlib_test extends \advanced_testcase {
     /**
      * Test that deleting a broken question from the question bank does not cause fatal errors.
      */
-    public function test_question_delete_question_broken_data() {
+    public function test_question_delete_question_broken_data(): void {
         global $DB;
 
         // Setup.
         $context = \context_system::instance();
+        /** @var \core_question_generator $qgen */
         $qgen = $this->getDataGenerator()->get_plugin_generator('core_question');
         $qcat = $qgen->create_question_category(array('contextid' => $context->id));
         $q1 = $qgen->create_question('shortanswer', null, array('category' => $qcat->id));
@@ -323,9 +330,36 @@ class questionlib_test extends \advanced_testcase {
     }
 
     /**
+     * Test deleting a broken question whose category refers to a missing context
+     */
+    public function test_question_delete_question_missing_context(): void {
+        global $DB;
+
+        $coursecategory = $this->getDataGenerator()->create_category();
+        $context = $coursecategory->get_context();
+
+        /** @var \core_question_generator $generator */
+        $generator = $this->getDataGenerator()->get_plugin_generator('core_question');
+        $questioncategory = $generator->create_question_category(['contextid' => $context->id]);
+        $question = $generator->create_question('shortanswer', null, ['category' => $questioncategory->id]);
+
+        // Now delete the context, to simulate what happens in old sites where
+        // referential integrity has failed.
+        $DB->delete_records('context', ['id' => $context->id]);
+
+        question_delete_question($question->id);
+
+        $this->assertDebuggingCalled('Deleting question ' . $question->id .
+            ' which is no longer linked to a context. Assuming system context ' .
+            'to avoid errors, but this may mean that some data like ' .
+            'files, tags, are not cleaned up.');
+        $this->assertFalse($DB->record_exists('question', ['id' => $question->id]));
+    }
+
+    /**
      * This function tests the question_category_delete_safe function.
      */
-    public function test_question_category_delete_safe() {
+    public function test_question_category_delete_safe(): void {
         global $DB;
         $this->resetAfterTest(true);
         $this->setAdminUser();
@@ -349,7 +383,7 @@ class questionlib_test extends \advanced_testcase {
     /**
      * This function tests the question_delete_activity function.
      */
-    public function test_question_delete_activity() {
+    public function test_question_delete_activity(): void {
         global $DB;
         $this->resetAfterTest(true);
         $this->setAdminUser();
@@ -372,7 +406,7 @@ class questionlib_test extends \advanced_testcase {
     /**
      * This function tests the question_delete_context function.
      */
-    public function test_question_delete_context() {
+    public function test_question_delete_context(): void {
         global $DB;
         $this->resetAfterTest(true);
         $this->setAdminUser();
@@ -393,7 +427,7 @@ class questionlib_test extends \advanced_testcase {
     /**
      * This function tests the question_delete_course function.
      */
-    public function test_question_delete_course() {
+    public function test_question_delete_course(): void {
         global $DB;
         $this->resetAfterTest(true);
         $this->setAdminUser();
@@ -414,7 +448,7 @@ class questionlib_test extends \advanced_testcase {
     /**
      * This function tests the question_delete_course_category function.
      */
-    public function test_question_delete_course_category() {
+    public function test_question_delete_course_category(): void {
         global $DB;
         $this->resetAfterTest(true);
         $this->setAdminUser();
@@ -435,7 +469,7 @@ class questionlib_test extends \advanced_testcase {
     /**
      * This function tests the question_delete_course_category function when it is supposed to move question categories.
      */
-    public function test_question_delete_course_category_move_qcats() {
+    public function test_question_delete_course_category_move_qcats(): void {
         global $DB;
         $this->resetAfterTest(true);
         $this->setAdminUser();
@@ -476,7 +510,7 @@ class questionlib_test extends \advanced_testcase {
      * This function tests the question_save_from_deletion function when it is supposed to make a new category and
      * move question categories to that new category.
      */
-    public function test_question_save_from_deletion() {
+    public function test_question_save_from_deletion(): void {
         global $DB;
         $this->resetAfterTest(true);
         $this->setAdminUser();
@@ -499,7 +533,7 @@ class questionlib_test extends \advanced_testcase {
      * This function tests the question_save_from_deletion function when it is supposed to make a new category and
      * move question categories to that new category when quiz name is very long but less than 256 characters.
      */
-    public function test_question_save_from_deletion_quiz_with_long_name() {
+    public function test_question_save_from_deletion_quiz_with_long_name(): void {
         global $DB;
         $this->resetAfterTest(true);
         $this->setAdminUser();
@@ -529,7 +563,7 @@ class questionlib_test extends \advanced_testcase {
     /**
      * get_question_options should add the category object to the given question.
      */
-    public function test_get_question_options_includes_category_object_single_question() {
+    public function test_get_question_options_includes_category_object_single_question(): void {
         list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
         $question = array_shift($questions);
 
@@ -542,7 +576,7 @@ class questionlib_test extends \advanced_testcase {
      * get_question_options should add the category object to all of the questions in
      * the given list.
      */
-    public function test_get_question_options_includes_category_object_multiple_questions() {
+    public function test_get_question_options_includes_category_object_multiple_questions(): void {
         list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
 
         get_question_options($questions);
@@ -555,7 +589,7 @@ class questionlib_test extends \advanced_testcase {
     /**
      * get_question_options includes the tags for all questions in the list.
      */
-    public function test_get_question_options_includes_question_tags() {
+    public function test_get_question_options_includes_question_tags(): void {
         list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
         $question1 = $questions[0];
         $question2 = $questions[1];
@@ -592,7 +626,7 @@ class questionlib_test extends \advanced_testcase {
     /**
      * get_question_options includes the course tags for all questions in the list.
      */
-    public function test_get_question_options_includes_course_tags() {
+    public function test_get_question_options_includes_course_tags(): void {
         list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
         $question1 = $questions[0];
         $question2 = $questions[1];
@@ -631,7 +665,7 @@ class questionlib_test extends \advanced_testcase {
      * get_question_options only categorises a tag as a course tag if it is in a
      * course context that is different from the question context.
      */
-    public function test_get_question_options_course_tags_in_course_question_context() {
+    public function test_get_question_options_course_tags_in_course_question_context(): void {
         list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('course');
         $question1 = $questions[0];
         $question2 = $questions[1];
@@ -664,7 +698,7 @@ class questionlib_test extends \advanced_testcase {
      * get_question_options includes the tags and course tags for all questions in the list
      * if each question has course and question level tags.
      */
-    public function test_get_question_options_includes_question_and_course_tags() {
+    public function test_get_question_options_includes_question_and_course_tags(): void {
         list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
         $question1 = $questions[0];
         $question2 = $questions[1];
@@ -716,7 +750,7 @@ class questionlib_test extends \advanced_testcase {
      * context id for any non-course context tag that isn't in the question category
      * context.
      */
-    public function test_get_question_options_normalises_question_tags() {
+    public function test_get_question_options_normalises_question_tags(): void {
         list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
         $question1 = $questions[0];
         $question2 = $questions[1];
@@ -758,7 +792,7 @@ class questionlib_test extends \advanced_testcase {
      * get_question_options if the question is a course level question then tags
      * in that context should not be consdered course tags, they are question tags.
      */
-    public function test_get_question_options_includes_course_context_question_tags() {
+    public function test_get_question_options_includes_course_context_question_tags(): void {
         list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('course');
         $question1 = $questions[0];
         $question2 = $questions[1];
@@ -787,7 +821,7 @@ class questionlib_test extends \advanced_testcase {
     /**
      * get_question_options should return tags from all course contexts by default.
      */
-    public function test_get_question_options_includes_multiple_courses_tags() {
+    public function test_get_question_options_includes_multiple_courses_tags(): void {
         list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
         $question1 = $questions[0];
         $question2 = $questions[1];
@@ -820,7 +854,7 @@ class questionlib_test extends \advanced_testcase {
     /**
      * get_question_options should filter the course tags by the given list of courses.
      */
-    public function test_get_question_options_includes_filter_course_tags() {
+    public function test_get_question_options_includes_filter_course_tags(): void {
         list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
         $question1 = $questions[0];
         $question2 = $questions[1];
@@ -853,7 +887,7 @@ class questionlib_test extends \advanced_testcase {
      * question tags contexts when they are moving down (from system to course
      * category context).
      */
-    public function test_question_move_question_tags_to_new_context_system_to_course_cat_qtags() {
+    public function test_question_move_question_tags_to_new_context_system_to_course_cat_qtags(): void {
         list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('system');
         $question1 = $questions[0];
         $question2 = $questions[1];
@@ -885,7 +919,7 @@ class questionlib_test extends \advanced_testcase {
      * contexts when they are moving down (from system to course category context)
      * but leave any tags in the course context where they are.
      */
-    public function test_question_move_question_tags_to_new_context_system_to_course_cat_qtags_and_course_tags() {
+    public function test_question_move_question_tags_to_new_context_system_to_course_cat_qtags_and_course_tags(): void {
         list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('system');
         $question1 = $questions[0];
         $question2 = $questions[1];
@@ -925,7 +959,7 @@ class questionlib_test extends \advanced_testcase {
      * question_move_question_tags_to_new_context should update all of the question
      * contexts tags when they are moving up (from course category to system context).
      */
-    public function test_question_move_question_tags_to_new_context_course_cat_to_system_qtags() {
+    public function test_question_move_question_tags_to_new_context_course_cat_to_system_qtags(): void {
         list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
         $question1 = $questions[0];
         $question2 = $questions[1];
@@ -957,7 +991,7 @@ class questionlib_test extends \advanced_testcase {
      * tags contexts when they are moving up (from course category context to system
      * context) but leave any tags in the course context where they are.
      */
-    public function test_question_move_question_tags_to_new_context_course_cat_to_system_qtags_and_course_tags() {
+    public function test_question_move_question_tags_to_new_context_course_cat_to_system_qtags_and_course_tags(): void {
         list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
         $question1 = $questions[0];
         $question2 = $questions[1];
@@ -997,7 +1031,7 @@ class questionlib_test extends \advanced_testcase {
      * question_move_question_tags_to_new_context should merge all tags into the course
      * context when moving down from course category context into course context.
      */
-    public function test_question_move_question_tags_to_new_context_course_cat_to_coures_qtags_and_course_tags() {
+    public function test_question_move_question_tags_to_new_context_course_cat_to_coures_qtags_and_course_tags(): void {
         list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
         $question1 = $questions[0];
         $question2 = $questions[1];
@@ -1036,7 +1070,7 @@ class questionlib_test extends \advanced_testcase {
      * from a course category into a course context because the other courses will
      * no longer have access to the question.
      */
-    public function test_question_move_question_tags_to_new_context_remove_other_course_tags() {
+    public function test_question_move_question_tags_to_new_context_remove_other_course_tags(): void {
         list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
         // Create a sibling course.
         $siblingcourse = $this->getDataGenerator()->create_course(['category' => $course->category]);
@@ -1085,7 +1119,7 @@ class questionlib_test extends \advanced_testcase {
      * tags to be the course category context when moving the tags from a course
      * context to a course category context.
      */
-    public function test_question_move_question_tags_to_new_context_course_to_course_cat() {
+    public function test_question_move_question_tags_to_new_context_course_to_course_cat(): void {
         list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('course');
         $question1 = $questions[0];
         $question2 = $questions[1];
@@ -1118,7 +1152,7 @@ class questionlib_test extends \advanced_testcase {
      * question tags contexts when they are moving down (from system to course
      * category context).
      */
-    public function test_question_move_question_tags_to_new_context_orphaned_tag_contexts() {
+    public function test_question_move_question_tags_to_new_context_orphaned_tag_contexts(): void {
         list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('system');
         $question1 = $questions[0];
         $question2 = $questions[1];
@@ -1160,7 +1194,7 @@ class questionlib_test extends \advanced_testcase {
      * all question context tags and course tags (where the course is a parent of
      * the activity) should move into the new context.
      */
-    public function test_question_move_question_tags_to_new_context_course_cat_to_activity_qtags_and_course_tags() {
+    public function test_question_move_question_tags_to_new_context_course_cat_to_activity_qtags_and_course_tags(): void {
         list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
         $question1 = $questions[0];
         $question2 = $questions[1];
@@ -1199,7 +1233,7 @@ class questionlib_test extends \advanced_testcase {
      * the activity) should move into the new context. Tags in course contexts
      * that are not a parent of the activity context should be deleted.
      */
-    public function test_question_move_question_tags_to_new_context_course_cat_to_activity_orphaned_tags() {
+    public function test_question_move_question_tags_to_new_context_course_cat_to_activity_orphaned_tags(): void {
         list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
         $question1 = $questions[0];
         $question2 = $questions[1];
@@ -1244,7 +1278,7 @@ class questionlib_test extends \advanced_testcase {
      * When moving from a course context down into an activity context all of the
      * course tags should move into the activity context.
      */
-    public function test_question_move_question_tags_to_new_context_course_to_activity_qtags() {
+    public function test_question_move_question_tags_to_new_context_course_to_activity_qtags(): void {
         list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('course');
         $question1 = $questions[0];
         $question2 = $questions[1];
@@ -1274,7 +1308,7 @@ class questionlib_test extends \advanced_testcase {
      * When moving from a course context down into an activity context all of the
      * course tags should move into the activity context.
      */
-    public function test_question_move_question_tags_to_new_context_activity_to_course_qtags() {
+    public function test_question_move_question_tags_to_new_context_activity_to_course_qtags(): void {
         list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions();
         $question1 = $questions[0];
         $question2 = $questions[1];
@@ -1309,7 +1343,7 @@ class questionlib_test extends \advanced_testcase {
      * tags in course contexts that can no longer access the question should be
      * deleted.
      */
-    public function test_question_move_question_tags_to_new_context_system_to_course_cat_with_orphaned_tags() {
+    public function test_question_move_question_tags_to_new_context_system_to_course_cat_with_orphaned_tags(): void {
         list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('system');
         $question1 = $questions[0];
         $question2 = $questions[1];
@@ -1362,7 +1396,7 @@ class questionlib_test extends \advanced_testcase {
     /**
      * question_sort_tags() includes the tags for all questions in the list.
      */
-    public function test_question_sort_tags_includes_question_tags() {
+    public function test_question_sort_tags_includes_question_tags(): void {
 
         list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
         $question1 = $questions[0];
@@ -1400,7 +1434,7 @@ class questionlib_test extends \advanced_testcase {
     /**
      * question_sort_tags() includes course tags for all questions in the list.
      */
-    public function test_question_sort_tags_includes_question_course_tags() {
+    public function test_question_sort_tags_includes_question_course_tags(): void {
         global $DB;
 
         list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
@@ -1439,7 +1473,7 @@ class questionlib_test extends \advanced_testcase {
     /**
      * question_sort_tags() should return tags from all course contexts by default.
      */
-    public function test_question_sort_tags_includes_multiple_courses_tags() {
+    public function test_question_sort_tags_includes_multiple_courses_tags(): void {
         global $DB;
 
         list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
@@ -1474,7 +1508,7 @@ class questionlib_test extends \advanced_testcase {
     /**
      * question_sort_tags() should filter the course tags by the given list of courses.
      */
-    public function test_question_sort_tags_includes_filter_course_tags() {
+    public function test_question_sort_tags_includes_filter_course_tags(): void {
         global $DB;
 
         list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
@@ -1509,7 +1543,7 @@ class questionlib_test extends \advanced_testcase {
      *
      * @return  array
      */
-    public function question_capability_on_question_provider() {
+    public static function question_capability_on_question_provider(): array {
         return [
             'Unrelated capability which is present' => [
                 'capabilities' => [
@@ -1629,12 +1663,13 @@ class questionlib_test extends \advanced_testcase {
     /**
      * Tests that question_has_capability_on does not throw exception on broken questions.
      */
-    public function test_question_has_capability_on_broken_question() {
+    public function test_question_has_capability_on_broken_question(): void {
         global $DB;
 
         // Create the test data.
         $generator = $this->getDataGenerator();
-        $questiongenerator = $generator->get_plugin_generator('core_question');
+         /** @var \core_question_generator $questiongenerator */
+         $questiongenerator = $generator->get_plugin_generator('core_question');
 
         $category = $generator->create_category();
         $context = \context_coursecat::instance($category->id);
@@ -1643,11 +1678,11 @@ class questionlib_test extends \advanced_testcase {
         ]);
 
         // Create a cloze question.
-        $question = $questiongenerator->create_question('multianswer', null, [
+        $question = $questiongenerator->create_question('ddwtos', null, [
             'category' => $questioncat->id,
         ]);
         // Now, break the question.
-        $DB->delete_records('question_multianswer', ['question' => $question->id]);
+        $DB->delete_records('question_ddwtos', ['questionid' => $question->id]);
 
         $this->setAdminUser();
 
@@ -1666,7 +1701,7 @@ class questionlib_test extends \advanced_testcase {
      * @param   bool    $isowner Whether the user to create the question should be the owner or not.
      * @param   bool    $expect The expected result.
      */
-    public function test_question_has_capability_on_using_stdClass($capabilities, $capability, $isowner, $expect) {
+    public function test_question_has_capability_on_using_stdClass($capabilities, $capability, $isowner, $expect): void {
         $this->resetAfterTest();
 
         // Create the test data.
@@ -1710,11 +1745,12 @@ class questionlib_test extends \advanced_testcase {
      * @param   bool    $isowner Whether the user to create the question should be the owner or not.
      * @param   bool    $expect The expected result.
      */
-    public function test_question_has_capability_on_using_question_definition($capabilities, $capability, $isowner, $expect) {
+    public function test_question_has_capability_on_using_question_definition($capabilities, $capability, $isowner, $expect): void {
         $this->resetAfterTest();
 
         // Create the test data.
         $generator = $this->getDataGenerator();
+        /** @var \core_question_generator $questiongenerator */
         $questiongenerator = $generator->get_plugin_generator('core_question');
         $user = $generator->create_user();
         $otheruser = $generator->create_user();
@@ -1756,11 +1792,12 @@ class questionlib_test extends \advanced_testcase {
      * @param   bool    $isowner Whether the user to create the question should be the owner or not.
      * @param   bool    $expect The expected result.
      */
-    public function test_question_has_capability_on_using_question_id($capabilities, $capability, $isowner, $expect) {
+    public function test_question_has_capability_on_using_question_id($capabilities, $capability, $isowner, $expect): void {
         $this->resetAfterTest();
 
         // Create the test data.
         $generator = $this->getDataGenerator();
+        /** @var \core_question_generator $questiongenerator */
         $questiongenerator = $generator->get_plugin_generator('core_question');
         $user = $generator->create_user();
         $otheruser = $generator->create_user();
@@ -1802,11 +1839,12 @@ class questionlib_test extends \advanced_testcase {
      * @param   bool    $isowner Whether the user to create the question should be the owner or not.
      * @param   bool    $expect The expected result.
      */
-    public function test_question_has_capability_on_using_question_string_id($capabilities, $capability, $isowner, $expect) {
+    public function test_question_has_capability_on_using_question_string_id($capabilities, $capability, $isowner, $expect): void {
         $this->resetAfterTest();
 
         // Create the test data.
         $generator = $this->getDataGenerator();
+        /** @var \core_question_generator $questiongenerator */
         $questiongenerator = $generator->get_plugin_generator('core_question');
         $user = $generator->create_user();
         $otheruser = $generator->create_user();
@@ -1848,11 +1886,12 @@ class questionlib_test extends \advanced_testcase {
      * @param   bool    $isowner Whether the user to create the question should be the owner or not.
      * @param   bool    $expect The expected result.
      */
-    public function test_question_has_capability_on_using_moved_question($capabilities, $capability, $isowner, $expect) {
+    public function test_question_has_capability_on_using_moved_question($capabilities, $capability, $isowner, $expect): void {
         $this->resetAfterTest();
 
         // Create the test data.
         $generator = $this->getDataGenerator();
+        /** @var \core_question_generator $questiongenerator */
         $questiongenerator = $generator->get_plugin_generator('core_question');
         $user = $generator->create_user();
         $otheruser = $generator->create_user();
@@ -1904,11 +1943,12 @@ class questionlib_test extends \advanced_testcase {
      * @param   bool    $isowner Whether the user to create the question should be the owner or not.
      * @param   bool    $expect The expected result.
      */
-    public function test_question_has_capability_on_using_question($capabilities, $capability, $isowner, $expect) {
+    public function test_question_has_capability_on_using_question($capabilities, $capability, $isowner, $expect): void {
         $this->resetAfterTest();
 
         // Create the test data.
         $generator = $this->getDataGenerator();
+        /** @var \core_question_generator $questiongenerator */
         $questiongenerator = $generator->get_plugin_generator('core_question');
         $user = $generator->create_user();
         $otheruser = $generator->create_user();
@@ -1942,9 +1982,10 @@ class questionlib_test extends \advanced_testcase {
     /**
      * Tests that question_has_capability_on throws an exception for wrong parameter types.
      */
-    public function test_question_has_capability_on_wrong_param_type() {
+    public function test_question_has_capability_on_wrong_param_type(): void {
         // Create the test data.
         $generator = $this->getDataGenerator();
+        /** @var \core_question_generator $questiongenerator */
         $questiongenerator = $generator->get_plugin_generator('core_question');
         $user = $generator->create_user();
 
@@ -1971,11 +2012,122 @@ class questionlib_test extends \advanced_testcase {
     }
 
     /**
-     * Test of question_categorylist_parents function.
+     * Test question_has_capability_on with an invalid question ID
      */
-    public function test_question_categorylist_parents() {
+    public function test_question_has_capability_on_invalid_question(): void {
+        try {
+            question_has_capability_on(42, 'tag');
+            $this->fail('Expected exception');
+        } catch (\moodle_exception $exception) {
+            $this->assertInstanceOf(\dml_missing_record_exception::class, $exception);
+
+            // We also get debugging from initial attempt to load question data.
+            $this->assertDebuggingCalled();
+        }
+    }
+
+    /**
+     * Test that question_has_capability_on does not fail when passed an object with a null
+     * createdby property.
+     */
+    public function test_question_has_capability_on_object_with_null_createdby(): void {
         $this->resetAfterTest();
         $generator = $this->getDataGenerator();
+        $user = $generator->create_user();
+        $category = $generator->create_category();
+        $context = \context_coursecat::instance($category->id);
+
+        $role = $generator->create_role();
+        role_assign($role, $user->id, $context->id);
+        assign_capability('moodle/question:editmine', CAP_ALLOW, $role, $context->id);
+
+        $this->setUser($user);
+
+        $fakequestion = (object) [
+            'contextid' => $context->id,
+            'createdby' => null,
+        ];
+
+        $this->assertFalse(question_has_capability_on($fakequestion, 'edit'));
+
+        $fakequestion->createdby = $user->id;
+
+        $this->assertTrue(question_has_capability_on($fakequestion, 'edit'));
+    }
+
+    /**
+     * Test of question_categorylist function.
+     *
+     * @covers ::question_categorylist()
+     */
+    public function test_question_categorylist(): void {
+        $this->resetAfterTest();
+
+        // Create a category tree.
+        /** @var \core_question_generator $questiongenerator */
+        $questiongenerator = $this->getDataGenerator()->get_plugin_generator('core_question');
+        // Create a Course.
+        $course = $this->getDataGenerator()->create_course();
+        $coursecontext = \context_course::instance($course->id);
+
+        $top = question_get_top_category($coursecontext->id, true);
+        $cat1 = $questiongenerator->create_question_category(['parent' => $top->id]);
+        $sub11 = $questiongenerator->create_question_category(['parent' => $cat1->id]);
+        $sub12 = $questiongenerator->create_question_category(['parent' => $cat1->id]);
+        $cat2 = $questiongenerator->create_question_category(['parent' => $top->id]);
+        $sub22 = $questiongenerator->create_question_category(['parent' => $cat2->id]);
+
+        // Test - returned array has keys and values the same.
+        $this->assertEquals([$sub22->id], array_keys(question_categorylist($sub22->id)));
+        $this->assertEquals([$sub22->id], array_values(question_categorylist($sub22->id)));
+        $this->assertEquals([$cat1->id, $sub11->id, $sub12->id], array_keys(question_categorylist($cat1->id)));
+        $this->assertEquals([$cat1->id, $sub11->id, $sub12->id], array_values(question_categorylist($cat1->id)));
+        $this->assertEquals([$top->id, $cat1->id, $cat2->id, $sub11->id, $sub12->id, $sub22->id],
+                array_keys(question_categorylist($top->id)));
+        $this->assertEquals([$top->id, $cat1->id, $cat2->id, $sub11->id, $sub12->id, $sub22->id],
+                array_values(question_categorylist($top->id)));
+    }
+
+    /**
+     * Test of question_categorylist function when there is bad data, with a category pointing to a parent in another context.
+     *
+     * This is a situation that should never arise (parents and their children should always belong to the same context)
+     * but it does, because bugs, so the code should be robust to it.
+     *
+     * @covers ::question_categorylist()
+     */
+    public function test_question_categorylist_bad_data(): void {
+        $this->resetAfterTest();
+
+        // Create a category tree.
+        $course = $this->getDataGenerator()->create_course();
+        $coursecontext = \context_course::instance($course->id);
+        /** @var \core_question_generator $questiongenerator */
+        $questiongenerator = $this->getDataGenerator()->get_plugin_generator('core_question');
+        $context = \context_system::instance();
+
+        $top = question_get_top_category($coursecontext->id, true);
+        $cat1 = $questiongenerator->create_question_category(['parent' => $top->id]);
+        $sub11 = $questiongenerator->create_question_category(['parent' => $cat1->id]);
+        $sub12 = $questiongenerator->create_question_category(['parent' => $cat1->id]);
+        $cat2 = $questiongenerator->create_question_category(['parent' => $top->id, 'contextid' => $context->id]);
+        $sub22 = $questiongenerator->create_question_category(['parent' => $cat2->id]);
+
+        // Test - returned array has keys and values the same.
+        $this->assertEquals([$cat2->id, $sub22->id], array_keys(question_categorylist($cat2->id)));
+        $this->assertEquals([$top->id, $cat1->id, $sub11->id, $sub12->id],
+                array_keys(question_categorylist($top->id)));
+    }
+
+    /**
+     * Test of question_categorylist_parents function.
+     *
+     * @covers ::question_categorylist_parents()
+     */
+    public function test_question_categorylist_parents(): void {
+        $this->resetAfterTest();
+        $generator = $this->getDataGenerator();
+        /** @var \core_question_generator $questiongenerator */
         $questiongenerator = $generator->get_plugin_generator('core_question');
         $category = $generator->create_category();
         $context = \context_coursecat::instance($category->id);
@@ -1984,11 +2136,36 @@ class questionlib_test extends \advanced_testcase {
         // Add sub-categories.
         $cat1 = $questiongenerator->create_question_category(['parent' => $cat0->id]);
         $cat2 = $questiongenerator->create_question_category(['parent' => $cat1->id]);
+
         // Test the 'get parents' function.
-        $parentcategories = question_categorylist_parents($cat2->id);
-        $this->assertEquals($cat0->id, $parentcategories[0]);
-        $this->assertEquals($cat1->id, $parentcategories[1]);
-        $this->assertCount(2, $parentcategories);
+        $this->assertEquals([$cat0->id, $cat1->id], question_categorylist_parents($cat2->id));
+    }
+
+    /**
+     * Test question_categorylist_parents when there is bad data, with a category pointing to a parent in another context.
+     *
+     * This is a situation that should never arise (parents and their children should always belong to the same context)
+     * but it does, because bugs, so the code should be robust to it.
+     *
+     * @covers ::question_categorylist_parents()
+     */
+    public function test_question_categorylist_parents_bad_data(): void {
+        $this->resetAfterTest();
+        $generator = $this->getDataGenerator();
+        /** @var \core_question_generator $questiongenerator */
+        $questiongenerator = $generator->get_plugin_generator('core_question');
+        $category = $generator->create_category();
+        $context = \context_coursecat::instance($category->id);
+        // Create a top category.
+        $cat0 = question_get_top_category($context->id, true);
+        // Add sub-categories - but in a different context.
+        $cat1 = $questiongenerator->create_question_category(
+            ['parent' => $cat0->id, 'contextid' => \context_system::instance()->id]);
+        $cat2 = $questiongenerator->create_question_category(
+            ['parent' => $cat1->id, 'contextid' => \context_system::instance()->id]);
+
+        // Test the 'get parents' function only returns categories in the same context.
+        $this->assertEquals([$cat1->id], question_categorylist_parents($cat2->id));
     }
 
     /**
@@ -1996,7 +2173,7 @@ class questionlib_test extends \advanced_testcase {
      *
      * @return array test cases.
      */
-    public function find_next_unused_idnumber_cases(): array {
+    public static function find_next_unused_idnumber_cases(): array {
         return [
             [null, null],
             ['id', null],
@@ -2024,11 +2201,11 @@ class questionlib_test extends \advanced_testcase {
      * @param string|null $oldidnumber value to pass to core_question_find_next_unused_idnumber.
      * @param string|null $expectednewidnumber expected result.
      */
-    public function test_core_question_find_next_unused_idnumber(?string $oldidnumber, ?string $expectednewidnumber) {
+    public function test_core_question_find_next_unused_idnumber(?string $oldidnumber, ?string $expectednewidnumber): void {
         $this->assertSame($expectednewidnumber, core_question_find_next_unused_idnumber($oldidnumber, 0));
     }
 
-    public function test_core_question_find_next_unused_idnumber_skips_used() {
+    public function test_core_question_find_next_unused_idnumber_skips_used(): void {
         $this->resetAfterTest();
 
         /** @var core_question_generator $generator */
@@ -2049,7 +2226,7 @@ class questionlib_test extends \advanced_testcase {
      *
      * @covers ::question_move_questions_to_category
      */
-    public function test_question_move_questions_to_category() {
+    public function test_question_move_questions_to_category(): void {
         $this->resetAfterTest();
 
         // Create the test data.
@@ -2073,7 +2250,7 @@ class questionlib_test extends \advanced_testcase {
      *
      * @covers ::idnumber_exist_in_question_category
      */
-    public function test_idnumber_exist_in_question_category() {
+    public function test_idnumber_exist_in_question_category(): void {
         global $DB;
 
         $this->resetAfterTest();
@@ -2118,9 +2295,10 @@ class questionlib_test extends \advanced_testcase {
      * @covers ::is_latest
      *
      */
-    public function test_is_latest() {
+    public function test_is_latest(): void {
         global $DB;
         $this->resetAfterTest();
+        /** @var \core_question_generator $generator */
         $generator = $this->getDataGenerator()->get_plugin_generator('core_question');
         $qcat1 = $generator->create_question_category(['name' => 'My category', 'sortorder' => 1, 'idnumber' => 'myqcat']);
         $question = $generator->create_question('shortanswer', null, ['name' => 'q1', 'category' => $qcat1->id]);
@@ -2136,11 +2314,12 @@ class questionlib_test extends \advanced_testcase {
      *
      * @covers ::delete_question_bank_entry
      */
-    public function test_delete_question_bank_entry() {
+    public function test_delete_question_bank_entry(): void {
         global $DB;
         $this->resetAfterTest();
         // Setup.
         $context = \context_system::instance();
+        /** @var \core_question_generator $qgen */
         $qgen = $this->getDataGenerator()->get_plugin_generator('core_question');
         $qcat = $qgen->create_question_category(array('contextid' => $context->id));
         $q1 = $qgen->create_question('shortanswer', null, array('category' => $qcat->id));
@@ -2172,11 +2351,12 @@ class questionlib_test extends \advanced_testcase {
      *
      * @covers ::get_question_bank_entry
      */
-    public function test_get_question_bank_entry() {
+    public function test_get_question_bank_entry(): void {
         global $DB;
         $this->resetAfterTest();
         // Setup.
         $context = \context_system::instance();
+        /** @var \core_question_generator $qgen */
         $qgen = $this->getDataGenerator()->get_plugin_generator('core_question');
         $qcat = $qgen->create_question_category(array('contextid' => $context->id));
         $q1 = $qgen->create_question('shortanswer', null, array('category' => $qcat->id));
@@ -2201,11 +2381,12 @@ class questionlib_test extends \advanced_testcase {
      *
      * @covers ::get_question_version
      */
-    public function test_get_question_version() {
+    public function test_get_question_version(): void {
         global $DB;
         $this->resetAfterTest();
         // Setup.
         $context = \context_system::instance();
+        /** @var \core_question_generator $qgen */
         $qgen = $this->getDataGenerator()->get_plugin_generator('core_question');
         $qcat = $qgen->create_question_category(array('contextid' => $context->id));
         $q1 = $qgen->create_question('shortanswer', null, array('category' => $qcat->id));
@@ -2231,11 +2412,12 @@ class questionlib_test extends \advanced_testcase {
      *
      * @covers ::get_next_version
      */
-    public function test_get_next_version() {
+    public function test_get_next_version(): void {
         global $DB;
         $this->resetAfterTest();
         // Setup.
         $context = \context_system::instance();
+        /** @var \core_question_generator $qgen */
         $qgen = $this->getDataGenerator()->get_plugin_generator('core_question');
         $qcat = $qgen->create_question_category(array('contextid' => $context->id));
         $q1 = $qgen->create_question('shortanswer', null, array('category' => $qcat->id));
@@ -2257,4 +2439,104 @@ class questionlib_test extends \advanced_testcase {
         $this->assertEquals(2, $nextversion);
     }
 
+    /**
+     * Update the context for a set reference, keeping the original category.
+     *
+     * @covers ::move_question_set_references()
+     */
+    public function test_move_question_set_references_context(): void {
+        $this->setAdminUser();
+        $sitecontext = \context_system::instance();
+        $topcategory = question_get_top_category($sitecontext->id, true);
+        $randomcategory = self::getDataGenerator()->get_plugin_generator('core_question')->create_question_category(
+            ['parent' => $topcategory->id],
+        );
+        // Create a course with a quiz containing a random question from the system context.
+        $randomcourse = self::getDataGenerator()->create_course(['shortname' => 'Random']);
+        $coursecontext = \context_course::instance($randomcourse->id);
+        $randomquiz = self::getDataGenerator()->get_plugin_generator('mod_quiz')->create_instance(
+            [
+                'course' => $randomcourse->id,
+                'grade' => 100.0,
+                'sumgrades' => 2,
+                'layout' => '1,0',
+            ],
+        );
+
+        $randomquizsettings = quiz_settings::create($randomquiz->id);
+        $structure = $randomquizsettings->get_structure();
+
+        $filtercondition = [
+            'filter' => [
+                'category' => [
+                    'jointype' => \core_question\local\bank\condition::JOINTYPE_DEFAULT,
+                    'values' => [$randomcategory->id],
+                    'filteroptions' => ['includesubcategories' => true],
+                ],
+            ],
+        ];
+        $structure->add_random_questions(1, 1, $filtercondition);
+        $structure = $randomquizsettings->get_structure();
+        $randomquestion = $structure->get_question_in_slot(1);
+
+        $this->assertEquals($randomquestion->contextid, $sitecontext->id);
+        $this->assertEquals($randomquestion->filtercondition['filter']['category']['values'][0], $randomcategory->id);
+
+        move_question_set_references($randomcategory->id, $randomcategory->id, $sitecontext->id, $coursecontext->id);
+
+        $structure = $randomquizsettings->get_structure();
+        $randomquestion = $structure->get_question_in_slot(1);
+
+        $this->assertEquals($randomquestion->contextid, $coursecontext->id);
+        $this->assertEquals($randomquestion->filtercondition['filter']['category']['values'][0], $randomcategory->id);
+    }
+
+    /**
+     * Update the context and category for a set reference.
+     *
+     * @covers ::move_question_set_references()
+     */
+    public function test_move_question_set_references_category(): void {
+        $this->setAdminUser();
+        $sitecontext = \context_system::instance();
+        $sitetopcategory = question_get_top_category($sitecontext->id, true);
+        // Create a course with a quiz containing a random question from the system context.
+        $randomcourse = self::getDataGenerator()->create_course(['shortname' => 'Random']);
+        $coursecontext = \context_course::instance($randomcourse->id);
+        $coursetopcategory = question_get_top_category($coursecontext->id, true);
+        $randomquiz = self::getDataGenerator()->get_plugin_generator('mod_quiz')->create_instance(
+            [
+                'course' => $randomcourse->id,
+                'grade' => 100.0,
+                'sumgrades' => 2,
+                'layout' => '1,0',
+            ],
+        );
+        $randomquizsettings = quiz_settings::create($randomquiz->id);
+
+        $structure = $randomquizsettings->get_structure();
+        $filtercondition = [
+            'filter' => [
+                'category' => [
+                    'jointype' => \core_question\local\bank\condition::JOINTYPE_DEFAULT,
+                    'values' => [$sitetopcategory->id],
+                    'filteroptions' => ['includesubcategories' => true],
+                ],
+            ],
+        ];
+        $structure->add_random_questions(1, 1, $filtercondition);
+        $structure = $randomquizsettings->get_structure();
+        $randomquestion = $structure->get_question_in_slot(1);
+
+        $this->assertEquals($randomquestion->contextid, $sitecontext->id);
+        $this->assertEquals($randomquestion->filtercondition['filter']['category']['values'][0], $sitetopcategory->id);
+
+        move_question_set_references($sitetopcategory->id, $coursetopcategory->id, $sitecontext->id, $coursecontext->id);
+
+        $structure = $randomquizsettings->get_structure();
+        $randomquestion = $structure->get_question_in_slot(1);
+
+        $this->assertEquals($randomquestion->contextid, $coursecontext->id);
+        $this->assertEquals($randomquestion->filtercondition['filter']['category']['values'][0], $coursetopcategory->id);
+    }
 }

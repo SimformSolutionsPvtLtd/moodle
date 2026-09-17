@@ -42,7 +42,7 @@ require_once($CFG->libdir . '/blocklib.php');
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @coversDefaultClass \moodle_page
  */
-class moodle_page_test extends \advanced_testcase {
+final class moodle_page_test extends \advanced_testcase {
 
     /**
      * @var testable_moodle_page
@@ -55,13 +55,13 @@ class moodle_page_test extends \advanced_testcase {
         $this->testpage = new testable_moodle_page();
     }
 
-    public function test_course_returns_site_before_set() {
+    public function test_course_returns_site_before_set(): void {
         global $SITE;
         // Validated.
         $this->assertSame($SITE, $this->testpage->course);
     }
 
-    public function test_setting_course_works() {
+    public function test_setting_course_works(): void {
         // Setup fixture.
         $course = $this->getDataGenerator()->create_course();
         $this->testpage->set_context(\context_system::instance()); // Avoid trying to set the context.
@@ -71,7 +71,7 @@ class moodle_page_test extends \advanced_testcase {
         $this->assertEquals($course, $this->testpage->course);
     }
 
-    public function test_global_course_and_page_course_are_same_with_global_page() {
+    public function test_global_course_and_page_course_are_same_with_global_page(): void {
         global $COURSE, $PAGE;
         // Setup fixture.
         $course = $this->getDataGenerator()->create_course();
@@ -83,7 +83,7 @@ class moodle_page_test extends \advanced_testcase {
         $this->assertSame($COURSE, $this->testpage->course);
     }
 
-    public function test_global_course_not_changed_with_non_global_page() {
+    public function test_global_course_not_changed_with_non_global_page(): void {
         global $COURSE;
         $originalcourse = $COURSE;
         // Setup fixture.
@@ -95,7 +95,7 @@ class moodle_page_test extends \advanced_testcase {
         $this->assertSame($originalcourse, $COURSE);
     }
 
-    public function test_cannot_set_course_once_theme_set() {
+    public function test_cannot_set_course_once_theme_set(): void {
         // Setup fixture.
         $this->testpage->force_theme(\theme_config::DEFAULT_THEME);
         $course = $this->getDataGenerator()->create_course();
@@ -105,7 +105,7 @@ class moodle_page_test extends \advanced_testcase {
         $this->testpage->set_course($course);
     }
 
-    public function test_cannot_set_category_once_theme_set() {
+    public function test_cannot_set_category_once_theme_set(): void {
         // Setup fixture.
         $this->testpage->force_theme(\theme_config::DEFAULT_THEME);
 
@@ -114,7 +114,7 @@ class moodle_page_test extends \advanced_testcase {
         $this->testpage->set_category_by_id(123);
     }
 
-    public function test_cannot_set_category_once_course_set() {
+    public function test_cannot_set_category_once_course_set(): void {
         // Setup fixture.
         $course = $this->getDataGenerator()->create_course();
         $this->testpage->set_context(\context_system::instance()); // Avoid trying to set the context.
@@ -125,7 +125,7 @@ class moodle_page_test extends \advanced_testcase {
         $this->testpage->set_category_by_id(123);
     }
 
-    public function test_categories_array_empty_for_front_page() {
+    public function test_categories_array_empty_for_front_page(): void {
         global $SITE;
         // Setup fixture.
         $this->testpage->set_context(\context_system::instance()); // Avoid trying to set the context.
@@ -134,7 +134,7 @@ class moodle_page_test extends \advanced_testcase {
         $this->assertEquals(array(), $this->testpage->categories);
     }
 
-    public function test_set_state_normal_path() {
+    public function test_set_state_normal_path(): void {
         $course = $this->getDataGenerator()->create_course();
         $this->testpage->set_context(\context_system::instance());
         $this->testpage->set_course($course);
@@ -151,18 +151,18 @@ class moodle_page_test extends \advanced_testcase {
         $this->assertEquals(\moodle_page::STATE_DONE, $this->testpage->state);
     }
 
-    public function test_set_state_cannot_skip_one() {
+    public function test_set_state_cannot_skip_one(): void {
         // Exercise SUT.
         $this->expectException(\coding_exception::class);
         $this->testpage->set_state(\moodle_page::STATE_IN_BODY);
     }
 
-    public function test_header_printed_false_initially() {
+    public function test_header_printed_false_initially(): void {
         // Validated.
         $this->assertFalse($this->testpage->headerprinted);
     }
 
-    public function test_header_printed_becomes_true() {
+    public function test_header_printed_becomes_true(): void {
         $course = $this->getDataGenerator()->create_course();
         $this->testpage->set_context(\context_system::instance());
         $this->testpage->set_course($course);
@@ -174,7 +174,7 @@ class moodle_page_test extends \advanced_testcase {
         $this->assertTrue($this->testpage->headerprinted);
     }
 
-    public function test_set_context() {
+    public function test_set_context(): void {
         // Setup fixture.
         $course = $this->getDataGenerator()->create_course();
         $context = \context_course::instance($course->id);
@@ -184,7 +184,7 @@ class moodle_page_test extends \advanced_testcase {
         $this->assertSame($context, $this->testpage->context);
     }
 
-    public function test_pagetype_defaults_to_script() {
+    public function test_pagetype_defaults_to_script(): void {
         global $SCRIPT;
         // Exercise SUT and validate.
         $SCRIPT = '/index.php';
@@ -192,68 +192,68 @@ class moodle_page_test extends \advanced_testcase {
         $this->assertSame('site-index', $this->testpage->pagetype);
     }
 
-    public function test_set_pagetype() {
+    public function test_set_pagetype(): void {
         // Exercise SUT.
         $this->testpage->set_pagetype('a-page-type');
         // Validated.
         $this->assertSame('a-page-type', $this->testpage->pagetype);
     }
 
-    public function test_initialise_default_pagetype() {
+    public function test_initialise_default_pagetype(): void {
         // Exercise SUT.
         $this->testpage->initialise_default_pagetype('admin/tool/unittest/index.php');
         // Validated.
         $this->assertSame('admin-tool-unittest-index', $this->testpage->pagetype);
     }
 
-    public function test_initialise_default_pagetype_fp() {
+    public function test_initialise_default_pagetype_fp(): void {
         // Exercise SUT.
         $this->testpage->initialise_default_pagetype('index.php');
         // Validated.
         $this->assertSame('site-index', $this->testpage->pagetype);
     }
 
-    public function test_get_body_classes_empty() {
+    public function test_get_body_classes_empty(): void {
         // Validated.
         $this->assertSame('', $this->testpage->bodyclasses);
     }
 
-    public function test_get_body_classes_single() {
+    public function test_get_body_classes_single(): void {
         // Exercise SUT.
         $this->testpage->add_body_class('aclassname');
         // Validated.
         $this->assertSame('aclassname', $this->testpage->bodyclasses);
     }
 
-    public function test_get_body_classes() {
+    public function test_get_body_classes(): void {
         // Exercise SUT.
         $this->testpage->add_body_classes(array('aclassname', 'anotherclassname'));
         // Validated.
         $this->assertSame('aclassname anotherclassname', $this->testpage->bodyclasses);
     }
 
-    public function test_url_to_class_name() {
+    public function test_url_to_class_name(): void {
         $this->assertSame('example-com', $this->testpage->url_to_class_name('http://example.com'));
         $this->assertSame('example-com--80', $this->testpage->url_to_class_name('http://example.com:80'));
         $this->assertSame('example-com--moodle', $this->testpage->url_to_class_name('https://example.com/moodle'));
         $this->assertSame('example-com--8080--nested-moodle', $this->testpage->url_to_class_name('https://example.com:8080/nested/moodle'));
     }
 
-    public function test_set_docs_path() {
+    public function test_set_docs_path(): void {
         // Exercise SUT.
         $this->testpage->set_docs_path('a/file/path');
         // Validated.
         $this->assertSame('a/file/path', $this->testpage->docspath);
     }
 
-    public function test_docs_path_defaults_from_pagetype() {
+    public function test_docs_path_defaults_from_pagetype(): void {
         // Exercise SUT.
         $this->testpage->set_pagetype('a-page-type');
         // Validated.
         $this->assertSame('a/page/type', $this->testpage->docspath);
     }
 
-    public function test_set_url_root() {
+    public function test_set_url_root(): void {
         global $CFG;
         // Exercise SUT.
         $this->testpage->set_url('/');
@@ -261,7 +261,7 @@ class moodle_page_test extends \advanced_testcase {
         $this->assertSame($CFG->wwwroot . '/', $this->testpage->url->out());
     }
 
-    public function test_set_url_one_param() {
+    public function test_set_url_one_param(): void {
         global $CFG;
         // Exercise SUT.
         $this->testpage->set_url('/mod/quiz/attempt.php', array('attempt' => 123));
@@ -269,7 +269,7 @@ class moodle_page_test extends \advanced_testcase {
         $this->assertSame($CFG->wwwroot . '/mod/quiz/attempt.php?attempt=123', $this->testpage->url->out());
     }
 
-    public function test_set_url_two_params() {
+    public function test_set_url_two_params(): void {
         global $CFG;
         // Exercise SUT.
         $this->testpage->set_url('/mod/quiz/attempt.php', array('attempt' => 123, 'page' => 7));
@@ -277,7 +277,7 @@ class moodle_page_test extends \advanced_testcase {
         $this->assertSame($CFG->wwwroot . '/mod/quiz/attempt.php?attempt=123&amp;page=7', $this->testpage->url->out());
     }
 
-    public function test_set_url_using_moodle_url() {
+    public function test_set_url_using_moodle_url(): void {
         global $CFG;
         // Fixture setup.
         $url = new \moodle_url('/mod/workshop/allocation.php', array('cmid' => 29, 'method' => 'manual'));
@@ -287,14 +287,14 @@ class moodle_page_test extends \advanced_testcase {
         $this->assertSame($CFG->wwwroot . '/mod/workshop/allocation.php?cmid=29&amp;method=manual', $this->testpage->url->out());
     }
 
-    public function test_set_url_sets_page_type() {
+    public function test_set_url_sets_page_type(): void {
         // Exercise SUT.
         $this->testpage->set_url('/mod/quiz/attempt.php', array('attempt' => 123, 'page' => 7));
         // Validated.
         $this->assertSame('mod-quiz-attempt', $this->testpage->pagetype);
     }
 
-    public function test_set_url_does_not_change_explicit_page_type() {
+    public function test_set_url_does_not_change_explicit_page_type(): void {
         // Setup fixture.
         $this->testpage->set_pagetype('a-page-type');
         // Exercise SUT.
@@ -303,14 +303,14 @@ class moodle_page_test extends \advanced_testcase {
         $this->assertSame('a-page-type', $this->testpage->pagetype);
     }
 
-    public function test_set_subpage() {
+    public function test_set_subpage(): void {
         // Exercise SUT.
         $this->testpage->set_subpage('somestring');
         // Validated.
         $this->assertSame('somestring', $this->testpage->subpage);
     }
 
-    public function test_set_heading() {
+    public function test_set_heading(): void {
         // Exercise SUT.
         $this->testpage->set_heading('a heading');
         // Validated.
@@ -321,30 +321,89 @@ class moodle_page_test extends \advanced_testcase {
         $this->assertSame('a heading edit', $this->testpage->heading);
 
         // Without formatting the tags are preserved but cleaned.
-        $this->testpage->set_heading('a heading <a href="#">edit</a><p>', false);
-        $this->assertSame('a heading <a href="#">edit</a><p></p>', $this->testpage->heading);
+        $this->testpage->set_heading('<div data-param1="value1">a heading <a href="#">edit</a><p></div>', false);
+        $this->assertSame('<div>a heading <a href="#">edit</a><p></p></div>', $this->testpage->heading);
+
+        // Without formatting nor clean.
+        $this->testpage->set_heading('<div data-param1="value1">a heading <a href="#">edit</a><p></div>', false, false);
+        $this->assertSame('<div data-param1="value1">a heading <a href="#">edit</a><p></div>', $this->testpage->heading);
     }
 
-    public function test_set_title() {
-        // Exercise SUT.
-        $this->testpage->set_title('a title');
+    /**
+     * Data provider for {@see test_set_title}.
+     *
+     * @return array
+     */
+    public static function set_title_provider(): array {
+        return [
+            'Do not append the site name' => [
+                'shortname', false, '', false
+            ],
+            'Site not yet installed not configured defaults to site shortname' => [
+                null, true, 'shortname'
+            ],
+            '$CFG->sitenameintitle not configured defaults to site shortname' => [
+                null, true, 'shortname'
+            ],
+            '$CFG->sitenameintitle set to shortname' => [
+                'shortname', true, 'shortname'
+            ],
+            '$CFG->sitenameintitle set to fullname' => [
+                'fullname', true, 'fullname'
+            ],
+        ];
+    }
+
+    /**
+     * Test for set_title
+     *
+     * @dataProvider set_title_provider
+     * @param string|null $config The config value for $CFG->sitenameintitle.
+     * @param bool $appendsitename The $appendsitename parameter
+     * @param string $expected The expected site name to be appended to the title.
+     * @param bool $sitenameset To simulate the absence of the site name being set in the site.
+     * @return void
+     * @covers ::set_title
+     */
+    public function test_set_title(?string $config, bool $appendsitename, string $expected, bool $sitenameset = true): void {
+        global $CFG, $SITE;
+
+        if ($config !== null) {
+            $CFG->sitenameintitle = $config;
+        }
+
+        $title = "A title";
+        if ($appendsitename) {
+            if ($sitenameset) {
+                $expectedtitle = $title . moodle_page::TITLE_SEPARATOR . $SITE->{$expected};
+            } else {
+                // Simulate site fullname and shortname being empty for any reason.
+                $SITE->fullname = null;
+                $SITE->shortname = null;
+                $expectedtitle = $title . moodle_page::TITLE_SEPARATOR . 'Moodle';
+            }
+        } else {
+            $expectedtitle = $title;
+        }
+
+        $this->testpage->set_title($title, $appendsitename);
         // Validated.
-        $this->assertSame('a title', $this->testpage->title);
+        $this->assertSame($expectedtitle, $this->testpage->title);
     }
 
-    public function test_default_pagelayout() {
+    public function test_default_pagelayout(): void {
         // Exercise SUT and Validate.
         $this->assertSame('base', $this->testpage->pagelayout);
     }
 
-    public function test_set_pagelayout() {
+    public function test_set_pagelayout(): void {
         // Exercise SUT.
         $this->testpage->set_pagelayout('type');
         // Validated.
         $this->assertSame('type', $this->testpage->pagelayout);
     }
 
-    public function test_setting_course_sets_context() {
+    public function test_setting_course_sets_context(): void {
         // Setup fixture.
         $course = $this->getDataGenerator()->create_course();
         $context = \context_course::instance($course->id);
@@ -356,7 +415,7 @@ class moodle_page_test extends \advanced_testcase {
         $this->assertSame($context, $this->testpage->context);
     }
 
-    public function test_set_category_top_level() {
+    public function test_set_category_top_level(): void {
         global $DB;
         // Setup fixture.
         $cat = $this->getDataGenerator()->create_category();
@@ -368,7 +427,7 @@ class moodle_page_test extends \advanced_testcase {
         $this->assertSame(\context_coursecat::instance($cat->id), $this->testpage->context);
     }
 
-    public function test_set_nested_categories() {
+    public function test_set_nested_categories(): void {
         global $DB;
         // Setup fixture.
         $topcat = $this->getDataGenerator()->create_category();
@@ -384,12 +443,12 @@ class moodle_page_test extends \advanced_testcase {
         $this->assertEquals($subcatdbrecord, array_pop($categories));
     }
 
-    public function test_cm_null_initially() {
+    public function test_cm_null_initially(): void {
         // Validated.
         $this->assertNull($this->testpage->cm);
     }
 
-    public function test_set_cm() {
+    public function test_set_cm(): void {
         // Setup fixture.
         $course = $this->getDataGenerator()->create_course();
         $forum = $this->getDataGenerator()->create_module('forum', array('course'=>$course->id));
@@ -400,7 +459,7 @@ class moodle_page_test extends \advanced_testcase {
         $this->assertEquals($cm->id, $this->testpage->cm->id);
     }
 
-    public function test_cannot_set_activity_record_before_cm() {
+    public function test_cannot_set_activity_record_before_cm(): void {
         // Setup fixture.
         $course = $this->getDataGenerator()->create_course();
         $forum = $this->getDataGenerator()->create_module('forum', array('course'=>$course->id));
@@ -410,7 +469,7 @@ class moodle_page_test extends \advanced_testcase {
         $this->testpage->set_activity_record($forum);
     }
 
-    public function test_setting_cm_sets_context() {
+    public function test_setting_cm_sets_context(): void {
         // Setup fixture.
         $course = $this->getDataGenerator()->create_course();
         $forum = $this->getDataGenerator()->create_module('forum', array('course'=>$course->id));
@@ -421,7 +480,7 @@ class moodle_page_test extends \advanced_testcase {
         $this->assertSame(\context_module::instance($cm->id), $this->testpage->context);
     }
 
-    public function test_activity_record_loaded_if_not_set() {
+    public function test_activity_record_loaded_if_not_set(): void {
         // Setup fixture.
         $course = $this->getDataGenerator()->create_course();
         $forum = $this->getDataGenerator()->create_module('forum', array('course'=>$course->id));
@@ -433,7 +492,7 @@ class moodle_page_test extends \advanced_testcase {
         $this->assertEquals($forum, $this->testpage->activityrecord);
     }
 
-    public function test_set_activity_record() {
+    public function test_set_activity_record(): void {
         // Setup fixture.
         $course = $this->getDataGenerator()->create_course();
         $forum = $this->getDataGenerator()->create_module('forum', array('course'=>$course->id));
@@ -446,7 +505,7 @@ class moodle_page_test extends \advanced_testcase {
         $this->assertEquals($forum, $this->testpage->activityrecord);
     }
 
-    public function test_cannot_set_inconsistent_activity_record_course() {
+    public function test_cannot_set_inconsistent_activity_record_course(): void {
         // Setup fixture.
         $course = $this->getDataGenerator()->create_course();
         $forum = $this->getDataGenerator()->create_module('forum', array('course'=>$course->id));
@@ -458,7 +517,7 @@ class moodle_page_test extends \advanced_testcase {
         $this->testpage->set_activity_record($forum);
     }
 
-    public function test_cannot_set_inconsistent_activity_record_instance() {
+    public function test_cannot_set_inconsistent_activity_record_instance(): void {
         // Setup fixture.
         $course = $this->getDataGenerator()->create_course();
         $forum = $this->getDataGenerator()->create_module('forum', array('course'=>$course->id));
@@ -470,7 +529,7 @@ class moodle_page_test extends \advanced_testcase {
         $this->testpage->set_activity_record($forum);
     }
 
-    public function test_setting_cm_sets_course() {
+    public function test_setting_cm_sets_course(): void {
         // Setup fixture.
         $course = $this->getDataGenerator()->create_course();
         $forum = $this->getDataGenerator()->create_module('forum', array('course'=>$course->id));
@@ -481,7 +540,7 @@ class moodle_page_test extends \advanced_testcase {
         $this->assertEquals($course->id, $this->testpage->course->id);
     }
 
-    public function test_set_cm_with_course_and_activity_no_db() {
+    public function test_set_cm_with_course_and_activity_no_db(): void {
         // Setup fixture.
         $course = $this->getDataGenerator()->create_course();
         $forum = $this->getDataGenerator()->create_module('forum', array('course'=>$course->id));
@@ -496,7 +555,7 @@ class moodle_page_test extends \advanced_testcase {
         $this->assertEquals($forum, $this->testpage->activityrecord);
     }
 
-    public function test_cannot_set_cm_with_inconsistent_course() {
+    public function test_cannot_set_cm_with_inconsistent_course(): void {
         // Setup fixture.
         $course = $this->getDataGenerator()->create_course();
         $forum = $this->getDataGenerator()->create_module('forum', array('course'=>$course->id));
@@ -507,7 +566,7 @@ class moodle_page_test extends \advanced_testcase {
         $this->testpage->set_cm($cm, $course);
     }
 
-    public function test_get_activity_name() {
+    public function test_get_activity_name(): void {
         // Setup fixture.
         $course = $this->getDataGenerator()->create_course();
         $forum = $this->getDataGenerator()->create_module('forum', array('course'=>$course->id));
@@ -518,7 +577,7 @@ class moodle_page_test extends \advanced_testcase {
         $this->assertSame('forum', $this->testpage->activityname);
     }
 
-    public function test_user_is_editing_on() {
+    public function test_user_is_editing_on(): void {
         // We are relying on the fact that unit tests are always run by admin, to
         // ensure the user_allows_editing call returns true.
 
@@ -533,7 +592,7 @@ class moodle_page_test extends \advanced_testcase {
         $this->assertTrue($this->testpage->user_is_editing());
     }
 
-    public function test_user_is_editing_off() {
+    public function test_user_is_editing_off(): void {
         // We are relying on the fact that unit tests are always run by admin, to
         // ensure the user_allows_editing call returns true.
 
@@ -548,7 +607,7 @@ class moodle_page_test extends \advanced_testcase {
         $this->assertFalse($this->testpage->user_is_editing());
     }
 
-    public function test_default_editing_capabilities() {
+    public function test_default_editing_capabilities(): void {
         $this->testpage->set_context(\context_system::instance());
         $this->setAdminUser();
 
@@ -556,7 +615,7 @@ class moodle_page_test extends \advanced_testcase {
         $this->assertEquals(array('moodle/site:manageblocks'), $this->testpage->all_editing_caps());
     }
 
-    public function test_other_block_editing_cap() {
+    public function test_other_block_editing_cap(): void {
         $this->testpage->set_context(\context_system::instance());
         $this->setAdminUser();
 
@@ -566,7 +625,7 @@ class moodle_page_test extends \advanced_testcase {
         $this->assertEquals(array('moodle/my:manageblocks'), $this->testpage->all_editing_caps());
     }
 
-    public function test_other_editing_cap() {
+    public function test_other_editing_cap(): void {
         $this->testpage->set_context(\context_system::instance());
         $this->setAdminUser();
 
@@ -578,7 +637,7 @@ class moodle_page_test extends \advanced_testcase {
         $this->assertEquals(array_values($expectedcaps), array_values($actualcaps));
     }
 
-    public function test_other_editing_caps() {
+    public function test_other_editing_caps(): void {
         $this->testpage->set_context(\context_system::instance());
         $this->setAdminUser();
 
@@ -593,7 +652,7 @@ class moodle_page_test extends \advanced_testcase {
     /**
      * Test getting a renderer.
      */
-    public function test_get_renderer() {
+    public function test_get_renderer(): void {
         global $OUTPUT, $PAGE;
         $oldoutput = $OUTPUT;
         $oldpage = $PAGE;
@@ -631,7 +690,7 @@ class moodle_page_test extends \advanced_testcase {
      *
      * This layout has special hacks in place in order to deliver a "maintenance" renderer.
      */
-    public function test_get_renderer_maintenance() {
+    public function test_get_renderer_maintenance(): void {
         global $OUTPUT, $PAGE;
         $oldoutput = $OUTPUT;
         $oldpage = $PAGE;
@@ -663,7 +722,7 @@ class moodle_page_test extends \advanced_testcase {
         $OUTPUT = $oldoutput;
     }
 
-    public function test_render_to_cli() {
+    public function test_render_to_cli(): void {
         global $OUTPUT;
 
         $footer = $OUTPUT->footer();
@@ -675,7 +734,7 @@ class moodle_page_test extends \advanced_testcase {
      *
      * @dataProvider get_user_theme_provider
      */
-    public function test_cohort_get_user_theme($usertheme, $sitetheme, $cohortthemes, $expected) {
+    public function test_cohort_get_user_theme($usertheme, $sitetheme, $cohortthemes, $expected): void {
         global $DB, $PAGE, $USER;
 
         $this->resetAfterTest();
@@ -725,7 +784,7 @@ class moodle_page_test extends \advanced_testcase {
      *
      * @return array
      */
-    public function get_user_theme_provider() {
+    public static function get_user_theme_provider(): array {
         return [
             'User not a member of any cohort' => [
                 'usertheme' => '',
@@ -780,7 +839,7 @@ class moodle_page_test extends \advanced_testcase {
      * Tests user_can_edit_blocks() returns the expected response.
      * @covers ::user_can_edit_blocks()
      */
-    public function test_user_can_edit_blocks() {
+    public function test_user_can_edit_blocks(): void {
         global $DB;
 
         $systemcontext = \context_system::instance();
@@ -805,7 +864,7 @@ class moodle_page_test extends \advanced_testcase {
      * Tests that calling force_lock_all_blocks() will cause user_can_edit_blocks() to return false, regardless of capabilities.
      * @covers ::force_lock_all_blocks()
      */
-    public function test_force_lock_all_blocks() {
+    public function test_force_lock_all_blocks(): void {
         $this->testpage->set_context(\context_system::instance());
         $this->setAdminUser();
 
@@ -815,6 +874,19 @@ class moodle_page_test extends \advanced_testcase {
         // Force lock and confirm user can no longer edit, despite having the capability.
         $this->testpage->force_lock_all_blocks();
         $this->assertFalse($this->testpage->user_can_edit_blocks());
+    }
+
+    /**
+     * Test the method to set and retrieve the show_course_index property.
+     *
+     * @covers ::set_show_course_index
+     * @covers ::get_show_course_index
+     * @return void
+     */
+    public function test_show_course_index(): void {
+        $page = new \moodle_page();
+        $page->set_show_course_index(false);
+        $this->assertFalse($page->get_show_course_index());
     }
 }
 

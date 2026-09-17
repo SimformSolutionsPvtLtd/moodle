@@ -116,7 +116,7 @@ class discussion_list {
         forum_gradeitem $forumgradeitem,
         string $template,
         array $notifications = [],
-        callable $postprocessfortemplate = null
+        ?callable $postprocessfortemplate = null
     ) {
         $this->forum = $forum;
         $this->renderer = $renderer;
@@ -156,9 +156,9 @@ class discussion_list {
         ?int $sortorder,
         ?int $pageno,
         ?int $pagesize,
-        int $displaymode = null,
+        ?int $displaymode = null,
         bool $enablediscussioncreation = true
-    ) : string {
+    ): string {
         global $PAGE;
 
         $forum = $this->forum;
@@ -230,7 +230,7 @@ class discussion_list {
             $exportedposts = ($this->postprocessfortemplate) ($discussions, $user, $forum);
         }
 
-        $baseurl = new \moodle_url($PAGE->url, array('o' => $sortorder));
+        $baseurl = new \moodle_url($PAGE->url, ['o' => $sortorder, 's' => $pagesize]);
 
         $forumview = array_merge(
             $forumview,
@@ -332,7 +332,7 @@ class discussion_list {
      * @param   int         $pagesize The number of discussions to show on the page
      * @return  int         The normalised page size
      */
-    private function get_page_size(?int $pagesize) : int {
+    private function get_page_size(?int $pagesize): int {
         if (null === $pagesize || $pagesize <= 0) {
             $pagesize = discussion_list_vault::PAGESIZE_DEFAULT;
         }
@@ -346,7 +346,7 @@ class discussion_list {
      * @param   int         $pageno The zero-indexed page number to use
      * @return  int         The normalised page number
      */
-    private function get_page_number(?int $pageno) : int {
+    private function get_page_number(?int $pageno): int {
         if (null === $pageno || $pageno < 0) {
             $pageno = 0;
         }
@@ -385,14 +385,21 @@ class discussion_list {
 
         if ($forum->is_in_group_mode() && !$capabilitymanager->can_access_all_groups($user)) {
             if ($groupid === null) {
-                if (!$capabilitymanager->can_post_to_my_groups($user)) {
+                $isvisiblegroupsmode = $forum->get_effective_group_mode() == VISIBLEGROUPS;
+                $isgroupmember = !empty(groups_get_user_groups($forum->get_course_id(), $user->id)[0]);
+
+                if (
+                    !$capabilitymanager->can_post_to_my_groups($user)
+                    && $isvisiblegroupsmode
+                    && $isgroupmember
+                ) {
                     $notifications[] = (new notification(
-                        get_string('cannotadddiscussiongroup', 'mod_forum'),
+                        get_string('cannotadddiscussionall', 'mod_forum'),
                         \core\output\notification::NOTIFY_WARNING
                     ))->set_show_closebutton();
                 } else {
                     $notifications[] = (new notification(
-                        get_string('cannotadddiscussionall', 'mod_forum'),
+                        get_string('cannotadddiscussiongroup', 'mod_forum'),
                         \core\output\notification::NOTIFY_WARNING
                     ))->set_show_closebutton();
                 }

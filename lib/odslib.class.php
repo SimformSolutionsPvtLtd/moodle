@@ -104,6 +104,12 @@ class MoodleODSCell {
     public $type;
     public $format;
     public $formula;
+    /**
+     * @var array Contains the number of rows and columns spanned by the merged cell.
+     *            'rows' => integer, the number of rows the cell spans.
+     *            'columns' => integer, the number of columns the cell spans.
+     */
+    public $merge;
 }
 
 
@@ -120,6 +126,10 @@ class MoodleODSWorksheet {
     public $rows = array();
     public $showgrid = true;
     public $name;
+    /** @var int Max number of rows in the sheet. */
+    public $maxr = 0;
+    /** @var int Max number of cols in the sheet. */
+    public $maxc = 0;
 
     /**
      * Constructs one Moodle Worksheet.
@@ -154,6 +164,8 @@ class MoodleODSWorksheet {
         if (is_array($format)) {
             $format = new MoodleODSFormat($format);
         }
+        $str = \core\dataformat::escape_spreadsheet_formula($str);
+
         $this->data[$row][$col]->value = $str;
         $this->data[$row][$col]->type = 'string';
         $this->data[$row][$col]->format = $format;
@@ -864,8 +876,6 @@ class MoodleODSWriter {
         $colstyles = '';
 
         foreach($this->worksheets as $wsnum=>$ws) {
-            $this->worksheets[$wsnum]->maxr = 0;
-            $this->worksheets[$wsnum]->maxc = 0;
             foreach($ws->data as $rnum=>$row) {
                 if ($rnum > $this->worksheets[$wsnum]->maxr) {
                     $this->worksheets[$wsnum]->maxr = $rnum;

@@ -233,13 +233,12 @@ function resourcelib_embed_pdf($fullurl, $title, $clicktoopen) {
     global $CFG, $PAGE;
 
     $code = <<<EOT
-<div class="resourcecontent resourcepdf">
-  <object id="resourceobject" data="$fullurl" type="application/pdf" width="800" height="600">
-    <param name="src" value="$fullurl" />
-    $clicktoopen
-  </object>
-</div>
-EOT;
+    <div class="resourcecontent resourcepdf">
+         <iframe id="resourceobject" src="$fullurl" title="$title" width="800" height="600">
+             $clicktoopen
+         </iframe>
+    </div>
+    EOT;
 
     // the size is hardcoded in the boject obove intentionally because it is adjusted by the following function on-the-fly
     $PAGE->requires->js_init_call('M.util.init_maximised_embed', array('resourceobject'), true);
@@ -262,13 +261,13 @@ function resourcelib_embed_general($fullurl, $title, $clicktoopen, $mimetype) {
         $fullurl = $fullurl->out();
     }
 
-    $param = '<param name="src" value="'.$fullurl.'" />';
+    $title = s($title);
 
     // Always use iframe embedding because object tag does not work much,
     // this is ok in HTML5.
     $code = <<<EOT
 <div class="resourcecontent resourcegeneral">
-  <iframe id="resourceobject" src="$fullurl">
+  <iframe id="resourceobject" src="$fullurl" title="$title">
     $clicktoopen
   </iframe>
 </div>

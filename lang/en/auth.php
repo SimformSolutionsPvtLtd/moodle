@@ -38,9 +38,13 @@ $string['auth_changepasswordhelp'] = 'Change password help';
 $string['auth_changepasswordhelp_expl'] = 'Display lost password help to users who have lost their {$a} password. This will be displayed either as well as or instead of the <strong>Change Password URL</strong> or Internal Moodle password change.';
 $string['auth_changepasswordurl'] = 'Change password URL';
 $string['auth_changepasswordurl_expl'] = 'Specify the url to send users who have lost their {$a} password. Set <strong>Use standard Change Password page</strong> to <strong>No</strong>.';
-$string['auth_changingemailaddress'] = 'You have requested a change of email address, from {$a->oldemail} to {$a->newemail}. For security reasons, we are sending you an email message at the new address to confirm that it belongs to you. Your email address will be updated as soon as you open the URL sent to you in that message.';
+$string['auth_changingemailaddress'] = 'You requested a change of email address, from {$a->oldemail} to {$a->newemail}. For security reasons, we are sending you a message to your new address to confirm that it belongs to you. Your email address will be updated as soon as you open the URL sent to you in the message. The confirmation link will expire in 10 minutes.';
 $string['authinstructions'] = 'Leave this blank for the default login instructions to be displayed on the login page. If you want to provide custom login instructions, enter them here.';
 $string['auth_invalidnewemailkey'] = 'Error: if you are trying to confirm a change of email address, you may have made a mistake in copying the URL we sent you by email. Please copy the address and try again.';
+$string['auth_loginpasswordtoggle'] = 'Password visibility toggle';
+$string['auth_loginpasswordtoggle_desc'] = 'Add an icon to the password field on the login screen that allows users to show or hide their entered password.';
+$string['auth_loginrecaptcha'] = 'Enable reCAPTCHA for login';
+$string['auth_loginrecaptcha_desc'] = 'Add a visual/audio confirmation form element to the login page. This reduces the risk of unwarranted login attempts. For more details see <a href="https://www.google.com/recaptcha">Google reCAPTCHA</a>.';
 $string['auth_multiplehosts'] = 'Multiple hosts OR addresses can be specified (eg host1.com;host2.com;host3.com) or (eg xxx.xxx.xxx.xxx;xxx.xxx.xxx.xxx)';
 $string['auth_notconfigured'] = 'The authentication method {$a} is not configured.';
 $string['auth_outofnewemailupdateattempts'] = 'You have run out of allowed attempts to update your email address. Your update request has been cancelled.';
@@ -73,11 +77,16 @@ $string['emailchangecancel'] = 'Cancel email change';
 $string['emailchangepending'] = 'Change pending. Open the link sent to you at {$a->preference_newemail}.';
 $string['emailnowexists'] = 'The email address you tried to assign to your profile has been assigned to someone else since your original request. Your request for change of email address is hereby cancelled, but you may try again with a different address.';
 $string['emailupdate'] = 'Email address update';
-$string['emailupdatemessage'] = 'Dear {$a->fullname},
+$string['emailupdatemessage'] = 'Hi {$a->firstname},
 
-You have requested a change of your email address for your account on {$a->site}. To confirm this change, please go to the following web address:
+You have requested a change of your email address for your account on {$a->site}.
 
-{$a->url}
+To confirm this change, please click the link below:
+
+<a href="{$a->url}">Confirm email change</a>
+
+
+The confirmation link will expire in <strong>10 minutes</strong>.
 
 {$a->supportemail}';
 $string['emailupdatesuccess'] = 'Email address of user <em>{$a->fullname}</em> was successfully updated to <em>{$a->email}</em>.';
@@ -86,7 +95,7 @@ $string['errormaxconsecutiveidentchars'] = 'Passwords must have at most {$a} con
 $string['errorminpassworddigits'] = 'Passwords must have at least {$a} digit(s).';
 $string['errorminpasswordlength'] = 'Passwords must be at least {$a} characters long.';
 $string['errorminpasswordlower'] = 'Passwords must have at least {$a} lower case letter(s).';
-$string['errorminpasswordnonalphanum'] = 'The password must have at least {$a} special character(s) such as as *, -, or #.';
+$string['errorminpasswordnonalphanum'] = 'The password must have at least {$a} special character(s) such as *, -, or #.';
 $string['errorpasswordreused'] = 'This password has been used before, and is not permitted to be reused';
 $string['errorminpasswordupper'] = 'Passwords must have at least {$a} upper case letter(s).';
 $string['errorpasswordupdate'] = 'Error updating password, password not changed';
@@ -109,7 +118,7 @@ $string['infilefield'] = 'Field required in file';
 $string['informminpassworddigits'] = 'at least {$a} digit(s)';
 $string['informminpasswordlength'] = 'at least {$a} characters';
 $string['informminpasswordlower'] = 'at least {$a} lower case letter(s)';
-$string['informminpasswordnonalphanum'] = 'at least {$a} special character(s) such as as *, -, or #';
+$string['informminpasswordnonalphanum'] = 'at least {$a} special character(s) such as *, -, or #';
 $string['informminpasswordreuselimit'] = 'Passwords can be reused after {$a} changes';
 $string['informminpasswordupper'] = 'at least {$a} upper case letter(s)';
 $string['informpasswordpolicy'] = 'The password must have {$a}';
@@ -136,7 +145,7 @@ $string['pluginnotinstalled'] = 'Authentication plugin \'{$a}\' is not installed
 $string['privacy:metadata:userpref:createpassword'] = 'Indicates that a password should be generated for the user';
 $string['privacy:metadata:userpref:forcepasswordchange'] = 'Indicates whether the user should change their password upon logging in';
 $string['privacy:metadata:userpref:loginfailedcount'] = 'The number of times the user failed to log in';
-$string['privacy:metadata:userpref:loginfailedcountsincesuccess'] = 'The number of times the user failed to login since their last successful login';
+$string['privacy:metadata:userpref:loginfailedcountsincesuccess'] = 'The number of times the user failed to log in since their last successful login.';
 $string['privacy:metadata:userpref:loginfailedlast'] = 'The date when the last failed login attempt was recorded';
 $string['privacy:metadata:userpref:loginlockout'] = 'Whether the user\'s account is locked due to failed login attempts, and the date when the account was locked';
 $string['privacy:metadata:userpref:loginlockoutignored'] = 'Indicates that a user\'s account should never be subject to lockouts';
@@ -153,6 +162,10 @@ $string['selfregistration_help'] = 'If an authentication plugin, such as email-b
 $string['settingmigrationmismatch'] = 'Values mismatch detected while correcting the plugin setting names! The authentication plugin \'{$a->plugin}\' had the setting \'{$a->setting}\' configured to \'{$a->legacy}\' under the legacy name and to \'{$a->current}\' under the current name. The latter value has been set as the valid one but you should check and confirm that it is expected.';
 $string['sha1'] = 'SHA-1 hash';
 $string['showguestlogin'] = 'You can hide or show the guest login button on the login page.';
+$string['showloginform'] = 'Display manual login form';
+$string['showloginform_desc'] = 'If all users on the site use an authentication method such as OAuth 2 that doesn\'t require them to enter a username and password, you can hide the manual login form. Note that users with manual accounts will not be able to log in.
+
+If you hide the manual login form then can\'t log in, you can display it again using the command line php admin/cli/cfg.php --name=showloginform --set=1';
 $string['stdchangepassword'] = 'Use standard page for changing password';
 $string['stdchangepassword_expl'] = 'If the external authentication system allows password changes through Moodle, switch this to Yes. This setting overrides \'Change Password URL\'.';
 $string['stdchangepassword_explldap'] = 'NOTE: It is recommended that you use LDAP over an SSL encrypted tunnel (ldaps://) if the LDAP server is remote.';
