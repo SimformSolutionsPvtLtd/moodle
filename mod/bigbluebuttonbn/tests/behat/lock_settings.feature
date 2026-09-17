@@ -36,7 +36,7 @@ Feature: Test that the meeting has the right lock setting.
       | disablemic         | 1     | disableMic : enabled         |
       | disableprivatechat | 1     | disablePrivateChat : enabled |
       | disablepublicchat  | 1     | disablePublicChat : enabled  |
-      | disablenote        | 1     | disableNote : enabled        |
+      | disablenote        | 1     | disableNotes : enabled        |
       | hideuserlist       | 1     | hideUserList : enabled       |
 
   @javascript
@@ -60,4 +60,4 @@ Feature: Test that the meeting has the right lock setting.
     And I click on "Join session" "link"
     And I switch to "bigbluebutton_conference" window
     Then I should see "disableCam : enabled" in the "lockSettings" "mod_bigbluebuttonbn > Meeting field"
-    Then I should see "lockOnJoin : enabled" in the "lockSettings" "mod_bigbluebuttonbn > Meeting field"
+    And I should see "lockOnJoin : enabled" in the "lockSettings" "mod_bigbluebuttonbn > Meeting field"

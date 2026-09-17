@@ -20,13 +20,13 @@ Feature: Import course's contents into another course
   Scenario: Import course's contents to another course
     Given I log in as "teacher1"
     And the following "activities" exist:
-      | activity | name               | intro                        | course | idnumber   | section |
-      | data     | Test database name | Test database description    | C1     | database1  | 2       |
-      | forum    | Test forum name    | Test forum name description  | C1     | forum1     | 1       |
-    And I am on "Course 1" course homepage with editing mode on
-    And I add the "Comments" block
-    And I add the "Recent blog entries" block
-    And I turn editing mode off
+      | activity | name               | course | idnumber   |
+      | data     | Test database name | C1     | database1  |
+      | forum    | Test forum name    | C1     | forum1     |
+    And the following "blocks" exist:
+      | blockname   | contextlevel | reference | pagetypepattern | defaultregion |
+      | comments    | Course       | C1        | course-view-*   | side-pre      |
+      | blog_recent | Course       | C1        | course-view-*   | side-pre      |
     When I import "Course 1" course into "Course 2" course using this options:
     Then I should see "Test database name"
     And I should see "Test forum name"
@@ -55,3 +55,38 @@ Feature: Import course's contents into another course
       | Initial | Include permission overrides | 0 |
     And I am on the "Course 2" "permissions" page
     Then I should see "Non-editing teacher (0)"
+
+  Scenario: Import course badges to another course
+    Given I log in as "teacher1"
+    And the following "core_badges > Badges" exist:
+      | name                                      | course | description       | image                        | status | type |
+      | Published course badge                    | C1     | Badge description | badges/tests/behat/badge.png | active | 2    |
+      | Unpublished course badge                  | C1     | Badge description | badges/tests/behat/badge.png | 0      | 2    |
+      | Unpublished without criteria course badge | C1     | Badge description | badges/tests/behat/badge.png | 0      | 2    |
+    And the following "core_badges > Criterias" exist:
+      | badge                    | role           |
+      | Published course badge   | editingteacher |
+      | Unpublished course badge | editingteacher |
+    When I import "Course 1" course into "Course 2" course using this options:
+      | Initial  | Include badges | 1 |
+    And I navigate to "Badges" in current page administration
+    Then I should see "Published course badge"
+    And I should see "Unpublished course badge"
+    And I should see "Unpublished without criteria course badge"
+    # Badges exist and the criteria have been restored too.
+    And I should not see "Criteria for this badge have not been set up yet" in the "Published course badge" "table_row"
+    And I should not see "Criteria for this badge have not been set up yet" in the "Unpublished course badge" "table_row"
+    And I should see "Criteria for this badge have not been set up yet" in the "Unpublished without criteria course badge" "table_row"
+
+  Scenario: Import process should not include badges by default
+    Given I log in as "teacher1"
+    And the following "core_badges > Badges" exist:
+      | name                                      | course | description       | image                        | status | type |
+      | Published course badge                    | C1     | Badge description | badges/tests/behat/badge.png | active | 2    |
+    And the following "core_badges > Criterias" exist:
+      | badge                    | role           |
+      | Published course badge   | editingteacher |
+    When I import "Course 1" course into "Course 2" course using this options:
+      | Initial  | Include badges | 0 |
+    And I navigate to "Badges" in current page administration
+    Then I should not see "Published course badge"

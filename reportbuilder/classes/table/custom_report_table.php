@@ -23,7 +23,7 @@ use html_writer;
 use moodle_exception;
 use moodle_url;
 use stdClass;
-use core_reportbuilder\manager;
+use core_reportbuilder\{datasource, manager};
 use core_reportbuilder\local\models\report;
 use core_reportbuilder\local\report\column;
 use core_reportbuilder\output\column_aggregation_editable;
@@ -37,6 +37,9 @@ use core_reportbuilder\output\column_heading_editable;
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class custom_report_table extends base_report_table {
+
+    /** @var datasource $report */
+    protected $report;
 
     /** @var string Unique ID prefix for the table */
     private const UNIQUEID_PREFIX = 'custom-report-table-';
@@ -94,18 +97,18 @@ class custom_report_table extends base_report_table {
             return !empty($column->get_aggregation());
         });
 
-        // Also take account of the report setting to show unique rows (only if no columns are being aggregated).
         $hasaggregatedcolumns = !empty($aggregatedcolumns);
+
+        // Also take account of the report setting to show unique rows (only if no columns are being aggregated).
         $showuniquerows = !$hasaggregatedcolumns && $this->persistent->get('uniquerows');
 
-        $columnheaders = $columnsattributes = [];
+        $columnheaders = $columnheaderattributes = $columnattributes = [];
         foreach ($columns as $column) {
             $columnheading = $column->get_persistent()->get_formatted_heading($this->report->get_context());
             $columnheaders[$column->get_column_alias()] = $columnheading !== '' ? $columnheading : $column->get_title();
 
-            // We need to determine for each column whether we should group by it's fields, to support aggregation.
-            $columnaggregation = $column->get_aggregation();
-            if ($showuniquerows || ($hasaggregatedcolumns && empty($columnaggregation))) {
+            // We need to determine for each column whether we should group by its fields, to support aggregation.
+            if ($showuniquerows || ($hasaggregatedcolumns && empty($column->get_aggregation()))) {
                 $groupby = array_merge($groupby, $column->get_groupby_sql());
             }
 
@@ -131,14 +134,16 @@ class custom_report_table extends base_report_table {
             }
 
             // Generate column attributes to be included in each cell.
-            $columnsattributes[$column->get_column_alias()] = $column->get_attributes();
+            $columnheaderattributes[$column->get_column_alias()] = $column->get_header_attributes();
+            $columnattributes[$column->get_column_alias()] = $column->get_attributes();
         }
 
         $this->define_columns(array_keys($columnheaders));
         $this->define_headers(array_values($columnheaders));
 
         // Add column attributes to the table.
-        $this->set_columnsattributes($columnsattributes);
+        $this->set_columnheadersattributes($columnheaderattributes);
+        $this->set_columnsattributes($columnattributes);
 
         // Table configuration.
         $this->initialbars(false);
@@ -260,7 +265,7 @@ class custom_report_table extends base_report_table {
             ]);
 
             echo html_writer::tag('th', $headercell, [
-                'class' => 'border-right border-left',
+                'class' => 'border-end border-start',
                 'scope' => 'col',
                 'data-region' => 'column-header',
                 'data-column-id' => $column->get_persistent()->get('id'),
@@ -385,5 +390,14 @@ class custom_report_table extends base_report_table {
         global $CFG;
 
         return !empty($CFG->customreportsliveediting);
+    }
+
+    /**
+     * Check if the user has the capability to access this table.
+     *
+     * @return bool Return true if capability check passed.
+     */
+    public function has_capability(): bool {
+        return \core_reportbuilder\permission::can_edit_report($this->persistent);
     }
 }

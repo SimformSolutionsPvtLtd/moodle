@@ -46,8 +46,8 @@ require_once($CFG->libdir.'/formslib.php');
  * @copyright  2012 Rajesh Taneja
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class datetimeselector_test extends \advanced_testcase {
-    /** @var MoodleQuickForm Keeps reference of dummy form object */
+final class datetimeselector_test extends \advanced_testcase {
+    /** @var \MoodleQuickForm Keeps reference of dummy form object */
     private $mform;
     /** @var array test fixtures */
     private $testvals;
@@ -136,7 +136,7 @@ class datetimeselector_test extends \advanced_testcase {
     /**
      * Testcase to check exportvalue
      */
-    public function test_exportvalue() {
+    public function test_exportvalue(): void {
         global $USER;
         $testvals = $this->testvals;
 
@@ -158,8 +158,8 @@ class datetimeselector_test extends \advanced_testcase {
     /**
      * Testcase to check onQuickformEvent
      */
-    public function test_onquickformevent() {
-        global $USER;
+    public function test_onquickformevent(): void {
+        global $OUTPUT, $USER;
         $testvals = $this->testvals;
         // Get dummy form for data.
         $mform = $this->mform;
@@ -172,13 +172,14 @@ class datetimeselector_test extends \advanced_testcase {
             $elparams = array('optional'=>false, 'timezone' => $vals['timezone']);
             $el = $this->mform->addElement('date_time_selector', 'dateselector', null, $elparams);
             $this->assertTrue($el instanceof MoodleQuickForm_date_time_selector);
-            $expectedvalues = array(
-                'day' => array($vals['day']),
-                'month' => array($vals['month']),
-                'year' => array($vals['year']),
-                'hour' => array($vals['hour']),
-                'minute' => array($vals['minute'])
-                );
+            $expectedvalues = [
+                'day' => [$vals['day']],
+                'month' => [$vals['month']],
+                'year' => [$vals['year']],
+                'hour' => [$vals['hour']],
+                'minute' => [$vals['minute']],
+                'calendar' => $OUTPUT->pix_icon('i/calendar', ''),
+            ];
             $mform->_submitValues = array('dateselector' => $vals['timestamp']);
             $el->onQuickFormEvent('updateValue', null, $mform);
             $this->assertSame($expectedvalues, $el->getValue());
@@ -198,7 +199,7 @@ class temp_form_datetime extends moodleform {
     }
     /**
      * Returns form reference.
-     * @return MoodleQuickForm
+     * @return \MoodleQuickForm
      */
     public function getform() {
         $mform = $this->_form;

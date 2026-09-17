@@ -26,6 +26,7 @@
 
 import SectionTitle from 'core_courseformat/local/courseindex/sectiontitle';
 import DndSection from 'core_courseformat/local/courseeditor/dndsection';
+import jQuery from 'jquery';
 
 export default class Component extends DndSection {
 
@@ -37,9 +38,13 @@ export default class Component extends DndSection {
         this.name = 'courseindex_section';
         // Default query selectors.
         this.selectors = {
+            SECTION: `[data-for='section']`,
             SECTION_ITEM: `[data-for='section_item']`,
             SECTION_TITLE: `[data-for='section_title']`,
             CM_LAST: `[data-for="cm"]:last-child`,
+            DND_ALLOWED: `[data-courseindexdndallowed='true']`,
+            COLLAPSE: `[data-toggle="collapse"]`,
+            TREE_ITEM: `[role="treeitem"]`,
         };
         // Default classes to toggle on refresh.
         this.classes = {
@@ -48,6 +53,8 @@ export default class Component extends DndSection {
             LOCKED: 'editinprogress',
             RESTRICTIONS: 'restrictions',
             PAGEITEM: 'pageitem',
+            OVERLAYBORDERS: 'overlay-preview-borders',
+            SHOW: 'show',
         };
 
         // We need our id to watch specific events.
@@ -63,7 +70,7 @@ export default class Component extends DndSection {
      * @return {Component}
      */
     static init(target, selectors) {
-        return new Component({
+        return new this({
             element: document.getElementById(target),
             selectors,
         });
@@ -76,9 +83,10 @@ export default class Component extends DndSection {
      */
     stateReady(state) {
         this.configState(state);
+        this._setupExpandedState();
         const sectionItem = this.getElement(this.selectors.SECTION_ITEM);
         // Drag and drop is only available for components compatible course formats.
-        if (this.reactive.isEditing && this.reactive.supportComponents) {
+        if (this.reactive.isEditing && this.reactive.supportComponents && document.querySelector(this.selectors.DND_ALLOWED)) {
             // Init the inner dragable element passing the full section as affected region.
             const titleitem = new SectionTitle({
                 ...this,
@@ -93,6 +101,42 @@ export default class Component extends DndSection {
             this.reactive.dispatch('setPageItem', 'section', this.id);
             sectionItem.scrollIntoView();
         }
+    }
+
+    /**
+     * Keep the section tree item aria-expanded attribute in sync with its collapsible content.
+     *
+     * The tree item and the Bootstrap collapsible are not the same element, so the expanded
+     * state must be replicated on the tree item to expose it to assistive technologies.
+     * For delegated sections the tree item is the activity element wrapping the section.
+     */
+    _setupExpandedState() {
+        const treeItem = this.element.closest(this.selectors.TREE_ITEM);
+        const toggler = this.getElement(this.selectors.COLLAPSE);
+        const collapsibleId = toggler?.dataset.target ?? toggler?.getAttribute('href');
+        if (!treeItem || !collapsibleId) {
+            return;
+        }
+        const collapsible = document.getElementById(collapsibleId.replace('#', ''));
+        if (!collapsible) {
+            return;
+        }
+        // The section can be expanded before this component is ready, so the initial
+        // value is taken from the collapsible itself instead of the state.
+        this._refreshExpandedState(treeItem, collapsible);
+        // Bootstrap 4 collapse events are triggered through jQuery, so they must be listened
+        // to with jQuery too: a native addEventListener never receives them.
+        jQuery(collapsible).on('shown.bs.collapse hidden.bs.collapse', () => this._refreshExpandedState(treeItem, collapsible));
+    }
+
+    /**
+     * Update the tree item aria-expanded attribute using the collapsible current state.
+     *
+     * @param {Element} treeItem the section tree item element
+     * @param {Element} collapsible the section collapsible element
+     */
+    _refreshExpandedState(treeItem, collapsible) {
+        treeItem.setAttribute('aria-expanded', collapsible.classList.contains(this.classes.SHOW));
     }
 
     /**
@@ -147,14 +191,18 @@ export default class Component extends DndSection {
         if (!element.pageItem) {
             return;
         }
-        if (element.pageItem.sectionId !== this.id && this.isPageItem) {
+
+        const containsPageItem = this._isPageItemInThisSection(element.pageItem);
+
+        if (!containsPageItem || this._isParentSectionIndexCollapsed(state)) {
             this.pageItem = false;
             this.getElement(this.selectors.SECTION_ITEM).classList.remove(this.classes.PAGEITEM);
             return;
         }
+
         const section = state.section.get(this.id);
         if (section.indexcollapsed && !element.pageItem?.isStatic) {
-            this.pageItem = (element.pageItem?.sectionId == this.id);
+            this.pageItem = containsPageItem;
         } else {
             this.pageItem = (element.pageItem.type == 'section' && element.pageItem.id == this.id);
         }
@@ -163,5 +211,59 @@ export default class Component extends DndSection {
         if (this.pageItem && !this.reactive.isEditing) {
             this.element.scrollIntoView({block: "nearest"});
         }
+    }
+
+    /**
+     * Check if the page item is inside this section.
+     *
+     * @private
+     * @param {Object} pageItem
+     * @param {Object} pageItem.sectionId the current page item section id.
+     * @returns {boolean}
+     */
+    _isPageItemInThisSection(pageItem) {
+        if (pageItem.sectionId == this.id) {
+            return true;
+        }
+        // Check for any possible subsections.
+        const subsection = this.element.querySelector(`${this.selectors.SECTION}[data-id="${pageItem.sectionId}"]`);
+        if (subsection) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Check if the parent section index is collapsed.
+     *
+     * @private
+     * @param {Object} state the current state
+     * @returns {boolean|null} null if no parent section is found.
+     */
+    _isParentSectionIndexCollapsed(state) {
+        const parentElement = this.element.parentElement.closest(this.selectors.SECTION);
+        if (!parentElement || !parentElement.dataset.id) {
+            return null;
+        }
+        const parentSection = state.section.get(parentElement.dataset.id);
+        return !!parentSection.indexcollapsed;
+    }
+
+    /**
+     * Overridden version of the component addOverlay async method.
+     *
+     * The course index is not compatible with overlay elements.
+     */
+    async addOverlay() {
+        this.element.classList.add(this.classes.OVERLAYBORDERS);
+    }
+
+    /**
+     * Overridden version of the component removeOverlay.
+     *
+     * The course index is not compatible with overlay elements.
+     */
+    removeOverlay() {
+        this.element.classList.remove(this.classes.OVERLAYBORDERS);
     }
 }

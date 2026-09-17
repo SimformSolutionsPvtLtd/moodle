@@ -48,7 +48,6 @@ class manager {
             'adminpresets_admin_setting_configduration_with_advanced' => 'adminpresets_admin_setting_configtext_with_advanced',
             'adminpresets_admin_setting_configduration' => 'adminpresets_admin_setting_configtext',
             'adminpresets_admin_setting_configempty' => 'adminpresets_admin_setting_configtext',
-            'adminpresets_admin_setting_configexecutable' => 'adminpresets_admin_setting_configtext',
             'adminpresets_admin_setting_configfile' => 'adminpresets_admin_setting_configtext',
             'adminpresets_admin_setting_confightmleditor' => 'adminpresets_admin_setting_configtext',
             'adminpresets_admin_setting_configmixedhostiplist' => 'adminpresets_admin_setting_configtext',
@@ -105,7 +104,6 @@ class manager {
             'adminpresets_auth_shibboleth_admin_setting_special_idp_configtextarea' => 'adminpresets_admin_setting_configtext',
             'adminpresets_auth_shibboleth_admin_setting_special_wayf_select' => 'adminpresets_admin_setting_configselect',
             'adminpresets_editor_atto_toolbar_setting' => 'adminpresets_admin_setting_configtext',
-            'adminpresets_editor_tinymce_json_setting_textarea' => 'adminpresets_admin_setting_configtext',
             'adminpresets_enrol_database_admin_setting_category' => 'adminpresets_admin_setting_configselect',
             'adminpresets_enrol_flatfile_role_setting' => 'adminpresets_admin_setting_configtext',
             'adminpresets_enrol_ldap_admin_setting_category' => 'adminpresets_admin_setting_configselect',
@@ -184,7 +182,8 @@ class manager {
      * @param boolean $sitedbvalues Indicates if $dbsettings comes from the site db or not
      * @param array $settings Array format $array['plugin']['settingname'] = settings_types child class
      * @param array|false $children Array of admin_category children or false
-     * @return    array Array format $array['plugin']['settingname'] = settings_types child class
+     * @return \core_adminpresets\local\setting\adminpresets_setting[][] Array format
+     *    $array['plugin']['settingname'] = adminpresets_setting child class
      */
     public function get_settings(array $dbsettings, bool $sitedbvalues = false, array $settings = [], $children = false): array {
         global $DB;
@@ -309,11 +308,17 @@ class manager {
 
         $classname = null;
 
-        // Getting the appropiate class to get the correct setting value.
+        // Getting the appropriate class to get the correct setting value.
         $settingtype = get_class($settingdata);
-
         // Check if it is a setting from a plugin.
-        $plugindata = explode('_', $settingtype);
+        $namespacedata = explode('\\', $settingtype);
+        if (count($namespacedata) > 1) {
+            $plugindata = explode('_', $namespacedata[0]);
+            $settingtype = end($namespacedata);
+        } else {
+            $plugindata = explode('_', $settingtype, 2);
+        }
+
         $types = \core_component::get_plugin_types();
         if (array_key_exists($plugindata[0], $types)) {
             $plugins = \core_component::get_plugin_list($plugindata[0]);
@@ -613,7 +618,7 @@ class manager {
      *               to define if any setting has been found and another boolean to specify if any plugin has been found.
      */
     public function import_preset(string $xmlcontent, ?string $presetname = null): array {
-        global $DB, $USER;
+        global $DB, $USER, $CFG;
 
         $settingsfound = false;
         $pluginsfound = false;
@@ -674,6 +679,13 @@ class manager {
                     // Cleaning the setting value.
                     if (!$presetsetting = $this->get_setting($sitesettings[$plugin][$name]->get_settingdata(), $value)) {
                         debugging('Setting ' . $plugin . '/' . $name . ' not implemented', DEBUG_DEVELOPER);
+                        continue;
+                    }
+
+                    // When $CFG->preventexecpath is set, executable paths are managed through
+                    // config.php and cannot be changed via presets.
+                    $settingdata = $sitesettings[$plugin][$name]->get_settingdata();
+                    if ($settingdata instanceof \admin_setting_configfile && !empty($CFG->preventexecpath)) {
                         continue;
                     }
 
@@ -755,8 +767,8 @@ class manager {
     public function delete_preset(int $presetid): void {
         global $DB;
 
-        // Check the preset exists.
-        $preset = $DB->get_record('adminpresets', ['id' => $presetid]);
+        // Check the preset exists (cannot delete the pre-installed core "Starter" and "Full" presets).
+        $preset = $DB->get_record('adminpresets', ['id' => $presetid, 'iscore' => self::NONCORE_PRESET]);
         if (!$preset) {
             throw new moodle_exception('errordeleting', 'core_adminpresets');
         }
@@ -980,7 +992,7 @@ class manager {
      * @return array List with an array with the applied settings, another with the skipped ones and the adminpresetapplyid.
      */
     protected function apply_settings(int $presetid, bool $simulate = false, ?int $adminpresetapplyid = null): array {
-        global $DB, $USER;
+        global $CFG, $DB, $USER;
 
         $applied = [];
         $skipped = [];
@@ -1039,6 +1051,25 @@ class manager {
 
                 // Saving data.
                 if ($updatesetting) {
+                    // Do not overwrite executable/directory paths when $CFG->preventexecpath is enabled.
+                    $settingdata = $presetsetting->get_settingdata();
+                    if ($settingdata instanceof \admin_setting_configfile && !empty($CFG->preventexecpath)) {
+                        $skipped[] = $data;
+                        continue;
+                    }
+
+                    // Ensure executable-path settings point to a valid executable file before saving.
+                    if ($settingdata instanceof \admin_setting_configexecutable) {
+                        $execpath = $presetsetting->get_value();
+                        if (!empty($execpath)) {
+                            require_once($CFG->libdir . '/filelib.php');
+                            if (!file_exists($execpath) || is_dir($execpath) || !file_is_executable($execpath)) {
+                                $skipped[] = $data;
+                                continue;
+                            }
+                        }
+                    }
+
                     // The preset application it's only saved when differences (in their values) are found.
                     if (empty($applieditem)) {
                         // Save the preset application and store the preset applied id.

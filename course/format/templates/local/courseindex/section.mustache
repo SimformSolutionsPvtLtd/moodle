@@ -27,6 +27,7 @@
         "number": 1,
         "sectionurl": "#",
         "indexcollapsed": 0,
+        "component": null,
         "current": 1,
         "visible": 1,
         "hasrestrictions": 0,
@@ -56,13 +57,18 @@
     }
 }}
 <div
-    class="courseindex-section {{#current}}current{{/current}}"
-    id="{{uniqid}}-course-index-section-{{id}}"
+    class="courseindex-section {{#current}}current{{/current}} {{#component}}delegated-section{{/component}}"
+    id="course-index-section-{{id}}"
     data-for="section"
     data-id="{{id}}"
     data-number="{{number}}"
+    {{! Delegated sections are exposed as a single tree item by the activity wrapping them. }}
+    {{^component}}
     role="treeitem"
     aria-owns="courseindexcollapse{{number}}"
+    aria-labelledby="courseindexsection{{number}}-title"
+    aria-expanded="{{^indexcollapsed}}true{{/indexcollapsed}}{{#indexcollapsed}}false{{/indexcollapsed}}"
+    {{/component}}
 >
     <div class="courseindex-item d-flex
             {{^visible}}dimmed{{/visible}}
@@ -78,19 +84,20 @@
             aria-controls="courseindexcollapse{{number}}"
             tabindex="-1"
         >
-            <span class="collapsed-icon icon-no-margin mr-1"
+            <span class="collapsed-icon icon-no-margin me-1"
                 title="{{#str}} expand, core {{/str}}">
                 <span class="dir-rtl-hide">{{#pix}} t/collapsedchevron, core {{/pix}}</span>
                 <span class="dir-ltr-hide">{{#pix}} t/collapsedchevron_rtl, core {{/pix}}</span>
                 <span class="sr-only">{{#str}} expand, core {{/str}}</span>
             </span>
-            <span class="expanded-icon icon-no-margin mr-1"
+            <span class="expanded-icon icon-no-margin me-1"
                 title="{{#str}} collapse, core {{/str}}">
                 {{#pix}} t/expandedchevron, core {{/pix}}
                 <span class="sr-only">{{#str}} collapse, core {{/str}}</span>
             </span>
         </a>
         <a href="{{{sectionurl}}}"
+            id="courseindexsection{{number}}-title"
             class="courseindex-link text-truncate"
             data-action="togglecourseindexsection"
             data-for="section_title"
@@ -98,17 +105,16 @@
         >
             {{{title}}}
         </a>
-        <span class="current-badge badge badge-primary ml-2 px-2 rounded-pill">
+        <span class="current-badge badge bg-primary text-white ms-2 px-2 rounded-pill">
             {{highlighted}}
         </span>
-        <span class="courseindex-locked ml-1" data-for="cm_name">
-            {{#pix}} t/locked, core {{/pix}}
+        <span class="courseindex-locked ms-1" data-for="cm_name">
+            {{#pix}} t/locked, core, {{#str}} locked, course {{/str}} {{/pix}}
         </span>
-        <span class="dragicon ml-auto">{{#pix}}i/dragdrop{{/pix}}</span>
     </div>
     <div id="courseindexcollapse{{number}}"
         class="courseindex-item-content collapse {{^indexcollapsed}}show{{/indexcollapsed}}"
-        aria-labelledby="courseindexsection{{number}}" role="group"
+        aria-labelledby="courseindexsection{{number}}-title" role="group"
     >
         <ul class="courseindex-sectioncontent unlist" data-for="cmlist" data-id="{{id}}" role="group">
             {{#cms}}
@@ -119,6 +125,6 @@
 </div>
 {{#js}}
 require(['core_courseformat/local/courseindex/section'], function(component) {
-    component.init('{{uniqid}}-course-index-section-{{id}}');
+    component.init('course-index-section-{{id}}');
 });
 {{/js}}

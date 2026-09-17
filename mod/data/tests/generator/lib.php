@@ -25,6 +25,7 @@
 
 use mod_data\manager;
 use mod_data\preset;
+use mod_data\local\importer\preset_importer;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -68,7 +69,7 @@ class mod_data_generator extends testing_module_generator {
      * @param array $options
      * @return StdClass
      */
-    public function create_instance($record = null, array $options = null) {
+    public function create_instance($record = null, ?array $options = null) {
         // Note, the parent class does not type $record to cast to array and then to object.
         $record = (object) (array) $record;
 
@@ -79,17 +80,49 @@ class mod_data_generator extends testing_module_generator {
             $record->scale = 0;
         }
 
-        return parent::create_instance((array) $record, $options);
+        $presetname = null;
+        if (isset($record->preset)) {
+            $presetname = trim($record->preset);
+            unset($record->preset);
+            // If a simple name was provided (no owner slash), assume system preset owner 0.
+            if (strpos($presetname, '/') === false) {
+                $presetname = '0/' . strtolower($presetname);
+            }
+        }
+
+        $instance = parent::create_instance((array) $record, $options);
+
+        // If a preset was specified, apply it.
+        if ($presetname) {
+            $this->apply_preset($instance, $presetname);
+        }
+
+        return $instance;
+    }
+
+    /**
+     * Apply a preset to a mod_data instance.
+     *
+     * @param stdClass $instance The data instance.
+     * @param string $presetname The preset name (e.g., "0/imagegallery" for plugin presets).
+     * @return void
+     */
+    protected function apply_preset(stdClass $instance, string $presetname): void {
+        $manager = manager::create_from_instance($instance);
+        $importer = preset_importer::create_from_plugin_or_directory($manager, $presetname);
+
+        // Import the preset without requiring mapping.
+        $importer->import(false);
     }
 
     /**
      * Creates a field for a mod_data instance.
      *
-     * @param StdClass $record
-     * @param mod_data $data
-     * @return data_field_{type}
+     * @param stdClass $record
+     * @param stdClass|null $data
+     * @return data_field_base
      */
-    public function create_field(stdClass $record = null, $data = null) {
+    public function create_field(?stdClass $record = null, $data = null) {
         $record = (array) $record;
 
         $this->databasefieldcount++;
@@ -214,7 +247,7 @@ class mod_data_generator extends testing_module_generator {
      * @param int $userid if defined, it will be the author of the entry
      * @return int id of the generated record in table {data_records}
      */
-    public function create_entry($data, array $contents, $groupid = 0, $tags = [], array $options = null, int $userid = 0) {
+    public function create_entry($data, array $contents, $groupid = 0, $tags = [], ?array $options = null, int $userid = 0) {
         global $DB, $USER, $CFG;
 
         // Set current user if defined.
@@ -325,7 +358,7 @@ class mod_data_generator extends testing_module_generator {
                     get_file_storage()->create_file_from_string(['component' => 'user', 'filearea' => 'draft',
                         'contextid' => $usercontext->id, 'itemid' => $itemid, 'filepath' => '/',
                         'filename' => $filename],
-                        file_get_contents($CFG->dirroot.'/mod/data/pix/monologo.png'));
+                        file_get_contents($CFG->dirroot.'/mod/data/field/picture/pix/sample.png'));
                 }
 
                 $fieldname = 'field_' . $fieldid . '_file';
@@ -387,7 +420,7 @@ class mod_data_generator extends testing_module_generator {
      * @param stdClass|null $record The preset information, like 'name'.
      * @return preset The preset that has been created.
      */
-    public function create_preset(stdClass $instance, stdClass $record = null): preset {
+    public function create_preset(stdClass $instance, ?stdClass $record = null): preset {
         global $USER;
 
         if (is_null($record)) {

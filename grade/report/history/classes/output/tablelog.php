@@ -104,7 +104,7 @@ class tablelog extends \table_sql implements \renderable {
         $this->context = $context;
         $this->courseid = $this->context->instanceid;
         $this->pagesize = $perpage;
-        $this->page = $page;
+        $this->currpage = $page;
         $this->gradeitems = \grade_item::fetch_all(array('courseid' => $this->courseid));
         $this->cms = get_fast_modinfo($this->courseid);
         $this->useridfield = 'userid';
@@ -211,6 +211,17 @@ class tablelog extends \table_sql implements \renderable {
 
         $this->define_columns(array_keys($cols));
         $this->define_headers(array_values($cols));
+    }
+
+    /**
+     * Display name of country
+     *
+     * @param \stdClass $history
+     * @return string
+     */
+    public function col_country(\stdClass $history): string {
+        $countries = get_string_manager()->get_list_of_countries();
+        return $countries[$history->country] ?? $history->country;
     }
 
     /**
@@ -544,7 +555,7 @@ class tablelog extends \table_sql implements \renderable {
         if ($this->is_downloading()) {
             $histories = $DB->get_records_sql($sql, $params);
         } else {
-            $histories = $DB->get_records_sql($sql, $params, $this->pagesize * $this->page, $this->pagesize);
+            $histories = $DB->get_records_sql($sql, $params, $this->pagesize * $this->currpage, $this->pagesize);
         }
         foreach ($histories as $history) {
             $this->rawdata[] = $history;

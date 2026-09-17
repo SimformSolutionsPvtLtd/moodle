@@ -14,14 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * H5P core class.
- *
- * @package    core_h5p
- * @copyright  2019 Sara Arjona <sara@moodle.com>
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-
 namespace core_h5p;
 
 defined('MOODLE_INTERNAL') || die();
@@ -34,6 +26,9 @@ use Moodle\H5PHubEndpoints;
 use stdClass;
 use moodle_url;
 use core_h5p\local\library\autoloader;
+
+// phpcs:disable moodle.NamingConventions.ValidFunctionName.LowercaseMethod
+// phpcs:disable moodle.NamingConventions.ValidVariableName.VariableNameLowerCase
 
 /**
  * H5P core class, containing functions and storage shared by the other H5P classes.
@@ -74,7 +69,7 @@ class core extends H5PCore {
     protected function getDependencyPath(array $dependency): string {
         $library = $this->find_library($dependency);
 
-        return "libraries/{$library->id}/{$library->machinename}-{$library->majorversion}.{$library->minorversion}";
+        return "libraries/{$library->id}/" . H5PCore::libraryToFolderName($dependency);
     }
 
     /**
@@ -89,12 +84,12 @@ class core extends H5PCore {
         $context = \context_system::instance();
         foreach ($dependencies as $dependency) {
             $library = $this->find_library($dependency);
-            $roots[self::libraryToString($dependency, true)] = (moodle_url::make_pluginfile_url(
+            $roots[self::libraryToFolderName($dependency)] = (moodle_url::make_pluginfile_url(
                 $context->id,
                 'core_h5p',
                 'libraries',
                 $library->id,
-                "/" . self::libraryToString($dependency, true),
+                "/" . self::libraryToFolderName($dependency),
                 ''
             ))->out(false);
         }
@@ -278,8 +273,16 @@ class core extends H5PCore {
 
         $librarykey = static::libraryToString($library);
 
+        if (is_null($factory->get_storage()->h5pC->librariesJsonData)) {
+            // There was an error fetching the content type.
+            debugging('Error fetching content type: ' . $librarykey);
+            return null;
+        }
+
         $libraryjson = $factory->get_storage()->h5pC->librariesJsonData[$librarykey];
-        if (!array_key_exists('libraryId', $libraryjson)) {
+        if (is_null($libraryjson) || !array_key_exists('libraryId', $libraryjson)) {
+            // There was an error fetching the content type.
+            debugging('Error fetching content type: ' . $librarykey);
             return null;
         }
 
@@ -374,11 +377,25 @@ class core extends H5PCore {
      */
     private function register_site(): ?string {
         $endpoint = $this->get_api_endpoint(null, 'site');
-        $siteuuid = download_file_content($endpoint, null, '');
+        $platform = $this->h5pF->getPlatformInfo();
+        $postdata = [
+            'uuid' => '', // UUID is empty because the site has not been registered with the H5P Hub yet.
+            'platform_name' => $platform['name'],
+            'platform_version' => $platform['version'],
+            'h5p_version' => $platform['h5pVersion'],
+            'disabled' => 0,
+            'local_id' => hash('crc32', $this->fullPluginPath),
+            'type' => $this->h5pF->getOption('site_type', 'local'),
+            'core_api_version' => H5PCore::$coreApi['majorVersion'] . '.' . H5PCore::$coreApi['minorVersion'],
+        ];
+        $response = download_file_content($endpoint, null, $postdata, true);
 
         // Successful UUID retrieval from H5P.
-        if ($siteuuid) {
-            $json = json_decode($siteuuid);
+        if (
+            is_object($response) && empty($response->error) && in_array($response->status, ['200', '201'], true)
+                && !empty($response->results)
+        ) {
+            $json = json_decode($response->results);
             if (isset($json->uuid)) {
                 set_config('site_uuid', $json->uuid, 'core_h5p');
                 return $json->uuid;
@@ -412,10 +429,45 @@ class core extends H5PCore {
      * @return string The string name on the form {machineName} {majorVersion}.{minorVersion}.
      */
     public static function record_to_string(stdClass $record, bool $foldername = false): string {
-        return static::libraryToString([
-            'machineName' => $record->machinename,
-            'majorVersion' => $record->majorversion,
-            'minorVersion' => $record->minorversion,
-        ], $foldername);
+        if ($foldername) {
+            return static::libraryToFolderName([
+                'machineName' => $record->machinename,
+                'majorVersion' => $record->majorversion,
+                'minorVersion' => $record->minorversion,
+            ]);
+        } else {
+            return static::libraryToString([
+                'machineName' => $record->machinename,
+                'majorVersion' => $record->majorversion,
+                'minorVersion' => $record->minorversion,
+            ]);
+        }
+
     }
+
+    /**
+     * Small helper for getting the library's ID.
+     * This method is rewritten to use MUC (instead of an static variable which causes some problems with PHPUnit).
+     *
+     * @param array $library
+     * @param string $libString
+     * @return int Identifier, or FALSE if non-existent
+     */
+    public function getLibraryId($library, $libString = null) {
+        if (!$libString) {
+            $libString = self::libraryToString($library);
+        }
+
+        // Check if this information has been saved previously into the cache.
+        $libcache = \cache::make('core', 'h5p_libraries');
+        $librarykey = helper::get_cache_librarykey($libString);
+        $libraryId = $libcache->get($librarykey);
+        if ($libraryId === false) {
+            $libraryId = $this->h5pF->getLibraryId($library['machineName'], $library['majorVersion'], $library['minorVersion']);
+            $libcache->set($librarykey, $libraryId);
+        }
+
+        return $libraryId;
+    }
+
 }

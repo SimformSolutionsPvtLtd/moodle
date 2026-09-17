@@ -14,15 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * Redis Cache Store - Main library
- *
- * @package   cachestore_redis
- * @copyright 2013 Adam Durana
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-
-defined('MOODLE_INTERNAL') || die();
+use core_cache\configurable_cache_interface;
+use core_cache\definition;
+use core_cache\key_aware_cache_interface;
+use core_cache\lockable_cache_interface;
+use core_cache\searchable_cache_interface;
+use core_cache\store;
 
 /**
  * Redis Cache Store
@@ -33,11 +30,16 @@ defined('MOODLE_INTERNAL') || die();
  * not to use TTL if at all possible and the benefits of having many stores in Redis using the
  * hash configuration, the hash implementation has been used.
  *
+ * @package   cachestore_redis
  * @copyright   2013 Adam Durana
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class cachestore_redis extends cache_store implements cache_is_key_aware, cache_is_lockable,
-        cache_is_configurable, cache_is_searchable {
+class cachestore_redis extends store implements
+    key_aware_cache_interface,
+    configurable_cache_interface,
+    searchable_cache_interface,
+    lockable_cache_interface
+{
     /**
      * Compressor: none.
      */
@@ -63,6 +65,9 @@ class cachestore_redis extends cache_store implements cache_is_key_aware, cache_
      */
     const TTL_EXPIRE_BATCH = 10000;
 
+    /** @var int The number of seconds to wait for a connection or response from the Redis server. */
+    const CONNECTION_TIMEOUT = 3;
+
     /**
      * Name of this store.
      *
@@ -87,14 +92,14 @@ class cachestore_redis extends cache_store implements cache_is_key_aware, cache_
     /**
      * Cache definition for this store.
      *
-     * @var cache_definition
+     * @var definition
      */
     protected $definition = null;
 
     /**
      * Connection to Redis for this store.
      *
-     * @var Redis
+     * @var Redis|RedisCluster
      */
     protected $redis;
 
@@ -112,12 +117,29 @@ class cachestore_redis extends cache_store implements cache_is_key_aware, cache_
      */
     protected $compressor = self::COMPRESSOR_NONE;
 
+
+    /**
+     * The number of seconds to wait for a connection or response from the Redis server.
+     *
+     * @var int
+     */
+    protected $connectiontimeout = self::CONNECTION_TIMEOUT;
+
     /**
      * Bytes read or written by last call to set()/get() or set_many()/get_many().
      *
      * @var int
      */
     protected $lastiobytes = 0;
+
+    /** @var int Maximum number of seconds to wait for a lock before giving up. */
+    protected $lockwait = 60;
+
+    /** @var int Timeout before lock is automatically released (in case of crashes) */
+    protected $locktimeout = 600;
+
+    /** @var ?array Array of current locks, or null if we haven't registered shutdown function */
+    protected $currentlocks = null;
 
     /**
      * Determines if the requirements for this type of store are met.
@@ -168,7 +190,10 @@ class cachestore_redis extends cache_store implements cache_is_key_aware, cache_
      * @param string $name
      * @param array $configuration
      */
-    public function __construct($name, array $configuration = array()) {
+    public function __construct(
+        $name,
+        array $configuration = [],
+    ) {
         $this->name = $name;
 
         if (!array_key_exists('server', $configuration) || empty($configuration['server'])) {
@@ -180,47 +205,154 @@ class cachestore_redis extends cache_store implements cache_is_key_aware, cache_
         if (array_key_exists('compressor', $configuration)) {
             $this->compressor = (int)$configuration['compressor'];
         }
-        $password = !empty($configuration['password']) ? $configuration['password'] : '';
-        $prefix = !empty($configuration['prefix']) ? $configuration['prefix'] : '';
-        $this->redis = $this->new_redis($configuration['server'], $prefix, $password);
+        if (array_key_exists('connectiontimeout', $configuration)) {
+            $this->connectiontimeout = (int)$configuration['connectiontimeout'];
+        }
+        if (array_key_exists('lockwait', $configuration)) {
+            $this->lockwait = (int)$configuration['lockwait'];
+        }
+        if (array_key_exists('locktimeout', $configuration)) {
+            $this->locktimeout = (int)$configuration['locktimeout'];
+        }
+        $this->redis = $this->new_redis($configuration);
     }
 
     /**
-     * Create a new Redis instance and
-     * connect to the server.
+     * Create a new Redis or RedisCluster instance and connect to the server.
      *
-     * @param string $server The server connection string
-     * @param string $prefix The key prefix
-     * @param string $password The server connection password
-     * @return Redis
+     * @param array $configuration The redis instance configuration.
+     * @return Redis|RedisCluster|null
      */
-    protected function new_redis($server, $prefix = '', $password = '') {
-        $redis = new Redis();
-        // Check if it isn't a Unix socket to set default port.
-        $port = ($server[0] === '/') ? null : 6379;
-        if (strpos($server, ':')) {
-            $serverconf = explode(':', $server);
-            $server = $serverconf[0];
-            $port = $serverconf[1];
+    protected function new_redis(array $configuration): Redis|RedisCluster|null {
+        $encrypt = (bool) ($configuration['encryption'] ?? false);
+        $clustermode = (bool) ($configuration['clustermode'] ?? false);
+        $password = !empty($configuration['password']) ? $configuration['password'] : '';
+
+        // Set Redis server(s).
+        $servers = explode("\n", $configuration['server']);
+        $trimmedservers = [];
+        foreach ($servers as $server) {
+            $server = strtolower(trim($server));
+            if (!empty($server)) {
+                if ($server[0] === '/' || str_starts_with($server, 'unix://')) {
+                    $port = 0;
+                    $trimmedservers[] = $server;
+                } else {
+                    $port = 6379; // No Unix socket so set default port.
+                    if (strpos($server, ':')) { // Check for custom port.
+                        list($server, $port) = explode(':', $server);
+                    }
+                    if (!$clustermode && $encrypt) {
+                        $server = 'tls://' . $server;
+                    }
+                    $trimmedservers[] = $server.':'.$port;
+                }
+
+                // We only need the first record for the single redis.
+                if (!$clustermode) {
+                    // Handle the case when the server is not a Unix domain socket.
+                    if ($port !== 0) {
+                        // We only need the first record for the single redis.
+                        $serverchunks = explode(':', $trimmedservers[0]);
+                        // Get the last chunk as the port.
+                        $port = array_pop($serverchunks);
+                        // Combine the rest of the chunks back into a string as the server.
+                        $server = implode(':', $serverchunks);
+                    }
+                    break;
+                }
+            }
         }
 
+        // TLS/SSL Configuration.
+        $exceptionclass = $clustermode ? 'RedisClusterException' : 'RedisException';
+        $opts = [];
+        if ($encrypt) {
+            $opts = empty($configuration['cafile']) ?
+                ['verify_peer' => false, 'verify_peer_name' => false] :
+                ['cafile' => $configuration['cafile']];
+
+            // For a single (non-cluster) Redis, the TLS/SSL config must be added to the 'stream' key.
+            if (!$clustermode) {
+                $opts['stream'] = $opts;
+            }
+        }
+        // Connect to redis.
+        $redis = null;
         try {
-            if ($redis->connect($server, $port)) {
+            // Create a $redis object of a RedisCluster or Redis class.
+            $phpredisversion = phpversion('redis');
+            if ($clustermode) {
+                if (version_compare($phpredisversion, '6.0.0', '>=')) {
+                    // Named parameters are fully supported starting from version 6.0.0.
+                    $redis = new RedisCluster(
+                        name: null,
+                        seeds: $trimmedservers,
+                        timeout: $this->connectiontimeout, // Timeout.
+                        read_timeout: $this->connectiontimeout, // Read timeout.
+                        persistent: true,
+                        auth: $password,
+                        context: !empty($opts) ? $opts : null,
+                    );
+                } else {
+                    $redis = new RedisCluster(
+                        null,
+                        $trimmedservers,
+                        $this->connectiontimeout,
+                        $this->connectiontimeout,
+                        true, $password,
+                        !empty($opts) ? $opts : null,
+                    );
+                }
+            } else {
+                $redis = new Redis();
+                if (version_compare($phpredisversion, '6.0.0', '>=')) {
+                    // Named parameters are fully supported starting from version 6.0.0.
+                    $redis->connect(
+                        host: $server,
+                        port: $port,
+                        timeout: $this->connectiontimeout, // Timeout.
+                        retry_interval: 100, // Retry interval.
+                        read_timeout: $this->connectiontimeout, // Read timeout.
+                        context: $opts,
+                    );
+                } else {
+                    $redis->connect(
+                        $server, $port,
+                        $this->connectiontimeout,
+                        null,
+                        100,
+                        $this->connectiontimeout,
+                        $opts,
+                    );
+                }
+
                 if (!empty($password)) {
                     $redis->auth($password);
                 }
-                // If using compressor, serialisation will be done at cachestore level, not php-redis.
-                if ($this->compressor == self::COMPRESSOR_NONE) {
-                    $redis->setOption(Redis::OPT_SERIALIZER, $this->serializer);
-                }
-                if (!empty($prefix)) {
-                    $redis->setOption(Redis::OPT_PREFIX, $prefix);
-                }
-                $this->isready = true;
-            } else {
-                $this->isready = false;
             }
-        } catch (\RedisException $e) {
+
+            // In case of a TLS connection,
+            // if phpredis client does not communicate immediately with the server the connection hangs.
+            // See https://github.com/phpredis/phpredis/issues/2332.
+            if ($encrypt && !$redis->ping('Ping')) {
+                throw new $exceptionclass("Ping failed");
+            }
+
+            // If using compressor, serialisation will be done at cachestore level, not php-redis.
+            if ($this->compressor === self::COMPRESSOR_NONE) {
+                $redis->setOption(Redis::OPT_SERIALIZER, $this->serializer);
+            }
+
+            // Set the prefix.
+            $prefix = !empty($configuration['prefix']) ? $configuration['prefix'] : '';
+            if (!empty($prefix)) {
+                $redis->setOption(Redis::OPT_PREFIX, $prefix);
+            }
+            $this->isready = true;
+        } catch (RedisException | RedisClusterException $e) {
+            $server = $clustermode ? implode(',', $trimmedservers) : $server.':'.$port;
+            debugging("Failed to connect to Redis at {$server}, the error returned was: {$e->getMessage()}");
             $this->isready = false;
         }
 
@@ -230,10 +362,10 @@ class cachestore_redis extends cache_store implements cache_is_key_aware, cache_
     /**
      * See if we can ping Redis server
      *
-     * @param Redis $redis
+     * @param RedisCluster|Redis $redis
      * @return bool
      */
-    protected function ping(Redis $redis) {
+    protected function ping(RedisCluster|Redis $redis): bool {
         try {
             if ($redis->ping() === false) {
                 return false;
@@ -256,10 +388,10 @@ class cachestore_redis extends cache_store implements cache_is_key_aware, cache_
     /**
      * Initialize the store.
      *
-     * @param cache_definition $definition
+     * @param definition $definition
      * @return bool
      */
-    public function initialise(cache_definition $definition) {
+    public function initialise(definition $definition) {
         $this->definition = $definition;
         $this->hash       = $definition->generate_definition_hash();
         return true;
@@ -309,7 +441,7 @@ class cachestore_redis extends cache_store implements cache_is_key_aware, cache_
      * @return array An array of the values of the given keys.
      */
     public function get_many($keys) {
-        $values = $this->redis->hMGet($this->hash, $keys);
+        $values = $this->redis->hMGet($this->hash, $keys) ?: [];
 
         if ($this->compressor == self::COMPRESSOR_NONE) {
             return $values;
@@ -401,7 +533,7 @@ class cachestore_redis extends cache_store implements cache_is_key_aware, cache_
                 $ttlparams[] = $key;
             }
         }
-        if ($usettl) {
+        if ($usettl && count($ttlparams) > 0) {
             // Store all the key values with current time.
             $this->redis->zAdd($this->hash . self::TTL_SUFFIX, [], ...$ttlparams);
             // The return value to the zAdd function never indicates whether the operation succeeded
@@ -478,7 +610,7 @@ class cachestore_redis extends cache_store implements cache_is_key_aware, cache_
     /**
      * Determines if the store has a given key.
      *
-     * @see cache_is_key_aware
+     * @see key_aware_cache_interface
      * @param string $key The key to check for.
      * @return bool True if the key exists, false if it does not.
      */
@@ -489,7 +621,7 @@ class cachestore_redis extends cache_store implements cache_is_key_aware, cache_
     /**
      * Determines if the store has any of the keys in a list.
      *
-     * @see cache_is_key_aware
+     * @see key_aware_cache_interface
      * @param array $keys The keys to check for.
      * @return bool True if any of the keys are found, false none of the keys are found.
      */
@@ -505,7 +637,7 @@ class cachestore_redis extends cache_store implements cache_is_key_aware, cache_
     /**
      * Determines if the store has all of the keys in a list.
      *
-     * @see cache_is_key_aware
+     * @see key_aware_cache_interface
      * @param array $keys The keys to check for.
      * @return bool True if all of the keys are found, false otherwise.
      */
@@ -521,19 +653,51 @@ class cachestore_redis extends cache_store implements cache_is_key_aware, cache_
     /**
      * Tries to acquire a lock with a given name.
      *
-     * @see cache_is_lockable
+     * @see lockable_cache_interface
      * @param string $key Name of the lock to acquire.
      * @param string $ownerid Information to identify owner of lock if acquired.
      * @return bool True if the lock was acquired, false if it was not.
      */
     public function acquire_lock($key, $ownerid) {
-        return $this->redis->setnx($key, $ownerid);
+        $clock = \core\di::get(\core\clock::class);
+        $timelimit = $clock->time() + $this->lockwait;
+        do {
+            // If the key doesn't already exist, grab it and return true.
+            if ($this->redis->setnx($key, $ownerid)) {
+                // Ensure Redis deletes the key after a bit in case something goes wrong.
+                $this->redis->expire($key, $this->locktimeout);
+                // If we haven't got it already, better register a shutdown function.
+                if ($this->currentlocks === null) {
+                    core_shutdown_manager::register_function([$this, 'shutdown_release_locks']);
+                    $this->currentlocks = [];
+                }
+                $this->currentlocks[$key] = $ownerid;
+                return true;
+            }
+            // Wait 1 second then retry.
+            sleep(1);
+        } while ($clock->time() < $timelimit);
+        return false;
+    }
+
+    /**
+     * Releases any locks when the system shuts down, in case there is a crash or somebody forgets
+     * to use 'try-finally'.
+     *
+     * Do not call this function manually (except from unit test).
+     */
+    public function shutdown_release_locks() {
+        foreach ($this->currentlocks as $key => $ownerid) {
+            debugging('Automatically releasing Redis cache lock: ' . $key . ' (' . $ownerid .
+                    ') - did somebody forget to call release_lock()?', DEBUG_DEVELOPER);
+            $this->release_lock($key, $ownerid);
+        }
     }
 
     /**
      * Checks a lock with a given name and owner information.
      *
-     * @see cache_is_lockable
+     * @see lockable_cache_interface
      * @param string $key Name of the lock to check.
      * @param string $ownerid Owner information to check existing lock against.
      * @return mixed True if the lock exists and the owner information matches, null if the lock does not
@@ -541,7 +705,7 @@ class cachestore_redis extends cache_store implements cache_is_key_aware, cache_
      */
     public function check_lock_state($key, $ownerid) {
         $result = $this->redis->get($key);
-        if ($result === $ownerid) {
+        if ($result === (string)$ownerid) {
             return true;
         }
         if ($result === false) {
@@ -551,12 +715,33 @@ class cachestore_redis extends cache_store implements cache_is_key_aware, cache_
     }
 
     /**
+     * Finds all of the keys being used by this cache store instance using a scan.
+     * This is preferred over keys to avoid blocking the server for a long time.
+     *
+     * @param string $prefix
+     * @return array of all matching keys in the hash as a numbered array.
+     */
+    protected function scan_keys($prefix = '') {
+        $return = [];
+        $iterator = null;
+        do {
+            $results = $this->redis->hScan($this->hash, $iterator, "$prefix*", 1000);
+            if ($results !== false) {
+                foreach ($results as $key => $value) {
+                    $return[] = $key;
+                }
+            }
+        } while ($iterator != 0);
+        return $return;
+    }
+
+    /**
      * Finds all of the keys being used by this cache store instance.
      *
      * @return array of all keys in the hash as a numbered array.
      */
     public function find_all() {
-        return $this->redis->hKeys($this->hash);
+        return $this->scan_keys();
     }
 
     /**
@@ -567,25 +752,20 @@ class cachestore_redis extends cache_store implements cache_is_key_aware, cache_
      * @return array List of keys that match this prefix.
      */
     public function find_by_prefix($prefix) {
-        $return = [];
-        foreach ($this->find_all() as $key) {
-            if (strpos($key, $prefix) === 0) {
-                $return[] = $key;
-            }
-        }
-        return $return;
+        return $this->scan_keys($prefix);
     }
 
     /**
      * Releases a given lock if the owner information matches.
      *
-     * @see cache_is_lockable
+     * @see lockable_cache_interface
      * @param string $key Name of the lock to release.
      * @param string $ownerid Owner information to use.
      * @return bool True if the lock is released, false if it is not.
      */
     public function release_lock($key, $ownerid) {
         if ($this->check_lock_state($key, $ownerid)) {
+            unset($this->currentlocks[$key]);
             return ($this->redis->del($key) !== false);
         }
         return false;
@@ -684,7 +864,7 @@ class cachestore_redis extends cache_store implements cache_is_key_aware, cache_
     public function store_total_size(): ?int {
         try {
             $details = $this->redis->info('MEMORY');
-        } catch (\RedisException $e) {
+        } catch (RedisException $e) {
             return null;
         }
         if (empty($details['used_memory'])) {
@@ -697,7 +877,8 @@ class cachestore_redis extends cache_store implements cache_is_key_aware, cache_
     /**
      * Creates a configuration array from given 'add instance' form data.
      *
-     * @see cache_is_configurable
+     * @see configurable_cache_interface
+     *
      * @param stdClass $data
      * @return array
      */
@@ -708,13 +889,17 @@ class cachestore_redis extends cache_store implements cache_is_key_aware, cache_
             'password' => $data->password,
             'serializer' => $data->serializer,
             'compressor' => $data->compressor,
+            'connectiontimeout' => $data->connectiontimeout,
+            'encryption' => $data->encryption,
+            'cafile' => $data->cafile,
+            'clustermode' => $data->clustermode,
         );
     }
 
     /**
      * Sets form data from a configuration array.
      *
-     * @see cache_is_configurable
+     * @see configurable_cache_interface
      * @param moodleform $editform
      * @param array $config
      */
@@ -729,6 +914,18 @@ class cachestore_redis extends cache_store implements cache_is_key_aware, cache_
         if (!empty($config['compressor'])) {
             $data['compressor'] = $config['compressor'];
         }
+        if (!empty($config['connectiontimeout'])) {
+            $data['connectiontimeout'] = $config['connectiontimeout'];
+        }
+        if (!empty($config['encryption'])) {
+            $data['encryption'] = $config['encryption'];
+        }
+        if (!empty($config['cafile'])) {
+            $data['cafile'] = $config['cafile'];
+        }
+        if (!empty($config['clustermode'])) {
+            $data['clustermode'] = $config['clustermode'];
+        }
         $editform->set_data($data);
     }
 
@@ -736,10 +933,10 @@ class cachestore_redis extends cache_store implements cache_is_key_aware, cache_
     /**
      * Creates an instance of the store for testing.
      *
-     * @param cache_definition $definition
+     * @param definition $definition
      * @return mixed An instance of the store, or false if an instance cannot be created.
      */
-    public static function initialise_test_instance(cache_definition $definition) {
+    public static function initialise_test_instance(definition $definition) {
         if (!self::are_requirements_met()) {
             return false;
         }
@@ -754,11 +951,19 @@ class cachestore_redis extends cache_store implements cache_is_key_aware, cache_
         if (!empty($config->test_password)) {
             $configuration['password'] = $config->test_password;
         }
+        if (!empty($config->test_encryption)) {
+            $configuration['encryption'] = $config->test_encryption;
+        }
+        if (!empty($config->test_cafile)) {
+            $configuration['cafile'] = $config->test_cafile;
+        }
+        if (!empty($config->test_clustermode)) {
+            $configuration['clustermode'] = $config->test_clustermode;
+        }
         // Make it possible to test TTL performance by hacking a copy of the cache definition.
         if (!empty($config->test_ttl)) {
             $definition = clone $definition;
             $property = (new ReflectionClass($definition))->getProperty('ttl');
-            $property->setAccessible(true);
             $property->setValue($definition, 999);
         }
         $cache = new cachestore_redis('Redis test', $configuration);
@@ -781,6 +986,7 @@ class cachestore_redis extends cache_store implements cache_is_key_aware, cache_
 
         return ['server' => TEST_CACHESTORE_REDIS_TESTSERVERS,
                 'prefix' => $DB->get_prefix(),
+                'encryption' => defined('TEST_CACHESTORE_REDIS_ENCRYPT') && TEST_CACHESTORE_REDIS_ENCRYPT,
         ];
     }
 

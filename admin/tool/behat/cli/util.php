@@ -39,6 +39,10 @@ define('NO_OUTPUT_BUFFERING', true);
 define('IGNORE_COMPONENT_CACHE', true);
 define('ABORT_AFTER_CONFIG', true);
 
+// It makes no sense to use BEHAT_CLI for this script (the Behat launch scripts expect to start
+// from the normal environment), so in case user has set tne environment variable, disable it.
+putenv('BEHAT_CLI=0');
+
 require_once(__DIR__ . '/../../../../lib/clilib.php');
 
 // CLI options.
@@ -57,7 +61,9 @@ list($options, $unrecognized) = cli_get_params(
         'torun'       => 0,
         'optimize-runs' => '',
         'add-core-features-to-theme' => false,
-        'axe'         => false,
+        'axe'         => true,
+        'scss-deprecations' => false,
+        'no-icon-deprecations' => false,
     ),
     array(
         'h' => 'help',
@@ -73,16 +79,20 @@ $help = "
 Behat utilities to manage the test environment
 
 Usage:
-  php util.php [--install|--drop|--enable|--disable|--diag|--updatesteps|--axe|--help] [--parallel=value [--maxruns=value]]
+  php util.php  [--install|--drop|--enable|--disable|--diag|--updatesteps]
+                [--no-axe|--scss-deprecations|--no-icon-deprecations|--help]
+                [--parallel=value [--maxruns=value]]
 
 Options:
---install      Installs the test environment for acceptance tests
---drop         Drops the database tables and the dataroot contents
---enable       Enables test environment and updates tests list
---disable      Disables test environment
---diag         Get behat test environment status code
---updatesteps  Update feature step file.
---axe          Include axe accessibility tests
+--install              Installs the test environment for acceptance tests
+--drop                 Drops the database tables and the dataroot contents
+--enable               Enables test environment and updates tests list
+--disable              Disables test environment
+--diag                 Get behat test environment status code
+--updatesteps          Update feature step file.
+--no-axe               Disable axe accessibility tests.
+--scss-deprecations    Enable SCSS deprecation checks.
+--no-icon-deprecations Disable icon deprecation checks.
 
 -j, --parallel Number of parallel behat run operation
 -m, --maxruns Max parallel processes to be executed at one time.
@@ -94,7 +104,7 @@ Options:
 Example from Moodle root directory:
 \$ php admin/tool/behat/cli/util.php --enable --parallel=4
 
-More info in http://docs.moodle.org/dev/Acceptance_testing#Running_tests
+More info in https://moodledev.io/general/development/tools/behat/running
 ";
 
 if (!empty($options['help'])) {
@@ -320,12 +330,7 @@ function commands_to_execute($options) {
     }
 
     foreach ($extraoptions as $option => $value) {
-        if ($options[$option]) {
-            $extra .= " --$option";
-            if ($value) {
-                $extra .= "=\"$value\"";
-            }
-        }
+        $extra .= behat_get_command_flags($option, $value);
     }
 
     if (empty($options['parallel'])) {

@@ -38,6 +38,7 @@
     ], "noSelectionString": "No selection" }
 }}
 <span class="sr-only" id="{{selectionId}}-label">{{#str}}selecteditems, form{{/str}}</span>
+<div id="{{selectionId}}-announcer" aria-live="polite" role="status" class="sr-only"></div>
 <div{{!
     }} class="form-autocomplete-selection w-100 {{#multiple}}form-autocomplete-multiple{{/multiple}}"{{!
     }} id="{{selectionId}}"{{!
@@ -45,6 +46,7 @@
     }} role="listbox"{{!
     }} aria-atomic="true"{{!
     }} tabindex="0"{{!
+    }} {{#required}}aria-required="true"{{/required}}{{!
     }} {{#multiple}}aria-multiselectable="true"{{/multiple}}>
     {{> core/form_autocomplete_selection_items }}
 </div>

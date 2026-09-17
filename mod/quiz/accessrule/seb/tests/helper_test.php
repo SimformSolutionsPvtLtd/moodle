@@ -28,18 +28,19 @@ require_once(__DIR__ . '/test_helper_trait.php');
  * @copyright  2020 Catalyst IT
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class helper_test extends \advanced_testcase {
+final class helper_test extends \advanced_testcase {
     use \quizaccess_seb_test_helper_trait;
 
     /**
      * Test that we can check valid seb string.
      */
-    public function test_is_valid_seb_config() {
+    public function test_is_valid_seb_config(): void {
         $validseb = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">
 <plist version=\"1.0\"><dict><key>showTaskBar</key><true/><key>allowWlan</key><false/><key>showReloadButton</key><true/>"
             . "<key>showTime</key><false/><key>showInputLanguage</key><true/><key>allowQuit</key><true/>"
             . "<key>quitURLConfirm</key><true/><key>audioControlEnabled</key><true/><key>audioMute</key><false/>"
+            . "<key>browserMediaCaptureCamera</key><true/><key>browserMediaCaptureMicrophone</key><true/>"
             . "<key>allowSpellCheck</key><false/><key>browserWindowAllowReload</key><true/><key>URLFilterEnable</key><true/>"
             . "<key>URLFilterEnableContentFilter</key><false/><key>hashedQuitPassword</key>"
             . "<string>9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08</string><key>URLFilterRules</key>"
@@ -57,7 +58,7 @@ class helper_test extends \advanced_testcase {
     /**
      * Test that we can get seb file headers.
      */
-    public function test_get_seb_file_headers() {
+    public function test_get_seb_file_headers(): void {
         $expiretime = 1582767914;
         $headers = \quizaccess_seb\helper::get_seb_file_headers($expiretime);
 
@@ -73,7 +74,7 @@ class helper_test extends \advanced_testcase {
     /**
      * Test that the course module must exist to get a seb config file content.
      */
-    public function test_can_not_get_config_content_with_invalid_cmid() {
+    public function test_can_not_get_config_content_with_invalid_cmid(): void {
         $this->resetAfterTest();
 
         $user = $this->getDataGenerator()->create_user();
@@ -99,7 +100,7 @@ class helper_test extends \advanced_testcase {
     /**
      * Test that the user must be enrolled to get seb config content.
      */
-    public function test_can_not_get_config_content_when_user_not_enrolled_in_course() {
+    public function test_can_not_get_config_content_when_user_not_enrolled_in_course(): void {
         $this->resetAfterTest();
 
         $this->setAdminUser();
@@ -117,7 +118,7 @@ class helper_test extends \advanced_testcase {
     /**
      * Test that if SEB quiz settings can't be found, a seb config content won't be provided.
      */
-    public function test_can_not_get_config_content_if_config_not_found_for_cmid() {
+    public function test_can_not_get_config_content_if_config_not_found_for_cmid(): void {
         $this->resetAfterTest();
 
         $this->setAdminUser();
@@ -136,7 +137,7 @@ class helper_test extends \advanced_testcase {
     /**
      * That that if config is empty for a quiz, a seb config content won't be provided.
      */
-    public function test_can_not_get_config_content_if_config_empty() {
+    public function test_can_not_get_config_content_if_config_empty(): void {
         $this->resetAfterTest();
 
         $this->setAdminUser();
@@ -156,7 +157,7 @@ class helper_test extends \advanced_testcase {
     /**
      * Test config content is provided successfully.
      */
-    public function test_config_provided() {
+    public function test_config_provided(): void {
         $this->resetAfterTest();
 
         $this->setAdminUser();
@@ -177,7 +178,8 @@ class helper_test extends \advanced_testcase {
             . "<plist version=\"1.0\"><dict><key>showTaskBar</key><true/><key>allowWlan</key>"
             . "<false/><key>showReloadButton</key><true/><key>showTime</key><true/><key>showInputLanguage</key>"
             . "<true/><key>allowQuit</key><true/><key>quitURLConfirm</key><true/><key>audioControlEnabled</key>"
-            . "<false/><key>audioMute</key><false/><key>allowSpellCheck</key><false/><key>browserWindowAllowReload</key>"
+            . "<false/><key>audioMute</key><false/><key>browserMediaCaptureCamera</key><false/><key>browserMediaCaptureMicrophone"
+            . "</key><false/><key>allowSpellCheck</key><false/><key>browserWindowAllowReload</key>"
             . "<true/><key>URLFilterEnable</key><false/><key>URLFilterEnableContentFilter</key><false/>"
             . "<key>URLFilterRules</key><array/><key>startURL</key><string>$url</string>"
             . "<key>sendBrowserExamKey</key><true/><key>browserWindowWebView</key><integer>3</integer>"

@@ -446,7 +446,7 @@ class gradebookservices extends service_base {
      */
     public function add_standalone_lineitem(string $courseid, string $label, float $maximumscore,
             string $baseurl, ?int $ltilinkid, ?string $resourceid, ?string $tag, int $typeid,
-            int $toolproxyid = null) : int {
+            ?int $toolproxyid = null): int {
         global $DB;
         $params = array();
         $params['itemname'] = $label;
@@ -541,6 +541,7 @@ class gradebookservices extends service_base {
             $grade->feedbackformat = $feedbackformat;
             $grade->feedback = $feedback;
             $grade->rawgrade = $finalgrade;
+            $grade->dategraded = $timemodified;
             $status = grade_update($source, $gradeitem->courseid,
                 $gradeitem->itemtype, $gradeitem->itemmodule,
                 $gradeitem->iteminstance, $gradeitem->itemnumber, $grade);
@@ -728,7 +729,7 @@ class gradebookservices extends service_base {
      *
      */
     public static function update_coupled_gradebookservices(object $ltiinstance,
-            ?string $resourceid, ?string $tag, ?\moodle_url $subreviewurl, ?string $subreviewparams) : void {
+            ?string $resourceid, ?string $tag, ?\moodle_url $subreviewurl, ?string $subreviewparams): void {
         global $DB;
 
         if ($ltiinstance && $ltiinstance->typeid) {

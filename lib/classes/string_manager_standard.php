@@ -43,7 +43,7 @@ class core_string_manager_standard implements core_string_manager {
     protected $cache;
     /** @var int get_string() counter */
     protected $countgetstring = 0;
-    /** @var bool use disk cache */
+    /** @var array use disk cache */
     protected $translist;
     /** @var array language aliases to use in the language selector */
     protected $transaliases = [];
@@ -363,7 +363,7 @@ class core_string_manager_standard implements core_string_manager {
 
         if ($a !== null) {
             // Process array's and objects (except lang_strings).
-            if (is_array($a) or (is_object($a) && !($a instanceof lang_string))) {
+            if (is_array($a) or (is_object($a) && !($a instanceof Stringable))) {
                 $a = (array)$a;
                 $search = array();
                 $replace = array();
@@ -372,7 +372,7 @@ class core_string_manager_standard implements core_string_manager {
                         // We do not support numeric keys - sorry!
                         continue;
                     }
-                    if (is_array($value) or (is_object($value) && !($value instanceof lang_string))) {
+                    if (is_array($value) or (is_object($value) && !($value instanceof Stringable))) {
                         // We support just string or lang_string as value.
                         continue;
                     }
@@ -394,7 +394,7 @@ class core_string_manager_standard implements core_string_manager {
                 $normcomponent = $pluginname ? ($plugintype . '_' . $pluginname) : $plugintype;
                 debugging("String [{$identifier},{$normcomponent}] is deprecated. ".
                     'Either you should no longer be using that string, or the string has been incorrectly deprecated, in which case you should report this as a bug. '.
-                    'Please refer to https://docs.moodle.org/dev/String_deprecation', DEBUG_DEVELOPER);
+                    'Please refer to https://moodledev.io/general/projects/api/string-deprecation', DEBUG_DEVELOPER);
             }
         }
 

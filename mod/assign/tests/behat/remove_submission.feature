@@ -5,13 +5,8 @@ Feature: Remove a submission
   I need to remove a student submission at any time
 
   Background:
-    Given I log in as "admin"
-    And I set the following system permissions of "Teacher" role:
-      | capability                     | permission |
-      | mod/assign:editothersubmission | Allow      |
-    And I set the following administration settings values:
-      | Enable timed assignments | 1 |
-    And I log out
+    Given the following config values are set as admin:
+      | enabletimelimit | 1 | assign |
     And the following "courses" exist:
       | fullname | shortname | category | groupmode |
       | Course 1 | C1 | 0 | 0 |
@@ -25,6 +20,9 @@ Feature: Remove a submission
       | teacher1 | C1 | editingteacher |
       | student1 | C1 | student |
       | student2 | C1 | student |
+    And the following "role capability" exists:
+      | role                           | editingteacher |
+      | mod/assign:editothersubmission | allow          |
     And the following "groups" exist:
       | name    | course | idnumber |
       | Group 1 | C1     | G1       |
@@ -33,7 +31,7 @@ Feature: Remove a submission
       | student1 | G1 |
       | student2 | G1 |
 
-  @javascript @skip_chrome_zerosize
+  @javascript
   Scenario: Remove a submission should remove the data that was submitted
     Given the following "activity" exists:
       | activity                             | assign                |
@@ -48,7 +46,7 @@ Feature: Remove a submission
       | Test assignment name  | student1  | I'm the student submission  |
 
     And I am on the "Test assignment name" Activity page logged in as teacher1
-    And I follow "View all submissions"
+    And I navigate to "Submissions" in current page administration
     And I open the action menu in "Student 1" "table_row"
     When I follow "Remove submission"
     And I click on "Continue" "button"
@@ -60,7 +58,7 @@ Feature: Remove a submission
     And I should not see "I'm the student submission"
     And I should see "No submissions have been made yet" in the "Submission status" "table_row"
 
-  @javascript @skip_chrome_zerosize
+  @javascript
   Scenario: Remove a group submission should remove the data from all group members
     Given the following "activity" exists:
       | activity                             | assign                |
@@ -76,7 +74,7 @@ Feature: Remove a submission
       | Test assignment name  | student1  | I'm the student submission  |
 
     And I am on the "Test assignment name" Activity page logged in as teacher1
-    And I follow "View all submissions"
+    And I navigate to "Submissions" in current page administration
     And I open the action menu in "Student 1" "table_row"
     When I follow "Remove submission"
     And I click on "Continue" "button"
@@ -88,7 +86,7 @@ Feature: Remove a submission
     And I should not see "I'm the student submission"
     And I should see "Nothing has been submitted for this assignment" in the "Submission status" "table_row"
 
-  @javascript @skip_chrome_zerosize
+  @javascript
   Scenario: A student can remove their own submission
     Given the following "activity" exists:
       | activity                             | assign                |
@@ -108,7 +106,7 @@ Feature: Remove a submission
     And I log out
 
     When I am on the "Test assignment name" Activity page logged in as teacher1
-    And I follow "View all submissions"
+    And I navigate to "Submissions" in current page administration
     Then I should not see "I'm the student submission"
     And "Student 1" row "Status" column of "generaltable" table should contain "No submission"
     And I log out
@@ -117,7 +115,7 @@ Feature: Remove a submission
     And I should not see "I'm the student submission"
     And I should see "No submissions have been made yet" in the "Submission status" "table_row"
 
-  @javascript @skip_chrome_zerosize @_file_upload
+  @javascript @_file_upload
   Scenario: Submission removal with time limit setting
     Given the following "activity" exists:
       | activity                            | assign                          |
@@ -134,7 +132,7 @@ Feature: Remove a submission
       | gradingduedate_enabled              | 0                               |
     And I am on the "Test assignment with time limit" Activity page logged in as admin
     And I navigate to "Settings" in current page administration
-    And I follow "Expand all"
+    And I click on "Expand all" "link" in the "region-main" "region"
     # Set 'Time limit' to 5 seconds.
     And I set the field "timelimit[enabled]" to "1"
     And I set the field "timelimit[number]" to "5"
@@ -149,7 +147,7 @@ Feature: Remove a submission
     Then I should see "Are you sure you want to remove your submission? Please note that this will not reset your time limit."
     And I press "Cancel"
     And I am on the "Test assignment with time limit" Activity page logged in as admin
-    And I click on "View all submissions" "link"
+    And I navigate to "Submissions" in current page administration
     And I open the action menu in "Student 1" "table_row"
     And I follow "Remove submission"
     And I should see "Are you sure you want to remove the submission for Student 1? Please note that this will not reset the student's time limit. You can give more time by adding a time limit user override."

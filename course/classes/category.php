@@ -23,7 +23,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
+use core\exception\moodle_exception;
 
 /**
  * Class to store, cache, render and manage course category
@@ -177,7 +177,7 @@ class core_course_category implements renderable, cacheable_object, IteratorAggr
      * @param string $name Callback function name.
      * @return [callable] $pluginfunctions
      */
-    public function get_plugins_callback_function(string $name) : array {
+    public function get_plugins_callback_function(string $name): array {
         $pluginfunctions = [];
         if ($pluginsfunction = get_plugins_with_function($name)) {
             foreach ($pluginsfunction as $plugintype => $plugins) {
@@ -272,7 +272,7 @@ class core_course_category implements renderable, cacheable_object, IteratorAggr
         if (!$coursecat) {
             // Course category not found.
             if ($strictness == MUST_EXIST) {
-                throw new moodle_exception('unknowncategory');
+                throw new moodle_exception('unknowncategory', a: $id);
             }
             $coursecat = null;
         } else if (!$alwaysreturnhidden && !$coursecat->is_uservisible($user)) {
@@ -596,7 +596,11 @@ class core_course_category implements renderable, cacheable_object, IteratorAggr
             if (core_text::strlen($data->idnumber) > 100) {
                 throw new moodle_exception('idnumbertoolong');
             }
-            if (strval($data->idnumber) !== '' && $DB->record_exists('course_categories', array('idnumber' => $data->idnumber))) {
+
+            // Ensure there are no other categories with the same idnumber.
+            if (strval($data->idnumber) !== '' &&
+                    $DB->record_exists_select('course_categories', 'idnumber = ? AND id != ?', [$data->idnumber, $this->id])) {
+
                 throw new moodle_exception('categoryidnumbertaken');
             }
             $newcategory->idnumber = $data->idnumber;
@@ -622,6 +626,13 @@ class core_course_category implements renderable, cacheable_object, IteratorAggr
             $parentcat = self::get($data->parent, MUST_EXIST, true);
             $this->change_parent_raw($parentcat);
             fix_course_sortorder();
+        }
+
+        // Delete theme usage cache if the theme has been changed.
+        if (isset($newcategory->theme)) {
+            if ($newcategory->theme != $this->theme) {
+                theme_delete_used_in_context_cache($newcategory->theme, (string) $this->theme);
+            }
         }
 
         $newcategory->timemodified = time();
@@ -755,7 +766,7 @@ class core_course_category implements renderable, cacheable_object, IteratorAggr
      * @throws dml_exception
      * @throws moodle_exception
      */
-    private static function get_cached_cat_tree() : ?array {
+    private static function get_cached_cat_tree(): ?array {
         $coursecattreecache = cache::make('core', 'coursecattree');
         $all = $coursecattreecache->get('all');
         if ($all !== false) {
@@ -793,7 +804,7 @@ class core_course_category implements renderable, cacheable_object, IteratorAggr
      * @throws dml_exception
      * @throws moodle_exception
      */
-    private static function rebuild_coursecattree_cache_contents() : array {
+    private static function rebuild_coursecattree_cache_contents(): array {
         global $DB;
         $sql = "SELECT cc.id, cc.parent, cc.visible
                 FROM {course_categories} cc
@@ -900,7 +911,7 @@ class core_course_category implements renderable, cacheable_object, IteratorAggr
         // Trigger a purge for all caches listening for changes to category enrolment.
         cache_helper::purge_by_event('changesincategoryenrolment');
 
-        if (!$CFG->coursecontact || !in_array($roleid, explode(',', $CFG->coursecontact))) {
+        if (empty($CFG->coursecontact) || !in_array($roleid, explode(',', $CFG->coursecontact))) {
             // The role is not one of course contact roles.
             return;
         }
@@ -1562,6 +1573,7 @@ class core_course_category implements renderable, cacheable_object, IteratorAggr
      *     - modulelist - name of module (if we are searching for courses containing specific module
      *     - tagid - id of tag
      *     - onlywithcompletion - set to true if we only need courses with completion enabled
+     *     - limittoenrolled - set to true if we only need courses where user is enrolled
      * @param array $options display options, same as in get_courses() except 'recursive' is ignored -
      *                       search is always category-independent
      * @param array $requiredcapabilities List of capabilities required to see return course.
@@ -1618,6 +1630,15 @@ class core_course_category implements renderable, cacheable_object, IteratorAggr
             $search['search'] = '';
         }
 
+        $courseidsearch = '';
+        $courseidparams = [];
+
+        if (!empty($search['limittoenrolled'])) {
+            $enrolled = enrol_get_my_courses(['id']);
+            list($sql, $courseidparams) = $DB->get_in_or_equal(array_keys($enrolled), SQL_PARAMS_NAMED, 'courseid', true, 0);
+            $courseidsearch = "c.id " . $sql;
+        }
+
         if (empty($search['blocklist']) && empty($search['modulelist']) && empty($search['tagid'])) {
             // Search courses that have specified words in their names/summaries.
             $searchterms = preg_split('|\s+|', trim($search['search']), 0, PREG_SPLIT_NO_EMPTY);
@@ -1625,6 +1646,10 @@ class core_course_category implements renderable, cacheable_object, IteratorAggr
             if (!empty($search['onlywithcompletion'])) {
                 $searchcond = ['c.enablecompletion = :p1'];
                 $searchcondparams = ['p1' => 1];
+            }
+            if (!empty($courseidsearch)) {
+                $searchcond[] = $courseidsearch;
+                $searchcondparams = array_merge($searchcondparams, $courseidparams);
             }
             $courselist = get_courses_search($searchterms, 'c.sortorder ASC', 0, 9999999, $totalcount,
                 $requiredcapabilities, $searchcond, $searchcondparams);
@@ -1641,8 +1666,13 @@ class core_course_category implements renderable, cacheable_object, IteratorAggr
                 $params = array('blockname' => $blockname);
             } else if (!empty($search['modulelist'])) {
                 // Search courses that have module with specified name.
-                $where = "c.id IN (SELECT DISTINCT module.course ".
-                        "FROM {".$search['modulelist']."} module)";
+                if (array_key_exists($search['modulelist'], core_component::get_plugin_list('mod'))) {
+                    // If module plugin exists, use module name as table name.
+                    $where = "c.id IN (SELECT DISTINCT module.course FROM {{$search['modulelist']}} module)";
+                } else {
+                    // Otherwise, return empty list of courses.
+                    $where = '1=0';
+                }
                 $params = array();
             } else if (!empty($search['tagid'])) {
                 // Search courses that are tagged with the specified tag.
@@ -1672,6 +1702,11 @@ class core_course_category implements renderable, cacheable_object, IteratorAggr
                 debugging('No criteria is specified while searching courses', DEBUG_DEVELOPER);
                 return array();
             }
+            if (!empty($courseidsearch)) {
+                $where .= ' AND ' . $courseidsearch;
+                $params = array_merge($params, $courseidparams);
+            }
+
             $courselist = self::get_course_records($where, $params, $options, true);
             if (!empty($requiredcapabilities)) {
                 foreach ($courselist as $key => $course) {
@@ -2179,8 +2214,6 @@ class core_course_category implements renderable, cacheable_object, IteratorAggr
                     'objectid' => $childcat->id,
                     'context' => $childcat->get_context()
                 ));
-                $event->set_legacy_logdata(array(SITEID, 'category', 'move', 'editcategory.php?id=' . $childcat->id,
-                    $childcat->id));
                 $event->trigger();
             }
             fix_course_sortorder();
@@ -2371,7 +2404,6 @@ class core_course_category implements renderable, cacheable_object, IteratorAggr
                 'objectid' => $this->id,
                 'context' => $this->get_context()
             ));
-            $event->set_legacy_logdata(array(SITEID, 'category', 'move', 'editcategory.php?id=' . $this->id, $this->id));
             $event->trigger();
         }
     }
@@ -2443,7 +2475,6 @@ class core_course_category implements renderable, cacheable_object, IteratorAggr
                 'objectid' => $this->id,
                 'context' => $this->get_context()
             ));
-            $event->set_legacy_logdata(array(SITEID, 'category', 'hide', 'editcategory.php?id=' . $this->id, $this->id));
             $event->trigger();
         }
     }
@@ -2502,7 +2533,6 @@ class core_course_category implements renderable, cacheable_object, IteratorAggr
                 'objectid' => $this->id,
                 'context' => $this->get_context()
             ));
-            $event->set_legacy_logdata(array(SITEID, 'category', 'show', 'editcategory.php?id=' . $this->id, $this->id));
             $event->trigger();
         }
     }
@@ -3066,8 +3096,6 @@ class core_course_category implements renderable, cacheable_object, IteratorAggr
                 'objectid' => $this->id,
                 'context' => $this->get_context()
             ));
-            $event->set_legacy_logdata(array(SITEID, 'category', 'move', 'management.php?categoryid=' . $this->id,
-                $this->id));
             $event->trigger();
 
             // Finally reorder courses.
@@ -3098,6 +3126,9 @@ class core_course_category implements renderable, cacheable_object, IteratorAggr
      * @return bool
      */
     public function can_request_course() {
+        global $CFG;
+        require_once($CFG->dirroot . '/course/lib.php');
+
         return course_request::can_request($this->get_context());
     }
 
@@ -3189,20 +3220,88 @@ class core_course_category implements renderable, cacheable_object, IteratorAggr
      */
     public static function get_nearest_editable_subcategory(core_course_category $parentcat,
         array $permissionstocheck): ?core_course_category {
+        global $USER, $DB;
+
         // First, check the parent category.
         if ($parentcat->has_capabilities($permissionstocheck)) {
             return $parentcat;
         }
 
-        // Check the child categories.
-        $subcategoryids = $parentcat->get_all_children_ids();
-        foreach ($subcategoryids as $subcategoryid) {
-            $subcategory = static::get($subcategoryid, MUST_EXIST, true);
+        // Build portable SQL parts.
+        $fields = array_keys(array_filter(self::$coursecatfields));
+        $ctxselect = context_helper::get_preload_record_columns_sql('ctx');
+
+        // Paths under the given parent context path.
+        $parentpath = $parentcat->get_context()->path . '/%';
+        $likeparent = $DB->sql_like('path', ':parentpath', false);
+
+        // Join predicate for descendant-or-equal between ctx.path and uc.upath.
+        $eqpaths = $DB->sql_compare_text('ctx.path') . ' = ' . $DB->sql_compare_text('uc.upath');
+        $likechild = "ctx.path LIKE " . $DB->sql_concat('uc.upath', "'/%'");
+
+        // NOTE: This query intentionally uses a CTE (WITH clause).
+        // CTEs are supported by PostgreSQL, MySQL 8+, and SQL Server, and Moodle allows
+        // pass-through SQL when needed.
+        //
+        // Moodle generally avoids using raw SQL features that are not represented in
+        // the database abstraction layer, but in this case the CTE delivers a substantial
+        // performance improvement for large datasets.
+        //
+        // IMPORTANT: This is an exception, not a precedent. The broader use of CTEs
+        // and potential abstraction-layer support will be discussed separately.
+        $sql = "
+        WITH ctx AS (
+            SELECT id, instanceid, path, depth, contextlevel, locked
+              FROM {context}
+             WHERE contextlevel = :ctxlevel
+               AND $likeparent
+        ),
+        user_ctx AS (
+            SELECT DISTINCT c.path AS upath, ra.roleid
+              FROM {role_assignments} ra
+              JOIN {context} c ON c.id = ra.contextid
+             WHERE ra.userid = :userid
+        )
+        SELECT DISTINCT cc." . join(', cc.', $fields) . ", $ctxselect
+          FROM {course_categories} cc
+          JOIN ctx ON cc.id = ctx.instanceid
+     LEFT JOIN {role_assignments} ra
+            ON ra.userid = :userid2
+           AND ra.contextid = ctx.id
+     LEFT JOIN {role_capabilities} rc
+            ON rc.contextid = ctx.id
+     LEFT JOIN user_ctx uc
+            ON uc.roleid = rc.roleid
+           AND ( $eqpaths OR $likechild )
+         WHERE (ra.id IS NOT NULL OR uc.upath IS NOT NULL)
+      ORDER BY cc.sortorder, cc.id
+    ";
+
+        $params = [
+            'ctxlevel'   => CONTEXT_COURSECAT,
+            'parentpath' => $parentpath,
+            'userid'     => $USER->id,
+            'userid2'    => $USER->id,
+        ];
+
+        // Stream results and pick the first subcategory that actually passes capability checks.
+        $tocache = [];
+        $result = null;
+
+        $rs = $DB->get_recordset_sql($sql, $params);
+        foreach ($rs as $record) {
+            $subcategory = new self($record);
+            $tocache[$subcategory->id] = $subcategory;
             if ($subcategory->has_capabilities($permissionstocheck)) {
-                return $subcategory;
+                $result = $subcategory;
+                break;
             }
         }
+        $rs->close();
 
-        return null;
+        $coursecatrecordcache = cache::make('core', 'coursecatrecords');
+        $coursecatrecordcache->set_many($tocache);
+
+        return $result;
     }
 }

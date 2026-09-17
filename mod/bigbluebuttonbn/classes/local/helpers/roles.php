@@ -119,7 +119,7 @@ class roles {
      */
     public static function has_capability_in_course(int $courseid, string $capability) {
         global $DB;
-        if (empty($courseid) || $DB->record_exists('course', ['id' => $courseid])) {
+        if (empty($courseid) || !$DB->record_exists('course', ['id' => $courseid])) {
             return has_capability('moodle/site:config', \context_system::instance());
         }
 
@@ -161,7 +161,7 @@ class roles {
      *
      * @return array $users
      */
-    protected static function get_roles_select(context $context = null, bool $onlyviewableroles = true) {
+    protected static function get_roles_select(?context $context = null, bool $onlyviewableroles = true) {
         global $CFG;
 
         if ($onlyviewableroles == true && $CFG->branch >= 35) {
@@ -219,8 +219,15 @@ class roles {
         ];
         $data['user'] = [
             'name' => get_string('mod_form_field_participant_list_type_user', 'bigbluebuttonbn'),
-            'children' => self::get_users_array($context, $bbactivity),
+            'children' => [],
         ];
+
+        if (empty($bbactivity)) {
+            return $data;
+        }
+
+        $data['user']['children'] = self::get_users_array($context, $bbactivity);
+
         return $data;
     }
 

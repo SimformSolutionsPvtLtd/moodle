@@ -68,7 +68,7 @@ class repository_dropbox extends repository {
      *
      * @inheritDocs
      */
-    public function send_file($storedfile, $lifetime=null , $filter=0, $forcedownload=false, array $options = null) {
+    public function send_file($storedfile, $lifetime=null , $filter=0, $forcedownload=false, ?array $options = null) {
         $reference = $this->unpack_reference($storedfile->get_reference());
 
         $maxcachesize = $this->max_cache_bytes();
@@ -111,7 +111,7 @@ class repository_dropbox extends repository {
      */
     public function get_reference_details($reference, $filestatus = 0) {
         global $USER;
-        $ref  = unserialize($reference);
+        $ref  = unserialize_object($reference);
         $detailsprefix = $this->get_name();
         if (isset($ref->userid) && $ref->userid != $USER->id && isset($ref->username)) {
             $detailsprefix .= ' ('.$ref->username.')';
@@ -343,8 +343,8 @@ class repository_dropbox extends repository {
      * @return  string                  New serialized reference
      */
     protected function fix_old_style_reference($packed) {
-        $ref = unserialize($packed);
-        $ref = $this->dropbox->get_file_share_info($ref->path);
+        $ref = unserialize_object($packed);
+        $ref = $this->dropbox->get_file_share_info($ref->path ?? '');
         if (!$ref || empty($ref->url)) {
             // Some error occurred, do not fix reference for now.
             return $packed;
@@ -396,10 +396,10 @@ class repository_dropbox extends repository {
      * @return  object                  The unpacked reference
      */
     protected function unpack_reference($packed) {
-        $reference = unserialize($packed);
+        $reference = unserialize_object($packed);
         if (empty($reference->url)) {
             // The reference is missing some information. Attempt to update it.
-            return unserialize($this->fix_old_style_reference($packed));
+            return unserialize_object($this->fix_old_style_reference($packed));
         }
 
         return $reference;
@@ -687,7 +687,7 @@ class repository_dropbox extends repository {
                         // Use the display path here rather than lower.
                         // Dropbox is case insensitive but this leads to more accurate breadcrumbs.
                         'path'              => file_correct_filepath($entrydata->path_display),
-                        'thumbnail'         => $OUTPUT->image_url(file_folder_icon(64))->out(false),
+                        'thumbnail'         => $OUTPUT->image_url(file_folder_icon())->out(false),
                         'thumbnail_height'  => 64,
                         'thumbnail_width'   => 64,
                         'children'          => array(),
@@ -699,7 +699,7 @@ class repository_dropbox extends repository {
                         'source'            => $entrydata->path_lower,
                         'size'              => $entrydata->size,
                         'date'              => strtotime($entrydata->client_modified),
-                        'thumbnail'         => $OUTPUT->image_url(file_extension_icon($entrydata->path_lower, 64))->out(false),
+                        'thumbnail'         => $OUTPUT->image_url(file_extension_icon($entrydata->path_lower))->out(false),
                         'realthumbnail'     => $this->get_thumbnail_url($entrydata),
                         'thumbnail_height'  => 64,
                         'thumbnail_width'   => 64,

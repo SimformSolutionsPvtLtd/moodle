@@ -24,7 +24,6 @@ use core_form\dynamic_form;
 use core_reportbuilder\manager;
 use core_reportbuilder\permission;
 use core_reportbuilder\local\report\base;
-use core_reportbuilder\local\models\filter;
 use core_reportbuilder\local\models\report;
 
 /**
@@ -60,7 +59,7 @@ class condition extends dynamic_form {
     /**
      * Ensure current user is able to use this form
      *
-     * A {@see \core_reportbuilder\report_access_exception} will be thrown if they can't
+     * A {@see \core_reportbuilder\exception\report_access_exception} will be thrown if they can't
      */
     protected function check_access_for_dynamic_submission(): void {
         permission::require_can_edit_report($this->get_report()->get_report_persistent());
@@ -121,22 +120,17 @@ class condition extends dynamic_form {
 
         // Allow each condition instance to add itself to this form, wrapping each inside custom header/footer template.
         $conditioninstances = $this->get_report()->get_condition_instances();
-
-        $conditions = filter::get_condition_records($this->get_report()->get_report_persistent()->get('id'), 'filterorder');
-        foreach ($conditions as $condition) {
-            $conditioninstance = $conditioninstances[$condition->get('uniqueidentifier')] ?? null;
-            if ($conditioninstance === null) {
-                continue;
-            }
+        foreach ($conditioninstances as $conditioninstance) {
+            $persistent = $conditioninstance->get_filter_persistent();
 
             $entityname = $conditioninstance->get_entity_name();
             $displayvalue = $conditioninstance->get_header();
 
             $mform->addElement('html', $OUTPUT->render_from_template('core_reportbuilder/local/conditions/header', [
-                'id' => $condition->get('id'),
+                'id' => $persistent->get('id'),
                 'entityname' => $this->get_report()->get_entity_title($entityname),
                 'heading' => $displayvalue,
-                'sortorder' => $condition->get('filterorder'),
+                'sortorder' => $persistent->get('filterorder'),
                 'movetitle' => get_string('movecondition', 'core_reportbuilder', $displayvalue),
             ]));
 
@@ -152,9 +146,10 @@ class condition extends dynamic_form {
         $buttons = [];
         $buttons[] = $mform->createElement('submit', 'submitbutton', get_string('apply', 'core_reportbuilder'));
         $buttons[] = $mform->createElement('submit', 'resetconditions',  get_string('resetall', 'core_reportbuilder'),
-            null, null, ['customclassoverride' => 'btn-link']);
+            null, null, ['customclassoverride' => 'btn-link ms-1']);
 
-        $mform->addGroup($buttons, 'buttonar', '', [' '], false);
+        $mform->addGroup($buttons, 'buttonar', get_string('formactions', 'core_form'), '', false)
+            ->setHiddenLabel(true);
         $mform->closeHeaderBefore('buttonar');
 
         $mform->disable_form_change_checker();

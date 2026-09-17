@@ -203,7 +203,7 @@ class behat_form_field implements behat_session_interface {
      * @return bool
      */
     protected function running_javascript() {
-        return get_class($this->session->getDriver()) !== 'Behat\Mink\Driver\GoutteDriver';
+        return get_class($this->session->getDriver()) !== 'Behat\Mink\Driver\BrowserKitDriver';
     }
 
     /**
@@ -325,5 +325,14 @@ class behat_form_field implements behat_session_interface {
         }
 
         return $this->fieldlocator;
+    }
+
+    /**
+     * Returns the field node.
+     *
+     * @return NodeElement
+     */
+    public function get_node(): NodeElement {
+        return $this->field;
     }
 }

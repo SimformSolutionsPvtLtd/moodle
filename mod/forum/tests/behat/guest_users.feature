@@ -23,9 +23,9 @@ Feature: Guest and not logged users could see the option to add new post or repl
     Given the following "activities" exist:
       | activity | name       | course | idnumber | type   |
       | forum    | Forum      | C1     | forum    | <type> |
-    And I add a new discussion to "Forum" forum with:
-      | Subject | Forum discussion 1 |
-      | Message | How awesome is this forum discussion? |
+    And the following "mod_forum > discussions" exist:
+      | user    | forum | name               | message                               |
+      | teacher | forum | Forum discussion 1 | How awesome is this forum discussion? |
     And I log out
     And I am on "Course 1" course homepage
     When I press "Access as a guest"
@@ -56,10 +56,10 @@ Feature: Guest and not logged users could see the option to add new post or repl
   Scenario: As a not enrolled guest I don't see the option to add a new discussion in a blog type forum
     Given the following "activities" exist:
       | activity | name  | course | idnumber | type   |
-      | forum    | Forum | C1     | forum    | blog |
-    And I add a new discussion to "Forum" forum with:
-      | Subject | Forum discussion 1 |
-      | Message | How awesome is this forum discussion? |
+      | forum    | Forum | C1     | forum    | blog   |
+    And the following "mod_forum > discussions" exist:
+      | user    | forum | name               | message                               |
+      | teacher | forum | Forum discussion 1 | How awesome is this forum discussion? |
     And I log out
     And I am on "Course 1" course homepage
     When I press "Access as a guest"
@@ -74,23 +74,23 @@ Feature: Guest and not logged users could see the option to add new post or repl
     And the following "activities" exist:
       | activity | name       | course | idnumber | type   |
       | forum    | Forum      | C1     | forum    | <type> |
-    And I add a new discussion to "Forum" forum with:
-      | Subject | Forum discussion 1 |
-      | Message | How awesome is this forum discussion? |
+    And the following "mod_forum > discussions" exist:
+      | user    | forum | name               | message                               |
+      | teacher | forum | Forum discussion 1 | How awesome is this forum discussion? |
     And I log out
     And I am on "Course 1" course homepage
     When I press "Access as a guest"
     And I am on the "Forum" "forum activity" page
     Then I should see "Add discussion topic"
     And I click on "Add discussion topic" "link"
-    And I should see "Sorry, guests are not allowed to post"
+    And I should see "Only logged in users can post to this forum"
     And I click on "Cancel" "button"
     And I should see "Forum discussion 1"
     And I click on "Forum discussion 1" "link"
     And I should see "Reply"
     And I click on "Reply" "link"
-    And I should see "Sorry, guests are not allowed to post"
-    And I click on "Continue" "button"
+    And I should see "Only logged in users can post to this forum"
+    And I click on "Log in" "button"
     And I should see "Log in"
 
     Examples:
@@ -112,11 +112,11 @@ Feature: Guest and not logged users could see the option to add new post or repl
     And I should see "Forum (single discussion)"
     Then I should see "Reply"
     And I click on "Reply" "link"
-    And I should see "Sorry, guests are not allowed to post"
+    And I should see "Only logged in users can post to this forum"
     And I click on "Cancel" "button"
     And I should see "Reply"
     And I click on "Reply" "link"
-    And I click on "Continue" "button"
+    And I click on "Log in" "button"
     And I should see "Log in"
 
   Scenario: As an enrolled guest I see the option to reply in a blog type forum
@@ -125,19 +125,19 @@ Feature: Guest and not logged users could see the option to add new post or repl
     And the following "activities" exist:
       | activity | name       | course | idnumber | type   |
       | forum    | Forum      | C1     | forum    | blog |
-    And I add a new discussion to "Forum" forum with:
-      | Subject | Forum discussion 1 |
-      | Message | How awesome is this forum discussion? |
+    And the following "mod_forum > discussions" exist:
+      | user    | forum | name               | message                               |
+      | teacher | forum | Forum discussion 1 | How awesome is this forum discussion? |
     And I log out
     And I am on "Course 1" course homepage
     When I press "Access as a guest"
     And I am on the "Forum" "forum activity" page
     Then I should see "Add discussion topic"
     And I click on "Add discussion topic" "link"
-    And I should see "Sorry, guests are not allowed to post"
+    And I should see "Only logged in users can post to this forum"
     And I click on "Cancel" "button"
     And I should see "Forum discussion 1"
     And I click on "Add discussion topic" "link"
-    And I should see "Sorry, guests are not allowed to post"
-    And I click on "Continue" "button"
+    And I should see "Only logged in users can post to this forum"
+    And I click on "Log in" "button"
     And I should see "Log in"

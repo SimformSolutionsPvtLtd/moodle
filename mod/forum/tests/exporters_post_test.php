@@ -43,7 +43,7 @@ require_once($CFG->dirroot . '/rating/lib.php');
  * @copyright  2019 Ryan Wyllie <ryan@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class exporters_post_test extends \advanced_testcase {
+final class exporters_post_test extends \advanced_testcase {
     // Make use of the test generator trait.
     use mod_forum_tests_generator_trait;
 
@@ -54,7 +54,7 @@ class exporters_post_test extends \advanced_testcase {
      * @param bool $istimed True if this is a timed post
      * @param int $addtime Seconds to be added to the current time
      */
-    public function test_export_post($istimed = false, $addtime = 0) {
+    public function test_export_post($istimed = false, $addtime = 0): void {
         global $CFG, $PAGE;
         $this->resetAfterTest();
 
@@ -159,6 +159,7 @@ class exporters_post_test extends \advanced_testcase {
 
         $this->assertEquals('This is the subject', $exportedpost->subject);
         $this->assertEquals('This is the message', $exportedpost->message);
+        $this->assertEquals('This is the subject by ' . $exportedpost->author->fullname, $exportedpost->label);
         $this->assertEquals($user->id, $exportedpost->author->id);
         $this->assertEquals($discussion->get_id(), $exportedpost->discussionid);
         $this->assertEquals(false, $exportedpost->hasparent);
@@ -201,7 +202,7 @@ class exporters_post_test extends \advanced_testcase {
      *
      * @return array
      */
-    public function export_post_provider(): array {
+    public static function export_post_provider(): array {
         return [
             'Simple export' => [
             ],
@@ -219,7 +220,7 @@ class exporters_post_test extends \advanced_testcase {
     /**
      * Test exporting of a deleted post.
      */
-    public function test_export_deleted_post() {
+    public function test_export_deleted_post(): void {
         global $CFG, $PAGE;
         $this->resetAfterTest();
 
@@ -314,6 +315,7 @@ class exporters_post_test extends \advanced_testcase {
 
         $this->assertNotEquals('This is the subject', $exportedpost->subject);
         $this->assertNotEquals('This is the message', $exportedpost->message);
+        $this->assertEquals('This forum post has been removed', $exportedpost->label);
         $this->assertEquals(null, $exportedpost->timecreated);
         $this->assertEquals(null, $exportedpost->unread);
         $this->assertEquals(true, $exportedpost->isdeleted);
@@ -327,7 +329,7 @@ class exporters_post_test extends \advanced_testcase {
     /**
      * Test exporting of a post the user can't view.
      */
-    public function test_export_post_no_view_capability() {
+    public function test_export_post_no_view_capability(): void {
         global $CFG, $PAGE;
         $this->resetAfterTest();
 
@@ -422,6 +424,7 @@ class exporters_post_test extends \advanced_testcase {
 
         $this->assertNotEquals('This is the subject', $exportedpost->subject);
         $this->assertNotEquals('This is the message', $exportedpost->message);
+        $this->assertEquals('Subject (hidden)', $exportedpost->label);
         $this->assertEquals(null, $exportedpost->timecreated);
         $this->assertEquals(null, $exportedpost->unread);
         $this->assertEquals(false, $exportedpost->isdeleted);
@@ -500,7 +503,7 @@ class test_capability_manager extends capability_manager {
      * @param post_entity $post The post
      * @return bool
      */
-    public function can_view_post(\stdClass $user, discussion_entity $discussion, post_entity $post) : bool {
+    public function can_view_post(\stdClass $user, discussion_entity $discussion, post_entity $post): bool {
         return $this->view;
     }
 
@@ -512,7 +515,7 @@ class test_capability_manager extends capability_manager {
      * @param post_entity $post The post
      * @return bool
      */
-    public function can_edit_post(\stdClass $user, discussion_entity $discussion, post_entity $post) : bool {
+    public function can_edit_post(\stdClass $user, discussion_entity $discussion, post_entity $post): bool {
         return $this->edit;
     }
 
@@ -526,7 +529,7 @@ class test_capability_manager extends capability_manager {
      * @return bool
      */
     public function can_delete_post(\stdClass $user, discussion_entity $discussion, post_entity $post,
-                                    bool $hasreplies = false) : bool {
+                                    bool $hasreplies = false): bool {
         return $this->delete;
     }
 
@@ -538,7 +541,7 @@ class test_capability_manager extends capability_manager {
      * @param post_entity $post The post
      * @return bool
      */
-    public function can_split_post(\stdClass $user, discussion_entity $discussion, post_entity $post) : bool {
+    public function can_split_post(\stdClass $user, discussion_entity $discussion, post_entity $post): bool {
         return $this->split;
     }
 
@@ -550,7 +553,7 @@ class test_capability_manager extends capability_manager {
      * @param post_entity $post The post
      * @return bool
      */
-    public function can_reply_to_post(\stdClass $user, discussion_entity $discussion, post_entity $post) : bool {
+    public function can_reply_to_post(\stdClass $user, discussion_entity $discussion, post_entity $post): bool {
         return $this->reply;
     }
 
@@ -561,7 +564,7 @@ class test_capability_manager extends capability_manager {
      * @param post_entity $post The post
      * @return bool
      */
-    public function can_export_post(\stdClass $user, post_entity $post) : bool {
+    public function can_export_post(\stdClass $user, post_entity $post): bool {
         return $this->export;
     }
 
@@ -571,7 +574,7 @@ class test_capability_manager extends capability_manager {
      * @param \stdClass $user The user
      * @return bool
      */
-    public function can_manually_control_post_read_status(\stdClass $user) : bool {
+    public function can_manually_control_post_read_status(\stdClass $user): bool {
         return $this->controlreadstatus;
     }
 
@@ -581,7 +584,7 @@ class test_capability_manager extends capability_manager {
      * @param post_entity $post
      * @return bool
      */
-    public function can_reply_privately_to_post(\stdClass $user, post_entity $post) : bool {
+    public function can_reply_privately_to_post(\stdClass $user, post_entity $post): bool {
         return $this->canreplyprivatelytopost;
     }
 
@@ -590,7 +593,7 @@ class test_capability_manager extends capability_manager {
      * @param \stdClass $user
      * @return bool
      */
-    public function can_self_enrol(\stdClass $user) : bool {
+    public function can_self_enrol(\stdClass $user): bool {
         return $this->canenrol;
     }
 }

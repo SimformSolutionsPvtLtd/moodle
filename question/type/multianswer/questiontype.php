@@ -110,8 +110,7 @@ class qtype_multianswer extends question_type {
 
         parent::get_question_options($question);
         // Get relevant data indexed by positionkey from the multianswers table.
-        $sequence = $DB->get_field('question_multianswer', 'sequence',
-                array('question' => $question->id), MUST_EXIST);
+        $sequence = $DB->get_field('question_multianswer', 'sequence', ['question' => $question->id]);
 
         if (empty($sequence)) {
             $question->options->questions = [];
@@ -146,7 +145,6 @@ class qtype_multianswer extends question_type {
             question_bank::get_qtype($wrapped->qtype)->get_question_options($wrapped);
             // For wrapped questions the maxgrade is always equal to the defaultmark,
             // there is no entry in the question_instances table for them.
-            $wrapped->maxmark = $wrapped->defaultmark;
             $wrapped->category = $question->categoryobject->id;
             $question->options->questions[$sequence[$wrapped->id]] = $wrapped;
         }
@@ -163,9 +161,9 @@ class qtype_multianswer extends question_type {
         // This function needs to be able to handle the case where the existing set of wrapped
         // questions does not match the new set of wrapped questions so that some need to be
         // created, some modified and some deleted.
-        // Unfortunately the code currently simply overwrites existing ones in sequence. This
-        // will make re-marking after a re-ordering of wrapped questions impossible and
-        // will also create difficulties if questiontype specific tables reference the id.
+        // Thanks to versioning, we no longer overwrite existing questions in the sequence
+        // by re-using IDs, but instead create a new version of each wrapped question for
+        // the new version of the parent.
 
         // First we get all the existing wrapped questions.
         $oldwrappedquestions = [];
@@ -187,30 +185,12 @@ class qtype_multianswer extends question_type {
         $sequence = array();
         foreach ($question->options->questions as $wrapped) {
             if (!empty($wrapped)) {
-                // If we still have some old wrapped question ids, reuse the next of them.
+                // If we still have some old wrapped question ids, reuse the next of them to save
+                // the new version against its question bank entry.
                 $wrapped->id = 0;
                 if (is_array($oldwrappedquestions) &&
                         $oldwrappedquestion = array_shift($oldwrappedquestions)) {
                     $wrapped->oldid = $oldwrappedquestion->id;
-                    if ($oldwrappedquestion->qtype != $wrapped->qtype) {
-                        switch ($oldwrappedquestion->qtype) {
-                            case 'multichoice':
-                                $DB->delete_records('qtype_multichoice_options',
-                                        array('questionid' => $oldwrappedquestion->id));
-                                break;
-                            case 'shortanswer':
-                                $DB->delete_records('qtype_shortanswer_options',
-                                        array('questionid' => $oldwrappedquestion->id));
-                                break;
-                            case 'numerical':
-                                $DB->delete_records('question_numerical',
-                                        array('question' => $oldwrappedquestion->id));
-                                break;
-                            default:
-                                throw new moodle_exception('qtypenotrecognized',
-                                        'qtype_multianswer', '', $oldwrappedquestion->qtype);
-                        }
-                    }
                 }
             }
             $wrapped->name = $question->name;
@@ -303,7 +283,7 @@ class qtype_multianswer extends question_type {
                 }
             }
             $question->subquestions[$key] = question_bank::make_question($subqdata);
-            $question->subquestions[$key]->maxmark = $subqdata->defaultmark;
+            $question->subquestions[$key]->defaultmark = $subqdata->defaultmark;
             if (isset($subqdata->options->layout)) {
                 $question->subquestions[$key]->layout = $subqdata->options->layout;
             }
@@ -314,11 +294,18 @@ class qtype_multianswer extends question_type {
         $fractionsum = 0;
         $fractionmax = 0;
         foreach ($questiondata->options->questions as $key => $subqdata) {
+            if ($subqdata->qtype == 'subquestion_replacement') {
+                continue;
+            }
             $fractionmax += $subqdata->defaultmark;
             $fractionsum += question_bank::get_qtype(
                     $subqdata->qtype)->get_random_guess_score($subqdata);
         }
-        return $fractionsum / $fractionmax;
+        if ($fractionmax > question_utils::MARK_TOLERANCE) {
+            return $fractionsum / $fractionmax;
+        } else {
+            return null;
+        }
     }
 
     public function move_files($questionid, $oldcontextid, $newcontextid) {
@@ -603,7 +590,7 @@ function qtype_multianswer_extract_question($text) {
  * @param object $question  The multianswer question to validate as returned by qtype_multianswer_extract_question
  * @return array Array of error messages with questions field names as keys.
  */
-function qtype_multianswer_validate_question(stdClass $question) : array {
+function qtype_multianswer_validate_question(stdClass $question): array {
     $errors = array();
     if (!isset($question->options->questions)) {
         $errors['questiontext'] = get_string('questionsmissing', 'qtype_multianswer');

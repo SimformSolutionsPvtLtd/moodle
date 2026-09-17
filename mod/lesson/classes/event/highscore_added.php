@@ -27,8 +27,6 @@ namespace mod_lesson\event;
 
 defined('MOODLE_INTERNAL') || die();
 
-debugging('mod_lesson\event\highscore_added has been deprecated. Since the functionality no longer resides in the lesson module.',
-        DEBUG_DEVELOPER);
 /**
  * The mod_lesson highscore added event class.
  *
@@ -51,6 +49,10 @@ class highscore_added extends \core\event\base {
      * Set basic properties for the event.
      */
     protected function init() {
+        // phpcs:ignore moodle.Files.LineLength.TooLong
+        debugging('mod_lesson\event\highscore_added has been deprecated. Since the functionality no longer resides in the lesson module.',
+            DEBUG_DEVELOPER);
+
         $this->data['objecttable'] = 'lesson_high_scores';
         $this->data['crud'] = 'c';
         $this->data['edulevel'] = self::LEVEL_PARTICIPATING;
@@ -82,16 +84,6 @@ class highscore_added extends \core\event\base {
     public function get_description() {
         return "The user with id '$this->userid' added a new highscore to the lesson activity with course module " .
             "id '$this->contextinstanceid'.";
-    }
-
-    /**
-     * Replace add_to_log() statement.
-     *
-     * @return array of parameters to be passed to legacy add_to_log() function.
-     */
-    protected function get_legacy_logdata() {
-        return array($this->courseid, 'lesson', 'update highscores', 'highscores.php?id=' . $this->contextinstanceid,
-            $this->other['nickname'], $this->contextinstanceid);
     }
 
     /**

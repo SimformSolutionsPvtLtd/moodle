@@ -4,7 +4,7 @@
  * This file is part of FPDI
  *
  * @package   setasign\Fpdi
- * @copyright Copyright (c) 2020 Setasign GmbH & Co. KG (https://www.setasign.com)
+ * @copyright Copyright (c) 2023 Setasign GmbH & Co. KG (https://www.setasign.com)
  * @license   http://opensource.org/licenses/mit-license The MIT License
  */
 
@@ -139,12 +139,19 @@ class PdfReader
         $page = $this->pages[$pageNumber - 1];
 
         if ($page instanceof PdfIndirectObjectReference) {
-            $readPages = function ($kids) use (&$readPages) {
+            $alreadyReadKids = [];
+            $readPages = function ($kids) use (&$readPages, &$alreadyReadKids) {
                 $kids = PdfArray::ensure($kids);
 
                 /** @noinspection LoopWhichDoesNotLoopInspection */
                 foreach ($kids->value as $reference) {
                     $reference = PdfIndirectObjectReference::ensure($reference);
+
+                    if (\in_array($reference->value, $alreadyReadKids, true)) {
+                        throw new PdfReaderException('Recursive pages dictionary detected.');
+                    }
+                    $alreadyReadKids[] = $reference->value;
+
                     $object = $this->parser->getIndirectObject($reference->value);
                     $type = PdfDictionary::get($object->value, 'Type');
 
@@ -168,6 +175,7 @@ class PdfReader
             if ($type->value === 'Pages') {
                 $kids = PdfType::resolve(PdfDictionary::get($dict, 'Kids'), $this->parser);
                 try {
+                    $alreadyReadKids[] = $page->objectNumber;
                     $page = $this->pages[$pageNumber - 1] = $readPages($kids);
                 } catch (PdfReaderException $e) {
                     if ($e->getCode() !== PdfReaderException::KIDS_EMPTY) {
@@ -202,7 +210,9 @@ class PdfReader
             return;
         }
 
-        $readPages = function ($kids, $count) use (&$readPages, $readAll) {
+        $expectedPageCount = $this->getPageCount();
+        $alreadyReadKids = [];
+        $readPages = function ($kids, $count) use (&$readPages, &$alreadyReadKids, $readAll, $expectedPageCount) {
             $kids = PdfArray::ensure($kids);
             $isLeaf = ($count->value === \count($kids->value));
 
@@ -214,6 +224,11 @@ class PdfReader
                     continue;
                 }
 
+                if (\in_array($reference->value, $alreadyReadKids, true)) {
+                    throw new PdfReaderException('Recursive pages dictionary detected.');
+                }
+                $alreadyReadKids[] = $reference->value;
+
                 $object = $this->parser->getIndirectObject($reference->value);
                 $type = PdfDictionary::get($object->value, 'Type');
 
@@ -221,6 +236,11 @@ class PdfReader
                     $readPages(PdfDictionary::get($object->value, 'Kids'), PdfDictionary::get($object->value, 'Count'));
                 } else {
                     $this->pages[] = $object;
+                }
+
+                // stop if all pages are read - faulty documents exists with additional entries with invalid data.
+                if (count($this->pages) === $expectedPageCount) {
+                    break;
                 }
             }
         };

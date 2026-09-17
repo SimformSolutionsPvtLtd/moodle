@@ -1,5 +1,4 @@
-# This feature has Atto-specific steps. See MDL-75913 for further details.
-@core @core_course @core_customfield @javascript @editor_atto
+@core @core_course @core_customfield @javascript
 Feature: Teachers can edit course custom fields
   In order to have additional data on the course
   As a teacher
@@ -25,9 +24,9 @@ Feature: Teachers can edit course custom fields
     And the following "course enrolments" exist:
       | user     | course | role           |
       | teacher1 | C1     | editingteacher |
-    And the following "blocks" exist:
-      | blockname     | contextlevel | reference | pagetypepattern | defaultregion |
-      | private_files | System       | 1         | my-index        | side-post     |
+    And the following "user private files" exist:
+      | user  | filepath                       |
+      | admin | lib/tests/fixtures/gd-logo.png |
 
   Scenario: Display custom fields on course edit form
     When I log in as "teacher1"
@@ -74,22 +73,18 @@ Feature: Teachers can edit course custom fields
       | Field 5               | b            |
     And I log out
 
-  @javascript @_file_upload
+  @javascript @editor_tiny
   Scenario: Use images in the custom field description
     When I log in as "admin"
-    And I follow "Manage private files"
-    And I upload "lib/tests/fixtures/gd-logo.png" file to "Files" filemanager
-    And I click on "Save changes" "button"
-    And I navigate to "Courses > Course custom fields" in site administration
-    And I click on "Edit" "link" in the "Field 1" "table_row"
-    And I select the text in the "Description" Atto editor
-    And I click on "Insert or edit image" "button" in the "Description" "form_row"
-    And I click on "Browse repositories..." "button"
+    And I navigate to "Courses > Default settings > Course custom fields" in site administration
+    And I press "Edit custom field: Field 1"
+    And I click on "Image" "button" in the "Description" "form_row"
+    And I click on "Browse repositories" "button"
     And I click on "Private files" "link" in the ".fp-repo-area" "css_element"
     And I click on "gd-logo.png" "link"
     And I click on "Select this file" "button"
-    And I set the field "Describe this image for someone who cannot see it" to "Example"
-    And I click on "Save image" "button"
+    And I set the field "How would you describe this image to someone who can't see it?" to "Example"
+    And I click on "Save" "button" in the "Image details" "dialogue"
     And I click on "Save changes" "button" in the "Updating Field 1" "dialogue"
     And I log out
     And I log in as "teacher1"
@@ -102,7 +97,7 @@ Feature: Teachers can edit course custom fields
   @javascript
   Scenario: Custom field short name must be present and unique
     When I log in as "admin"
-    And I navigate to "Courses > Course custom fields" in site administration
+    And I navigate to "Courses > Default settings > Course custom fields" in site administration
     And I click on "Add a new custom field" "link"
     And I click on "Short text" "link"
     And I set the following fields to these values:
@@ -111,9 +106,9 @@ Feature: Teachers can edit course custom fields
     Then I should see "You must supply a value here" in the "Short name" "form_row"
     And I set the field "Short name" to "short name"
     And I click on "Save changes" "button" in the "Adding a new Short text" "dialogue"
-    And I should see "The short name can only contain alphanumeric lowercase characters and underscores (_)." in the "Short name" "form_row"
+    Then I should see "The short name can only contain alphanumeric lowercase characters and underscores (_)." in the "Short name" "form_row"
     And I set the field "Short name" to "f1"
     And I click on "Save changes" "button" in the "Adding a new Short text" "dialogue"
-    And I should see "Short name already exists" in the "Short name" "form_row"
+    Then I should see "Short name already exists" in the "Short name" "form_row"
     And I click on "Cancel" "button" in the "Adding a new Short text" "dialogue"
     And I log out

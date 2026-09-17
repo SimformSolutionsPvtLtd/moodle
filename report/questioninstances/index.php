@@ -45,6 +45,9 @@ foreach ($qtypes as $qtype) {
     $qtypechoices[$qtype->name()] = $qtype->local_name();
 }
 
+// Sort by label.
+core_collator::asort($qtypechoices);
+
 // Print the settings form.
 echo $OUTPUT->box_start('generalbox boxwidthwide boxaligncenter centerpara');
 echo '<form method="get" action="." id="settingsform"><div>';
@@ -69,8 +72,10 @@ if ($requestedqtype) {
         $othertypes = array_keys($qtypes);
         $key = array_search('missingtype', $othertypes);
         unset($othertypes[$key]);
-        list($sqlqtypetest, $params) = $DB->get_in_or_equal($othertypes, SQL_PARAMS_QM, '', false);
+
+        [$sqlqtypetest, $sqlqtypetestparams] = $DB->get_in_or_equal($othertypes, SQL_PARAMS_QM, '', false);
         $sqlqtypetest = 'WHERE qtype ' . $sqlqtypetest;
+        $params = array_merge($params, $sqlqtypetestparams);
 
     } else if ($requestedqtype == '_all_') {
         $title = get_string('reportforallqtypes', 'report_questioninstances');

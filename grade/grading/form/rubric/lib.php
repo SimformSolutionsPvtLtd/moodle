@@ -22,6 +22,11 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+use core_external\external_format_value;
+use core_external\external_multiple_structure;
+use core_external\external_single_structure;
+use core_external\external_value;
+
 defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->dirroot.'/grade/grading/form/lib.php');
@@ -66,7 +71,7 @@ class gradingform_rubric_controller extends gradingform_controller {
      * @param settings_navigation $settingsnav {@link settings_navigation}
      * @param navigation_node $node {@link navigation_node}
      */
-    public function extend_settings_navigation(settings_navigation $settingsnav, navigation_node $node=null) {
+    public function extend_settings_navigation(settings_navigation $settingsnav, ?navigation_node $node=null) {
         $node->add(get_string('definerubric', 'gradingform_rubric'),
             $this->get_editor_url(), settings_navigation::TYPE_CUSTOM,
             null, null, new pix_icon('icon', '', 'gradingform_rubric'));
@@ -81,7 +86,7 @@ class gradingform_rubric_controller extends gradingform_controller {
      * @param global_navigation $navigation {@link global_navigation}
      * @param navigation_node $node {@link navigation_node}
      */
-    public function extend_navigation(global_navigation $navigation, navigation_node $node=null) {
+    public function extend_navigation(global_navigation $navigation, ?navigation_node $node=null) {
         if (has_capability('moodle/grade:managegradingforms', $this->get_context())) {
             // no need for preview if user can manage forms, he will have link to manage.php in settings instead
             return;
@@ -858,16 +863,19 @@ class gradingform_rubric_instance extends gradingform_instance {
         $currentgrade = $this->get_rubric_filling();
         parent::update($data);
         foreach ($data['criteria'] as $criterionid => $record) {
+            // Hardcoding/defaulting to html format for new/existing record
+            $record['remarkformat'] = FORMAT_HTML;
+
             if (!array_key_exists($criterionid, $currentgrade['criteria'])) {
                 $newrecord = array('instanceid' => $this->get_id(), 'criterionid' => $criterionid,
-                    'levelid' => $record['levelid'], 'remarkformat' => FORMAT_MOODLE);
+                    'levelid' => $record['levelid'], 'remarkformat' => $record['remarkformat']);
                 if (isset($record['remark'])) {
                     $newrecord['remark'] = $record['remark'];
                 }
                 $DB->insert_record('gradingform_rubric_fillings', $newrecord);
             } else {
                 $newrecord = array('id' => $currentgrade['criteria'][$criterionid]['id']);
-                foreach (array('levelid', 'remark'/*, 'remarkformat' */) as $key) {
+                foreach (array('levelid', 'remark', 'remarkformat') as $key) {
                     // TODO MDL-31235 format is not supported yet
                     if (isset($record[$key]) && $currentgrade['criteria'][$criterionid][$key] != $record[$key]) {
                         $newrecord[$key] = $record[$key];

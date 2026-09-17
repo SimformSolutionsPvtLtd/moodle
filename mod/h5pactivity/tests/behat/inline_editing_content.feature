@@ -1,4 +1,4 @@
-@mod @mod_h5pactivity @core_h5p @_file_upload @_switch_iframe
+@mod @mod_h5pactivity @core_h5p @_switch_iframe
 Feature: Inline editing H5P content
   In order to edit an existing H5P activity file
   As a teacher
@@ -21,9 +21,6 @@ Feature: Inline editing H5P content
     And the following "permission overrides" exist:
       | capability                 | permission | role           | contextlevel | reference |
       | moodle/h5p:updatelibraries | Allow      | editingteacher | System       |           |
-    And the following "blocks" exist:
-      | blockname     | contextlevel | reference | pagetypepattern | defaultregion |
-      | private_files | System       | 1         | my-index        | side-post     |
 
   @javascript
   Scenario: Add H5P activity using link to content bank file
@@ -37,7 +34,7 @@ Feature: Inline editing H5P content
       | unaddableblocks | | theme_boost|
     And I add the "Navigation" block if not present
     # Create an H5P activity with a link to the content-bank file.
-    And I add a "H5P" to section "1"
+    And I add an h5pactivity activity to course "Course 1" section "1"
     And I set the following fields to these values:
       | Name                       | H5P package added as link to content bank |
       | Description                | Description                                 |
@@ -47,19 +44,19 @@ Feature: Inline editing H5P content
     And I click on "Link to the file" "radio"
     And I click on "Select this file" "button"
     And I click on "Save and display" "button"
-    And I switch to "h5p-player" class iframe
-    And I switch to "h5p-iframe" class iframe
+    And I wait until "h5p-player" iframe is interactable and switch to it
+    And I wait until "h5p-iframe" iframe is interactable and switch to it
     And I should see "Hello world!"
     And I switch to the main frame
     # Modify the H5P content using the edit button (which opens the H5P editor).
     And I follow "Edit H5P content"
     And I should see "This content may be in use in other places."
-    And I switch to "h5p-editor-iframe" class iframe
+    And I wait until "h5p-editor-iframe" iframe is interactable and switch to it
     And I set the field "Greeting text" to "It's a Wonderful Life!"
     And I switch to the main frame
     And I click on "Save changes" "button"
-    And I switch to "h5p-player" class iframe
-    And I switch to "h5p-iframe" class iframe
+    And I wait until "h5p-player" iframe is interactable and switch to it
+    And I wait until "h5p-iframe" iframe is interactable and switch to it
     # Check the H5P content has changed.
     And I should not see "Hello world!"
     And I should see "It's a Wonderful Life!"
@@ -69,8 +66,8 @@ Feature: Inline editing H5P content
     And I click on "Site pages" "list_item" in the "Navigation" "block"
     And I click on "Content bank" "link" in the "Navigation" "block"
     And I click on "Greeting card" "link"
-    And I switch to "h5p-player" class iframe
-    And I switch to "h5p-iframe" class iframe
+    And I wait until "h5p-player" iframe is interactable and switch to it
+    And I wait until "h5p-iframe" iframe is interactable and switch to it
     And I should not see "Hello world!"
     And I should see "It's a Wonderful Life!"
     And I switch to the main frame
@@ -99,7 +96,7 @@ Feature: Inline editing H5P content
       | unaddableblocks | | theme_boost|
     And I add the "Navigation" block if not present
     # Create an H5P activity with a copy to the content-bank file.
-    And I add a "H5P" to section "1"
+    And I add an h5pactivity activity to course "Course 1" section "1"
     And I set the following fields to these values:
       | Name                       | H5P package added as copy to content bank |
       | Description                | Description                                 |
@@ -109,20 +106,20 @@ Feature: Inline editing H5P content
     And I click on "Make a copy of the file" "radio"
     And I click on "Select this file" "button"
     And I click on "Save and display" "button"
-    And I switch to "h5p-player" class iframe
-    And I switch to "h5p-iframe" class iframe
+    And I wait until "h5p-player" iframe is interactable and switch to it
+    And I wait until "h5p-iframe" iframe is interactable and switch to it
     And I should see "Hello world!"
     And I switch to the main frame
     # Modify the H5P content using the edit button (which opens the H5P editor).
     And I follow "Edit H5P content"
     And I should not see "This content may be in use in other places."
-    And I switch to "h5p-editor-iframe" class iframe
+    And I wait until "h5p-editor-iframe" iframe is interactable and switch to it
     And I set the field "Greeting text" to "The nightmare before Christmas"
     And I switch to the main frame
     And I click on "Save changes" "button"
     # Check the H5P content has changed.
-    And I switch to "h5p-player" class iframe
-    And I switch to "h5p-iframe" class iframe
+    And I wait until "h5p-player" iframe is interactable and switch to it
+    And I wait until "h5p-iframe" iframe is interactable and switch to it
     And I should not see "Hello world!"
     And I should see "The nightmare before Christmas"
     And I switch to the main frame
@@ -131,8 +128,8 @@ Feature: Inline editing H5P content
     And I click on "Site pages" "list_item" in the "Navigation" "block"
     And I click on "Content bank" "link" in the "Navigation" "block"
     And I click on "Greeting card" "link"
-    And I switch to "h5p-player" class iframe
-    And I switch to "h5p-iframe" class iframe
+    And I wait until "h5p-player" iframe is interactable and switch to it
+    And I wait until "h5p-iframe" iframe is interactable and switch to it
     And I should see "Hello world!"
     And I should not see "The nightmare before Christmas"
     And I switch to the main frame
@@ -151,14 +148,12 @@ Feature: Inline editing H5P content
 
   @javascript
   Scenario: Add H5P activity using private user file
-    Given I log in as "teacher1"
-    # Upload the H5P to private user files.
-    And I follow "Manage private files..."
-    And I upload "h5p/tests/fixtures/greeting-card.h5p" file to "Files" filemanager
-    And I click on "Save changes" "button"
+    Given the following "user private file" exists:
+      | user     | teacher1                             |
+      | filepath | h5p/tests/fixtures/greeting-card.h5p |
     # Create an H5P activity with a private user file.
-    And I am on "Course 1" course homepage with editing mode on
-    And I add a "H5P" to section "1"
+    When I log in as "teacher1"
+    And I add an h5pactivity activity to course "Course 1" section "1"
     And I set the following fields to these values:
       | Name                       | H5P package added as private user file      |
       | Description                | Description                                 |
@@ -168,20 +163,20 @@ Feature: Inline editing H5P content
     And I click on "Link to the file" "radio"
     And I click on "Select this file" "button"
     And I click on "Save and display" "button"
-    And I switch to "h5p-player" class iframe
-    And I switch to "h5p-iframe" class iframe
+    And I wait until "h5p-player" iframe is interactable and switch to it
+    And I wait until "h5p-iframe" iframe is interactable and switch to it
     And I should see "Hello world!"
     And I switch to the main frame
     # Modify the H5P content using the edit button (which opens the H5P editor).
     And I follow "Edit H5P content"
     And I should see "This content may be in use in other places."
-    And I switch to "h5p-editor-iframe" class iframe
+    And I wait until "h5p-editor-iframe" iframe is interactable and switch to it
     And I set the field "Greeting text" to "Little women"
     And I switch to the main frame
     And I click on "Save changes" "button"
     # Check the H5P content has changed.
-    And I switch to "h5p-player" class iframe
-    And I switch to "h5p-iframe" class iframe
+    And I wait until "h5p-player" iframe is interactable and switch to it
+    And I wait until "h5p-iframe" iframe is interactable and switch to it
     And I should not see "Hello world!"
     And I should see "Little women"
     And I switch to the main frame

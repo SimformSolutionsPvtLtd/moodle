@@ -25,7 +25,7 @@ namespace auth_db;
  * @copyright  2012 Petr Skoda {@link http://skodak.org}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class db_test extends \advanced_testcase {
+final class db_test extends \advanced_testcase {
     /** @var string Original error log */
     protected $oldlog;
 
@@ -41,6 +41,7 @@ class db_test extends \advanced_testcase {
             sqlsrv_configure("LogSubsystems", SQLSRV_LOG_SYSTEM_OFF);
             sqlsrv_configure("LogSeverity", SQLSRV_LOG_SEVERITY_ERROR);
         }
+        parent::tearDownAfterClass();
     }
 
     protected function init_auth_database() {
@@ -69,7 +70,6 @@ class db_test extends \advanced_testcase {
             case 'mysql':
                 set_config('type', 'mysqli', 'auth_db');
                 set_config('setupsql', "SET NAMES 'UTF-8'", 'auth_db');
-                set_config('sybasequoting', '0', 'auth_db');
                 if (!empty($CFG->dboptions['dbsocket'])) {
                     $dbsocket = $CFG->dboptions['dbsocket'];
                     if ((strpos($dbsocket, '/') === false and strpos($dbsocket, '\\') === false)) {
@@ -91,7 +91,6 @@ class db_test extends \advanced_testcase {
                     $setupsql .= "; SET search_path = '".$CFG->dboptions['dbschema']."'";
                 }
                 set_config('setupsql', $setupsql, 'auth_db');
-                set_config('sybasequoting', '0', 'auth_db');
                 if (!empty($CFG->dboptions['dbsocket']) and ($CFG->dbhost === 'localhost' or $CFG->dbhost === '127.0.0.1')) {
                     if (strpos($CFG->dboptions['dbsocket'], '/') !== false) {
                         $socket = $CFG->dboptions['dbsocket'];
@@ -107,7 +106,6 @@ class db_test extends \advanced_testcase {
 
             case 'mssql':
                 set_config('type', 'mssqlnative', 'auth_db');
-                set_config('sybasequoting', '1', 'auth_db');
 
                 // The native sqlsrv driver uses a comma as separator between host and port.
                 $dbhost = $CFG->dbhost;
@@ -172,7 +170,7 @@ class db_test extends \advanced_testcase {
         ini_set('error_log', $this->oldlog);
     }
 
-    public function test_plugin() {
+    public function test_plugin(): void {
         global $DB, $CFG;
         require_once($CFG->dirroot . '/user/profile/lib.php');
 
@@ -443,7 +441,7 @@ class db_test extends \advanced_testcase {
     /**
      * Testing the function _colonscope() from ADOdb.
      */
-    public function test_adodb_colonscope() {
+    public function test_adodb_colonscope(): void {
         global $CFG;
         require_once($CFG->libdir.'/adodb/adodb.inc.php');
         require_once($CFG->libdir.'/adodb/drivers/adodb-odbc.inc.php');
@@ -461,7 +459,7 @@ class db_test extends \advanced_testcase {
     /**
      * Testing the clean_data() method.
      */
-    public function test_clean_data() {
+    public function test_clean_data(): void {
         global $DB;
 
         $this->resetAfterTest(false);
@@ -505,7 +503,7 @@ class db_test extends \advanced_testcase {
     /**
      * Testing the deletion of a user when there are many users in the external DB.
      */
-    public function test_deleting_with_many_users() {
+    public function test_deleting_with_many_users(): void {
         global $DB;
 
         $this->resetAfterTest(true);

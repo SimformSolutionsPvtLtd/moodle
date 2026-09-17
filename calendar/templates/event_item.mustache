@@ -61,7 +61,7 @@
     }}>
     <div class="card rounded">
         <div class="box card-header clearfix calendar_event_{{normalisedeventtype}}">
-            <div class="commands float-sm-right">
+            <div class="commands float-sm-end">
                 {{#canedit}}
                     {{#candelete}}
                         <a href="{{deleteurl}}" data-action="delete" aria-label="{{#str}}delete{{/str}}" title="{{#str}}delete{{/str}}">
@@ -75,7 +75,16 @@
                     {{/isactionevent}}
                 {{/canedit}}
             </div>
-            {{#icon}}<div class="d-inline-block mt-1 align-top">{{#pix}} {{key}}, {{component}}, {{alttext}} {{/pix}}</div>{{/icon}}
+            {{#icon}}
+                <div class="d-inline-block mt-1 align-top">
+                    {{#iconurl}}
+                        <img alt="{{alttext}}" title="{{alttext}}" src="{{{iconurl}}}" class="icon {{iconclass}}">
+                    {{/iconurl}}
+                    {{^iconurl}}
+                        {{#pix}} {{key}}, {{component}}, {{alttext}} {{/pix}}
+                    {{/iconurl}}
+                </div>
+            {{/icon}}
             <div class="d-inline-block">
                 <h3 class="name d-inline-block">{{{name}}}</h3>
             </div>
@@ -84,13 +93,13 @@
             {{> core_calendar/event_details }}
         </div>
         {{#action.actionable}}
-            <div class="card-footer text-right bg-transparent">
+            <div class="card-footer text-end bg-transparent">
                 <a href="{{action.url}}" class="card-link">{{{action.name}}}</a>
             </div>
         {{/action.actionable}}
         {{^action.actionable}}
             {{#isactionevent}}
-            <div class="card-footer text-right bg-transparent">
+            <div class="card-footer text-end bg-transparent">
                 <a href="{{url}}" class="card-link">{{#str}} gotoactivity, core_calendar {{/str}}</a>
             </div>
             {{/isactionevent}}

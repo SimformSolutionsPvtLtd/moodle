@@ -24,13 +24,13 @@
  * @author     Yuliya Bozhko <yuliya.bozhko@totaralms.com>
  */
 
+use core_badges\reportbuilder\local\systemreports\recipients;
+use core_reportbuilder\system_report_factory;
+
 require_once(__DIR__ . '/../config.php');
 require_once($CFG->libdir . '/badgeslib.php');
 
 $badgeid    = required_param('id', PARAM_INT);
-$sortby     = optional_param('sort', 'dateissued', PARAM_ALPHA);
-$sorthow    = optional_param('dir', 'DESC', PARAM_ALPHA);
-$page       = optional_param('page', 0, PARAM_INT);
 
 require_login();
 
@@ -38,21 +38,12 @@ if (empty($CFG->enablebadges)) {
     throw new \moodle_exception('badgesdisabled', 'badges');
 }
 
-if (!in_array($sortby, array('firstname', 'lastname', 'dateissued'))) {
-    $sortby = 'dateissued';
-}
-
-if ($sorthow != 'ASC' and $sorthow != 'DESC') {
-    $sorthow = 'DESC';
-}
-
-if ($page < 0) {
-    $page = 0;
-}
-
 $badge = new badge($badgeid);
 $context = $badge->get_context();
+$title = [get_string('awards', 'badges'), $badge->name];
 $navurl = new moodle_url('/badges/index.php', array('type' => $badge->type));
+
+require_capability('moodle/badges:viewawarded', $context);
 
 if ($badge->type == BADGE_TYPE_COURSE) {
     if (empty($CFG->badges_allowcoursebadges)) {
@@ -61,6 +52,7 @@ if ($badge->type == BADGE_TYPE_COURSE) {
     require_login($badge->courseid);
     $course = get_course($badge->courseid);
     $heading = format_string($course->fullname, true, ['context' => $context]);
+    $title[] = $heading;
     $navurl = new moodle_url('/badges/index.php', array('type' => $badge->type, 'id' => $badge->courseid));
     $PAGE->set_pagelayout('standard');
     navigation_node::override_active_url($navurl);
@@ -71,11 +63,12 @@ if ($badge->type == BADGE_TYPE_COURSE) {
 }
 
 $PAGE->set_context($context);
-$PAGE->set_url('/badges/recipients.php', array('id' => $badgeid, 'sort' => $sortby, 'dir' => $sorthow));
+$PAGE->set_url('/badges/recipients.php', ['id' => $badgeid]);
 $PAGE->set_heading($heading);
-$PAGE->set_title($badge->name);
+$PAGE->set_title(implode(\moodle_page::TITLE_SEPARATOR, $title));
 $PAGE->navbar->add($badge->name);
 
+/** @var core_badges_renderer $output */
 $output = $PAGE->get_renderer('core', 'badges');
 
 echo $output->header();
@@ -86,28 +79,7 @@ echo $output->render_tertiary_navigation($actionbar);
 echo $OUTPUT->heading(print_badge_image($badge, $context, 'small') . ' ' . $badge->name);
 echo $output->print_badge_status_box($badge);
 
-$userfieldsapi = \core_user\fields::for_name();
-$namefields = $userfieldsapi->get_sql('u', false, '', '', false)->selects;
-$sql = "SELECT b.userid, b.dateissued, b.uniquehash, $namefields
-    FROM {badge_issued} b INNER JOIN {user} u
-        ON b.userid = u.id
-    WHERE b.badgeid = :badgeid AND u.deleted = 0
-    ORDER BY $sortby $sorthow";
-
-$totalcount = $DB->count_records('badge_issued', array('badgeid' => $badge->id));
-
-if ($badge->has_awards()) {
-    $users = $DB->get_records_sql($sql, array('badgeid' => $badge->id), $page * BADGE_PERPAGE, BADGE_PERPAGE);
-    $recipients             = new core_badges\output\badge_recipients($users);
-    $recipients->sort       = $sortby;
-    $recipients->dir        = $sorthow;
-    $recipients->page       = $page;
-    $recipients->perpage    = BADGE_PERPAGE;
-    $recipients->totalcount = $totalcount;
-
-    echo $output->render($recipients);
-} else {
-    echo $output->notification(get_string('noawards', 'badges'));
-}
+$report = system_report_factory::create(recipients::class, $PAGE->context, '', '', 0, ['badgeid' => $badge->id]);
+echo $report->output();
 
 echo $output->footer();

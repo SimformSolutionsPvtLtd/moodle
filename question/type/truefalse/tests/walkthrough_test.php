@@ -17,6 +17,7 @@
 namespace qtype_truefalse;
 
 use question_state;
+use question_display_options;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -32,8 +33,8 @@ require_once($CFG->dirroot . '/question/engine/tests/helpers.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @covers     \qtype_truefalse_question
  */
-class walkthrough_test extends \qbehaviour_walkthrough_test_base {
-    public function test_false_right_does_not_show_feedback_when_not_answered() {
+final class walkthrough_test extends \qbehaviour_walkthrough_test_base {
+    public function test_false_right_does_not_show_feedback_when_not_answered(): void {
 
         // Create a true-false question with correct answer false.
         $tf = \test_question_maker::make_question('truefalse', 'false');
@@ -68,7 +69,7 @@ class walkthrough_test extends \qbehaviour_walkthrough_test_base {
 
     }
 
-    public function test_each_attempt_builds_on_last_and_regrade() {
+    public function test_each_attempt_builds_on_last_and_regrade(): void {
 
         // Create a true-false question with correct answer false.
         $tf = \test_question_maker::make_question('truefalse', 'false');
@@ -128,7 +129,7 @@ class walkthrough_test extends \qbehaviour_walkthrough_test_base {
     /**
      * @covers \qtype_truefalse_renderer::formulation_and_controls
      */
-    public function test_deferredfeedback_feedback_multichoice_single_showstandardinstruction_yes() {
+    public function test_deferredfeedback_feedback_multichoice_single_showstandardinstruction_yes(): void {
 
         // Create a true-false question with correct answer false.
         $tf = \test_question_maker::make_question('truefalse', 'false');
@@ -145,7 +146,7 @@ class walkthrough_test extends \qbehaviour_walkthrough_test_base {
     /**
      * @covers \qtype_truefalse_renderer::formulation_and_controls
      */
-    public function test_deferredfeedback_feedback_multichoice_single_showstandardinstruction_no() {
+    public function test_deferredfeedback_feedback_multichoice_single_showstandardinstruction_no(): void {
 
         // Create a true-false question with correct answer false.
         $tf = \test_question_maker::make_question('truefalse', 'false');
@@ -159,5 +160,29 @@ class walkthrough_test extends \qbehaviour_walkthrough_test_base {
             'class' => 'prompt h6 font-weight-normal sr-only'
         ]);
         $this->assertStringContainsString($standardinstruction, $this->currentoutput);
+    }
+
+    /**
+     * Tests that the general feedback box is not displayed when it is empty for a false answer.
+     *
+     * @covers ::format_generalfeedback
+     */
+    public function test_false_right_does_not_show_empty_general_feedback_when_answer(): void {
+        $tf = \test_question_maker::make_question('truefalse', 'false');
+        $this->start_attempt_at_question($tf, 'deferredfeedback', 1);
+        $this->process_submission(data: ['answer' => 0]);
+        $this->quba->finish_all_questions();
+        $displayoptions = new question_display_options();
+        $html = $this->quba->render_question(1, $displayoptions);
+        $pattern = "/<div class=\"generalfeedback\">\s*<div class=\"clearfix\">\s*{$tf->generalfeedback}\s*<\/div>\s*<\/div>/";
+        $this->assertMatchesRegularExpression($pattern, $html);
+
+        $tf->generalfeedback = "";
+        $this->start_attempt_at_question($tf, 'deferredfeedback', 1);
+        $this->process_submission(data: ['answer' => 0]);
+        $this->quba->finish_all_questions();
+        $html = $this->quba->render_question(1, $displayoptions);
+        $pattern = "/<div class=\"generalfeedback\">\s*<div class=\"clearfix\"><\/div>\s*<\/div>/";
+        $this->assertDoesNotMatchRegularExpression($pattern, $html);
     }
 }

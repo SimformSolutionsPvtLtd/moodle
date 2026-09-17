@@ -43,8 +43,27 @@ class renderer extends plugin_renderer_base {
      *
      * @param int $id
      * @return bool|string
+     * @deprecated since 4.5
+     * @todo MDL-82164 This will be deleted in Moodle 6.0.
      */
+    #[\core\attribute\deprecated(replacement: null, since: '4.5')]
     public function create_template_form(int $id) {
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
+
         return $this->render_from_template('mod_feedback/create_template', ['id' => $id]);
+    }
+
+    /**
+     * Builds the feedback page title.
+     *
+     * @param array $titleparts the different parts to add to the title.
+     * @param string $pagetitle the page title to add to the rest of the parts. Empty by default.
+     */
+    public function set_title(array $titleparts, string $pagetitle = '') {
+        $title = implode(\moodle_page::TITLE_SEPARATOR, $titleparts);
+        if (!empty($pagetitle)) {
+            $title = $pagetitle . ': ' . $title;
+        }
+        $this->page->set_title($title);
     }
 }

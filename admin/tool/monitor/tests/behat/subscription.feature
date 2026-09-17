@@ -28,7 +28,7 @@ Feature: tool_monitor_subscriptions
     And I press "Add a new rule"
     And I set the following fields to these values:
       | name                 | New rule course level                             |
-      | plugin               | Core                                              |
+      | plugin               | Subsystem (core)                                  |
       | eventname            | Course viewed                                     |
       | id_description       | I want a rule to monitor when a course is viewed. |
       | frequency            | 1                                                 |
@@ -39,7 +39,7 @@ Feature: tool_monitor_subscriptions
     And I press "Add a new rule"
     And I set the following fields to these values:
       | name                 | New rule site level                               |
-      | plugin               | Core                                              |
+      | plugin               | Subsystem (core)                                  |
       | eventname            | Course viewed                                     |
       | id_description       | I want a rule to monitor when a course is viewed. |
       | frequency            | 1                                                 |
@@ -102,10 +102,6 @@ Feature: tool_monitor_subscriptions
   Scenario: Receiving notification on site level
     Given I log in as "admin"
     And I follow "Preferences" in the user menu
-    And I click on "Notification preferences" "link" in the "#page-content" "css_element"
-    And I click on "//td[@data-processor-name='popup']//div[@class='preference-state']" "xpath_element" in the "Notifications of rule subscriptions" "table_row"
-    And I wait until the page is ready
-    And I follow "Preferences" in the user menu
     And I follow "Event monitoring"
     And I set the field "Select a course" to "Acceptance test site"
     And I follow "Subscribe to rule \"New rule site level\""
@@ -122,10 +118,6 @@ Feature: tool_monitor_subscriptions
   @_bug_phantomjs
   Scenario: Receiving notification on course level
     Given I log in as "teacher1"
-    And I follow "Preferences" in the user menu
-    And I click on "Notification preferences" "link" in the "#page-content" "css_element"
-    And I click on "//td[@data-processor-name='popup']//div[@class='preference-state']" "xpath_element" in the "Notifications of rule subscriptions" "table_row"
-    And I wait until the page is ready
     And I follow "Preferences" in the user menu
     And I follow "Event monitoring"
     And I set the field "Select a course" to "Course 1"
@@ -169,10 +161,9 @@ Feature: tool_monitor_subscriptions
     And I should not see "You can manage rules the from the Event monitoring rules page."
 
   Scenario: No manage rules link when user does not have permission
-    Given I log in as "admin"
-    And I set the following system permissions of "Non-editing teacher" role:
-      | tool/monitor:managerules | Prohibit |
-    And I log out
+    Given the following "role capability" exists:
+      | role                     | teacher  |
+      | tool/monitor:managerules | prohibit |
     And I log in as "teacher1"
     And I follow "Preferences" in the user menu
     And I follow "Event monitoring"

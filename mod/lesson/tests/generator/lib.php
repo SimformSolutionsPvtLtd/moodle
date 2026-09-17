@@ -25,6 +25,8 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+require_once($CFG->dirroot.'/mod/lesson/locallib.php');
+
 /**
  * mod_lesson data generator class.
  *
@@ -41,16 +43,43 @@ class mod_lesson_generator extends testing_module_generator {
     protected $pagecount = 0;
 
     /**
+     * @var array list of candidate pages to be created when all answers have been added.
+     */
+    protected $candidatepages = [];
+
+    /**
+     * @var array map of readable jumpto to integer value.
+     */
+    protected $jumptomap = [
+        'This page' => LESSON_THISPAGE,
+        'Next page' => LESSON_NEXTPAGE,
+        'Previous page' => LESSON_PREVIOUSPAGE,
+        'End of lesson' => LESSON_EOL,
+        'Unseen question within a content page' => LESSON_UNSEENBRANCHPAGE,
+        'Random question within a content page' => LESSON_RANDOMPAGE,
+        'Random content page' => LESSON_RANDOMBRANCH,
+        'Unseen question within a cluster' => LESSON_CLUSTERJUMP,
+    ];
+
+    /**
      * To be called from data reset code only,
      * do not use in tests.
      * @return void
      */
     public function reset() {
         $this->pagecount = 0;
+        $this->candidatepages = [];
         parent::reset();
     }
 
-    public function create_instance($record = null, array $options = null) {
+    /**
+     * Creates a lesson instance for testing purposes.
+     *
+     * @param null|array|stdClass $record data for module being generated.
+     * @param null|array $options general options for course module.
+     * @return stdClass record from module-defined table with additional field cmid (corresponding id in course_modules table)
+     */
+    public function create_instance($record = null, ?array $options = null) {
         global $CFG;
 
         // Add default values for lesson.
@@ -92,9 +121,93 @@ class mod_lesson_generator extends testing_module_generator {
         return parent::create_instance($record, (array)$options);
     }
 
+    /**
+     * Creates a page for testing purposes. The page will be created when answers are added.
+     *
+     * @param null|array|stdClass $record data for page being generated.
+     * @param null|array $options general options.
+     */
+    public function create_page($record = null, ?array $options = null) {
+        $record = (array) $record;
+
+        // Pages require answers to work. Add it as a candidate page to be created once answers have been added.
+        $record['answer_editor'] = [];
+        $record['response_editor'] = [];
+        $record['jumpto'] = [];
+        $record['score'] = [];
+
+        if (!isset($record['previouspage']) || $record['previouspage'] === '') {
+            // Previous page not set, set it to the last candidate page (if any).
+            $record['previouspage'] = empty($this->candidatepages) ? '0' : end($this->candidatepages)['title'];
+        }
+
+        $this->candidatepages[] = $record;
+    }
+
+    /**
+     * Creates a page and its answers for testing purposes.
+     *
+     * @param array $record data for page being generated.
+     * @return stdClass created page, null if couldn't be created because it has a jump to a page that doesn't exist.
+     * @throws coding_exception
+     */
+    private function perform_create_page(array $record): ?stdClass {
+        global $DB;
+
+        $lesson = $DB->get_record('lesson', ['id' => $record['lessonid']], '*', MUST_EXIST);
+        $cm = get_coursemodule_from_instance('lesson', $lesson->id);
+        $lesson->cmid = $cm->id;
+        $qtype = $record['qtype'];
+
+        unset($record['qtype']);
+        unset($record['lessonid']);
+
+        if (isset($record['content'])) {
+            $record['contents_editor'] = [
+                'text' => $record['content'],
+                'format' => FORMAT_MOODLE,
+                'itemid' => 0,
+            ];
+            unset($record['content']);
+        }
+
+        $record['pageid'] = $this->get_previouspage_id($lesson->id, $record['previouspage']);
+        unset($record['previouspage']);
+
+        try {
+            $record['jumpto'] = $this->convert_page_jumpto($lesson->id, $record['jumpto']);
+        } catch (coding_exception $e) {
+            // This page has a jump to a page that hasn't been created yet.
+            return null;
+        }
+
+        switch ($qtype) {
+            case 'content':
+            case 'cluster':
+            case 'endofcluster':
+            case 'endofbranch':
+                $funcname = "create_{$qtype}";
+                break;
+            default:
+                $funcname = "create_question_{$qtype}";
+        }
+
+        if (!method_exists($this, $funcname)) {
+            throw new coding_exception('The page '.$record['title']." has an invalid qtype: $qtype");
+        }
+
+        return $this->{$funcname}($lesson, $record);
+    }
+
+    /**
+     * Creates a content page for testing purposes.
+     *
+     * @param stdClass $lesson instance where to create the page.
+     * @param array|stdClass $record data for page being generated.
+     * @return stdClass page record.
+     */
     public function create_content($lesson, $record = array()) {
         global $DB, $CFG;
-        require_once($CFG->dirroot.'/mod/lesson/locallib.php');
         $now = time();
         $this->pagecount++;
         $record = (array)$record + array(
@@ -120,11 +233,10 @@ class mod_lesson_generator extends testing_module_generator {
      * Create True/false question pages.
      * @param object $lesson
      * @param array $record
-     * @return int
+     * @return stdClass page record.
      */
     public function create_question_truefalse($lesson, $record = array()) {
         global $DB, $CFG;
-        require_once($CFG->dirroot.'/mod/lesson/locallib.php');
         $now = time();
         $this->pagecount++;
         $record = (array)$record + array(
@@ -173,11 +285,10 @@ class mod_lesson_generator extends testing_module_generator {
      * Create multichoice question pages.
      * @param object $lesson
      * @param array $record
-     * @return int
+     * @return stdClass page record.
      */
     public function create_question_multichoice($lesson, $record = array()) {
         global $DB, $CFG;
-        require_once($CFG->dirroot.'/mod/lesson/locallib.php');
         $now = time();
         $this->pagecount++;
         $record = (array)$record + array(
@@ -226,11 +337,10 @@ class mod_lesson_generator extends testing_module_generator {
      * Create essay question pages.
      * @param object $lesson
      * @param array $record
-     * @return int
+     * @return stdClass page record.
      */
     public function create_question_essay($lesson, $record = array()) {
         global $DB, $CFG;
-        require_once($CFG->dirroot.'/mod/lesson/locallib.php');
         $now = time();
         $this->pagecount++;
         $record = (array)$record + array(
@@ -268,11 +378,10 @@ class mod_lesson_generator extends testing_module_generator {
      * Create matching question pages.
      * @param object $lesson
      * @param array $record
-     * @return int
+     * @return stdClass page record.
      */
     public function create_question_matching($lesson, $record = array()) {
         global $DB, $CFG;
-        require_once($CFG->dirroot.'/mod/lesson/locallib.php');
         $now = time();
         $this->pagecount++;
         $record = (array)$record + array(
@@ -347,11 +456,10 @@ class mod_lesson_generator extends testing_module_generator {
      * Create shortanswer question pages.
      * @param object $lesson
      * @param array $record
-     * @return int
+     * @return stdClass page record.
      */
     public function create_question_shortanswer($lesson, $record = array()) {
         global $DB, $CFG;
-        require_once($CFG->dirroot.'/mod/lesson/locallib.php');
         $now = time();
         $this->pagecount++;
         $record = (array)$record + array(
@@ -389,11 +497,10 @@ class mod_lesson_generator extends testing_module_generator {
      * Create shortanswer question pages.
      * @param object $lesson
      * @param array $record
-     * @return int
+     * @return stdClass page record.
      */
     public function create_question_numeric($lesson, $record = array()) {
         global $DB, $CFG;
-        require_once($CFG->dirroot.'/mod/lesson/locallib.php');
         $now = time();
         $this->pagecount++;
         $record = (array)$record + array(
@@ -428,9 +535,100 @@ class mod_lesson_generator extends testing_module_generator {
     }
 
     /**
+     * Creates a cluster page for testing purposes.
+     *
+     * @param stdClass $lesson instance where to create the page.
+     * @param array $record data for page being generated.
+     * @return stdClass page record.
+     */
+    public function create_cluster(stdClass $lesson, array $record = []): stdClass {
+        global $DB, $CFG;
+        $now = time();
+        $this->pagecount++;
+        $record = $record + [
+            'lessonid' => $lesson->id,
+            'title' => 'Cluster '.$this->pagecount,
+            'timecreated' => $now,
+            'qtype' => 30, // LESSON_PAGE_CLUSTER.
+            'pageid' => 0, // By default insert in the beginning.
+        ];
+        if (!isset($record['contents_editor'])) {
+            $record['contents_editor'] = [
+                'text' => 'Cluster '.$this->pagecount,
+                'format' => FORMAT_MOODLE,
+                'itemid' => 0,
+            ];
+        }
+        $context = context_module::instance($lesson->cmid);
+        $page = lesson_page::create((object)$record, new lesson($lesson), $context, $CFG->maxbytes);
+        return $DB->get_record('lesson_pages', ['id' => $page->id], '*', MUST_EXIST);
+    }
+
+    /**
+     * Creates a end of cluster page for testing purposes.
+     *
+     * @param stdClass $lesson instance where to create the page.
+     * @param array $record data for page being generated.
+     * @return stdClass page record.
+     */
+    public function create_endofcluster(stdClass $lesson, array $record = []): stdClass {
+        global $DB, $CFG;
+        $now = time();
+        $this->pagecount++;
+        $record = $record + [
+            'lessonid' => $lesson->id,
+            'title' => 'End of cluster '.$this->pagecount,
+            'timecreated' => $now,
+            'qtype' => 31, // LESSON_PAGE_ENDOFCLUSTER.
+            'pageid' => 0, // By default insert in the beginning.
+        ];
+        if (!isset($record['contents_editor'])) {
+            $record['contents_editor'] = [
+                'text' => 'End of cluster '.$this->pagecount,
+                'format' => FORMAT_MOODLE,
+                'itemid' => 0,
+            ];
+        }
+        $context = context_module::instance($lesson->cmid);
+        $page = lesson_page::create((object)$record, new lesson($lesson), $context, $CFG->maxbytes);
+        return $DB->get_record('lesson_pages', ['id' => $page->id], '*', MUST_EXIST);
+    }
+
+    /**
+     * Creates a end of branch page for testing purposes.
+     *
+     * @param stdClass $lesson instance where to create the page.
+     * @param array $record data for page being generated.
+     * @return stdClass page record.
+     */
+    public function create_endofbranch(stdClass $lesson, array $record = []): stdClass {
+        global $DB, $CFG;
+        $now = time();
+        $this->pagecount++;
+        $record = $record + [
+            'lessonid' => $lesson->id,
+            'title' => 'End of branch '.$this->pagecount,
+            'timecreated' => $now,
+            'qtype' => 21, // LESSON_PAGE_ENDOFBRANCH.
+            'pageid' => 0, // By default insert in the beginning.
+        ];
+        if (!isset($record['contents_editor'])) {
+            $record['contents_editor'] = [
+                'text' => 'End of branch '.$this->pagecount,
+                'format' => FORMAT_MOODLE,
+                'itemid' => 0,
+            ];
+        }
+        $context = context_module::instance($lesson->cmid);
+        $page = lesson_page::create((object)$record, new lesson($lesson), $context, $CFG->maxbytes);
+        return $DB->get_record('lesson_pages', ['id' => $page->id], '*', MUST_EXIST);
+    }
+
+    /**
      * Create a lesson override (either user or group).
      *
      * @param array $data must specify lessonid, and one of userid or groupid.
+     * @throws coding_exception
      */
     public function create_override(array $data): void {
         global $DB;
@@ -448,5 +646,274 @@ class mod_lesson_generator extends testing_module_generator {
         }
 
         $DB->insert_record('lesson_overrides', (object) $data);
+
+        lesson_update_events($DB->get_record('lesson', ['id' => $data['lessonid']], '*', MUST_EXIST));
+    }
+
+    /**
+     * Creates an answer in a page for testing purposes.
+     *
+     * @param null|array|stdClass $record data for module being generated.
+     * @param null|array $options general options.
+     * @throws coding_exception
+     */
+    public function create_answer($record = null, ?array $options = null) {
+        $record = (array) $record;
+
+        $candidatepage = null;
+        $pagetitle = $record['page'];
+        $found = false;
+        foreach ($this->candidatepages as &$candidatepage) {
+            if ($candidatepage['title'] === $pagetitle) {
+                $found = true;
+                break;
+            }
+        }
+
+        if (!$found) {
+            throw new coding_exception("Page '$pagetitle' not found in candidate pages. Please make sure the page exists "
+                . 'and all answers are in the same table.');
+        }
+
+        if (isset($record['answer'])) {
+            $candidatepage['answer_editor'][] = [
+                'text' => $record['answer'],
+                'format' => FORMAT_HTML,
+            ];
+        } else {
+            $candidatepage['answer_editor'][] = null;
+        }
+
+        if (isset($record['response'])) {
+            $candidatepage['response_editor'][] = [
+                'text' => $record['response'],
+                'format' => FORMAT_HTML,
+            ];
+        } else {
+            $candidatepage['response_editor'][] = null;
+        }
+
+        $candidatepage['jumpto'][] = $record['jumpto'] ?? LESSON_THISPAGE;
+        $candidatepage['score'][] = $record['score'] ?? 0;
+    }
+
+    /**
+     * All answers in a table have been generated, create the pages.
+     */
+    public function finish_generate_answer() {
+        $this->create_candidate_pages();
+    }
+
+    /**
+     * Create candidate pages.
+     *
+     * @throws coding_exception
+     */
+    protected function create_candidate_pages(): void {
+        // For performance reasons it would be better to use a topological sort algorithm. But since test cases shouldn't have
+        // a lot of paged and complex jumps it was implemented using a simpler approach.
+        $consecutiveblocked = 0;
+
+        while (count($this->candidatepages) > 0) {
+            $page = array_shift($this->candidatepages);
+            $id = $this->perform_create_page($page);
+
+            if ($id === null) {
+                // Page cannot be created yet because of jumpto. Move it to the end of list.
+                $consecutiveblocked++;
+                $this->candidatepages[] = $page;
+
+                if ($consecutiveblocked === count($this->candidatepages)) {
+                    throw new coding_exception('There is a circular dependency in pages jumps.');
+                }
+            } else {
+                $consecutiveblocked = 0;
+            }
+        }
+    }
+
+    /**
+     * Calculate the previous page id.
+     * If no page title is supplied, use the last page created in the lesson (0 if no pages).
+     * If page title is supplied, search it in DB and the list of candidate pages.
+     *
+     * @param int $lessonid the lesson id.
+     * @param string $pagetitle the page title, for example 'Test page'. '0' if no previous page.
+     * @return int corresponding id. 0 if no previous page.
+     * @throws coding_exception
+     */
+    protected function get_previouspage_id(int $lessonid, string $pagetitle): int {
+        global $DB;
+
+        if (is_numeric($pagetitle) && intval($pagetitle) === 0) {
+            return 0;
+        }
+
+        $pages = $DB->get_records('lesson_pages', ['lessonid' => $lessonid, 'title' => $pagetitle], 'id ASC', 'id, title');
+
+        if (count($pages) > 1) {
+            throw new coding_exception("More than one page with '$pagetitle' found");
+        } else if (!empty($pages)) {
+            return current($pages)->id;
+        }
+
+        // Page doesn't exist, search if it's a candidate page. If it is, use its previous page instead.
+        foreach ($this->candidatepages as $candidatepage) {
+            if ($candidatepage['title'] === $pagetitle) {
+                return $this->get_previouspage_id($lessonid, $candidatepage['previouspage']);
+            }
+        }
+
+        throw new coding_exception("Page '$pagetitle' not found");
+    }
+
+    /**
+     * Convert the jumpto using a string to an integer value.
+     * The jumpto can contain a page name or one of our predefined values.
+     *
+     * @param int $lessonid the lesson id.
+     * @param array|null $jumptolist list of jumpto to treat.
+     * @return array|null list of jumpto already treated.
+     * @throws coding_exception
+     */
+    protected function convert_page_jumpto(int $lessonid, ?array $jumptolist): ?array {
+        global $DB;
+
+        if (empty($jumptolist)) {
+            return $jumptolist;
+        }
+
+        foreach ($jumptolist as $i => $jumpto) {
+            if (empty($jumpto) || is_numeric($jumpto)) {
+                continue;
+            }
+
+            if (isset($this->jumptomap[$jumpto])) {
+                $jumptolist[$i] = $this->jumptomap[$jumpto];
+
+                continue;
+            }
+
+            $page = $DB->get_record('lesson_pages', ['lessonid' => $lessonid, 'title' => $jumpto], 'id');
+            if ($page === false) {
+                throw new coding_exception("Jump '$jumpto' not found in pages.");
+            }
+
+            $jumptolist[$i] = $page->id;
+        }
+
+        return $jumptolist;
+    }
+
+    /**
+     * Create a lesson attempt.
+     *
+     * Inserts a lesson_attempts record and keeps the corresponding lesson_grades record and
+     * gradebook in sync, without requiring a separate 'submissions' generator.
+     *
+     * The 'retry' value (0-indexed, defaulting to 0) identifies which attempt/retake this record
+     * belongs to. All attempt rows created for the same lessonid/userid/retry combination are
+     * treated as belonging to the same retake and are aggregated into a single lesson_grades
+     * record for that retake, mirroring how lesson::process_page() maintains one lesson_grades
+     * row per retake (see mod/lesson/locallib.php). Retry values for a given user should be
+     * created in increasing order (0, 1, 2, ...), matching how retakes are actually generated,
+     * so that grade records line up with the correct retake.
+     *
+     * If 'grade' is not supplied, the grade for the retake is derived as the percentage of
+     * 'correct' attempts recorded so far for that lessonid/userid/retry, recalculated on every
+     * call so that multi-page attempts within the same retake average correctly instead of the
+     * final page silently overwriting earlier results.
+     *
+     * @param array|stdClass $record data for the attempt.
+     * @return stdClass attempt record.
+     * @throws coding_exception
+     */
+    public function create_attempt($record) {
+        global $CFG;
+        $db = \core\di::get(\moodle_database::class);
+
+        $data = (array)$record;
+
+        if (!isset($data['lessonid'])) {
+            throw new coding_exception('Must specify lessonid when creating a lesson attempt.');
+        }
+
+        if (!isset($data['userid'])) {
+            throw new coding_exception('Must specify userid when creating a lesson attempt.');
+        }
+
+        $attempt = new stdClass();
+        $attempt->lessonid = (int)$data['lessonid'];
+        $attempt->userid = (int)$data['userid'];
+        $attempt->pageid = isset($data['pageid']) ? (int)$data['pageid'] : 0;
+        $attempt->answerid = isset($data['answerid']) ? (int)$data['answerid'] : 0;
+        $attempt->retry = isset($data['retry']) ? (int)$data['retry'] : 0;
+        $attempt->correct = isset($data['correct']) ? (int)$data['correct'] : 0;
+        $attempt->useranswer = isset($data['useranswer']) ? $data['useranswer'] : '';
+        $attempt->timeseen = isset($data['timeseen']) ? (int)$data['timeseen'] : time();
+
+        $attempt->id = $db->insert_record('lesson_attempts', $attempt);
+
+        $lesson = $db->get_record('lesson', ['id' => $attempt->lessonid], '*', MUST_EXIST);
+
+        // Fetch all attempt rows recorded so far for this retake (including the one just
+        // inserted above), so we can both derive an automatic grade and detect whether this
+        // retake already has a lesson_grades record.
+        $retryattempts = $db->get_records('lesson_attempts', [
+            'lessonid' => $attempt->lessonid,
+            'userid' => $attempt->userid,
+            'retry' => $attempt->retry,
+        ]);
+
+        // Determine the grade for this retake. Use the explicit value if supplied, otherwise
+        // derive it from the percentage of correct attempts recorded so far for this retake.
+        if (isset($data['grade'])) {
+            $gradeval = (float)$data['grade'];
+        } else {
+            $total = count($retryattempts);
+            $correct = 0;
+            foreach ($retryattempts as $retryattempt) {
+                if ($retryattempt->correct) {
+                    $correct++;
+                }
+            }
+            $gradeval = $total > 0 ? ($correct / $total) * 100 : 0;
+        }
+
+        // Was this retake already graded by an earlier call (i.e. do other attempt rows already
+        // exist for this lessonid/userid/retry)? If so, update the existing lesson_grades record
+        // for this user's most recent retake, mirroring how core updates the last grade record
+        // when continuing an in-progress attempt. Otherwise, this is a new retake and needs its
+        // own lesson_grades record.
+        $othersinretry = count($retryattempts) - 1;
+
+        if ($othersinretry > 0) {
+            $lastgrade = $db->get_records('lesson_grades', [
+                'lessonid' => $attempt->lessonid,
+                'userid' => $attempt->userid,
+            ], 'id DESC', '*', 0, 1);
+            $graderecord = reset($lastgrade);
+        } else {
+            $graderecord = false;
+        }
+
+        if ($graderecord) {
+            $graderecord->grade = $gradeval;
+            $db->update_record('lesson_grades', $graderecord);
+        } else {
+            $newgrade = new stdClass();
+            $newgrade->lessonid = $attempt->lessonid;
+            $newgrade->userid = $attempt->userid;
+            $newgrade->grade = $gradeval;
+            $newgrade->late = 0;
+            $newgrade->completed = time();
+            $db->insert_record('lesson_grades', $newgrade);
+        }
+
+        // Trigger Moodle core API to update the official gradebook.
+        require_once($CFG->dirroot . '/mod/lesson/lib.php');
+        lesson_update_grades($lesson, $attempt->userid);
+
+        return $db->get_record('lesson_attempts', ['id' => $attempt->id], '*', MUST_EXIST);
     }
 }

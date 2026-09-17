@@ -35,7 +35,7 @@ defined('MOODLE_INTERNAL') || die();
  */
 class mod_feedback_generator extends testing_module_generator {
 
-    public function create_instance($record = null, array $options = null) {
+    public function create_instance($record = null, ?array $options = null) {
         global $CFG;
         require_once($CFG->dirroot.'/mod/feedback/lib.php');
         $record = (object)(array)$record;
@@ -101,6 +101,19 @@ class mod_feedback_generator extends testing_module_generator {
 
         if (isset($data['values'])) {
             $data['values'] = $this->format_item_values($questiontype, $data['values']);
+        }
+
+        if (isset($data['dependitem'])) {
+            $select = 'label = ? OR name = ?';
+            $params = [
+                $data['dependitem'],
+                $data['dependitem'],
+            ];
+            $dependid = $DB->get_field_select('feedback_item', 'id', $select, $params, MUST_EXIST);
+            $data['dependitem'] = $dependid;
+        } else {
+            // Make sure `dependvalue` is not set if we are not creating a dependent item.
+            unset($data['dependvalue']);
         }
 
         return call_user_func([$this, "create_item_{$questiontype}"], $feedback, $data);
@@ -179,7 +192,7 @@ class mod_feedback_generator extends testing_module_generator {
      *
      * @param object $feedback feedback record
      * @param array $record (optional) to override default values
-     * @return int
+     * @return stdClass
      */
     public function create_item_info($feedback, $record = array()) {
         global $DB, $CFG;
@@ -195,7 +208,7 @@ class mod_feedback_generator extends testing_module_generator {
             'template' => 0,
             'name' => 'Feedback question item ' . $position,
             'label' => 'Feedback label ' . $position,
-            'presentation' => $itemobj::MODE_COURSE,
+            'presentation' => \feedback_item_info::MODE_COURSE,
             'typ' => 'info',
             'hasvalue' => 0,
             'position' => $position,
@@ -214,7 +227,7 @@ class mod_feedback_generator extends testing_module_generator {
      *
      * @param object $feedback feedback record
      * @param array $record (optional) to override default values
-     * @return int
+     * @return stdClass
      */
     public function create_item_label($feedback, $record = array()) {
         global $DB, $CFG;
@@ -257,7 +270,7 @@ class mod_feedback_generator extends testing_module_generator {
      *
      * @param object $feedback feedback record
      * @param array $record (optional) to override default values
-     * @return int
+     * @return stdClass
      */
     public function create_item_multichoice($feedback, $record = array()) {
         global $DB, $CFG;
@@ -304,7 +317,7 @@ class mod_feedback_generator extends testing_module_generator {
      *
      * @param object $feedback feedback record
      * @param array $record (optional) to override default values
-     * @return int
+     * @return stdClass
      */
     public function create_item_multichoicerated($feedback, $record = array()) {
         global $DB, $CFG;
@@ -353,7 +366,7 @@ class mod_feedback_generator extends testing_module_generator {
      *
      * @param object $feedback feedback record
      * @param array $record (optional) to override default values
-     * @return int
+     * @return stdClass
      */
     public function create_item_numeric($feedback, $record = array()) {
         global $DB, $CFG;
@@ -398,7 +411,7 @@ class mod_feedback_generator extends testing_module_generator {
      *
      * @param object $feedback feedback record
      * @param array $record (optional) to override default values
-     * @return int
+     * @return stdClass
      */
     public function create_item_textarea($feedback, $record = array()) {
         global $DB, $CFG;
@@ -437,7 +450,7 @@ class mod_feedback_generator extends testing_module_generator {
      *
      * @param object $feedback feedback record
      * @param array $record (optional) to override default values
-     * @return int
+     * @return stdClass
      */
     public function create_item_textfield($feedback, $record = array()) {
         global $DB, $CFG;
@@ -475,7 +488,7 @@ class mod_feedback_generator extends testing_module_generator {
      * Create pagebreak.
      *
      * @param object $feedback feedback record
-     * @return mixed false if there already is a pagebreak on last position or the id of the pagebreak-item
+     * @return int|false false if there already is a pagebreak on last position or the id of the pagebreak-item
      */
     public function create_item_pagebreak($feedback) {
         global $CFG;

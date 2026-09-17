@@ -25,7 +25,7 @@ namespace tool_cohortroles;
 
 use stdClass;
 use context_system;
-use core_competency\invalid_persistent_exception;
+use core\invalid_persistent_exception;
 
 /**
  * Class for doing things with cohort roles.
@@ -179,6 +179,7 @@ class api {
                            AND ra.roleid = :roleid
                            AND ra.userid = :userid
                          WHERE cm.cohortid ' . $cohortsql . '
+                           AND u.deleted = 0
                            AND ra.id IS NULL';
 
                 $toadd = $DB->get_records_sql($sql, $params);

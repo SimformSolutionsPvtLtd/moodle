@@ -30,9 +30,10 @@ require_once($CFG->dirroot . '/question/type/questiontypebase.php');
  * @package    core_question
  * @copyright  2010 The Open University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @covers     \question_hint
  */
-class question_hint_test extends \advanced_testcase {
-    public function test_basic() {
+final class question_hint_test extends \advanced_testcase {
+    public function test_basic(): void {
         $row = new \stdClass();
         $row->id = 123;
         $row->hint = 'A hint';
@@ -43,7 +44,7 @@ class question_hint_test extends \advanced_testcase {
         $this->assertEquals($row->hintformat, $hint->hintformat);
     }
 
-    public function test_with_parts() {
+    public function test_with_parts(): void {
         $row = new \stdClass();
         $row->id = 123;
         $row->hint = 'A hint';

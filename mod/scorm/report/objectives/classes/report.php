@@ -45,8 +45,6 @@ class report extends \mod_scorm\report {
         global $CFG, $DB, $OUTPUT, $PAGE;
 
         $contextmodule = \context_module::instance($cm->id);
-        $action = optional_param('action', '', PARAM_ALPHA);
-        $attemptids = optional_param_array('attemptid', array(), PARAM_RAW);
         $attemptsmode = optional_param('attemptsmode', SCORM_REPORT_ATTEMPTS_ALL_STUDENTS, PARAM_INT);
         $PAGE->set_url(new \moodle_url($PAGE->url, array('attemptsmode' => $attemptsmode)));
 
@@ -57,11 +55,6 @@ class report extends \mod_scorm\report {
             echo $renderer->report_actionbar($actionbar);
         }
 
-        if ($action == 'delete' && has_capability('mod/scorm:deleteresponses', $contextmodule) && confirm_sesskey()) {
-            if (scorm_delete_responses($attemptids, $scorm)) { // Delete responses.
-                echo $OUTPUT->notification(get_string('scormresponsedeleted', 'scorm'), 'notifysuccess');
-            }
-        }
         // Find out current groups mode.
         $currentgroup = groups_get_activity_group($cm, true);
 
@@ -157,32 +150,32 @@ class report extends \mod_scorm\report {
             }
 
             // Construct the SQL.
-            $select = 'SELECT DISTINCT '.$DB->sql_concat('u.id', '\'#\'', 'COALESCE(st.attempt, 0)').' AS uniqueid, ';
+            $select = 'SELECT DISTINCT '.$DB->sql_concat('u.id', '\'#\'', 'COALESCE(sa.attempt, 0)').' AS uniqueid, ';
             // TODO Does not support custom user profile fields (MDL-70456).
             $userfields = \core_user\fields::for_identity($coursecontext, false)->with_userpic()->including('idnumber');
             $selectfields = $userfields->get_sql('u', false, '', 'userid')->selects;
-            $select .= 'st.scormid AS scormid, st.attempt AS attempt ' . $selectfields . ' ';
+            $select .= 'sa.scormid AS scormid, sa.attempt AS attempt ' . $selectfields . ' ';
 
-            // This part is the same for all cases - join users and scorm_scoes_track tables.
+            // This part is the same for all cases - join users and user tracking tables.
             $from = 'FROM {user} u ';
-            $from .= 'LEFT JOIN {scorm_scoes_track} st ON st.userid = u.id AND st.scormid = '.$scorm->id;
+            $from .= 'LEFT JOIN {scorm_attempt} sa ON sa.userid = u.id AND sa.scormid = '.$scorm->id;
             switch ($attemptsmode) {
                 case SCORM_REPORT_ATTEMPTS_STUDENTS_WITH:
                     // Show only students with attempts.
-                    $where = " WHERE u.id IN ({$allowedlistsql}) AND st.userid IS NOT NULL";
+                    $where = " WHERE u.id IN ({$allowedlistsql}) AND sa.userid IS NOT NULL";
                     break;
                 case SCORM_REPORT_ATTEMPTS_STUDENTS_WITH_NO:
                     // Show only students without attempts.
-                    $where = " WHERE u.id IN ({$allowedlistsql}) AND st.userid IS NULL";
+                    $where = " WHERE u.id IN ({$allowedlistsql}) AND sa.userid IS NULL";
                     break;
                 case SCORM_REPORT_ATTEMPTS_ALL_STUDENTS:
                     // Show all students with or without attempts.
-                    $where = " WHERE u.id IN ({$allowedlistsql}) AND (st.userid IS NOT NULL OR st.userid IS NULL)";
+                    $where = " WHERE u.id IN ({$allowedlistsql}) AND (sa.userid IS NOT NULL OR sa.userid IS NULL)";
                     break;
             }
 
-            $countsql = 'SELECT COUNT(DISTINCT('.$DB->sql_concat('u.id', '\'#\'', 'COALESCE(st.attempt, 0)').')) AS nbresults, ';
-            $countsql .= 'COUNT(DISTINCT('.$DB->sql_concat('u.id', '\'#\'', 'st.attempt').')) AS nbattempts, ';
+            $countsql = 'SELECT COUNT(DISTINCT('.$DB->sql_concat('u.id', '\'#\'', 'COALESCE(sa.attempt, 0)').')) AS nbresults, ';
+            $countsql .= 'COUNT(DISTINCT('.$DB->sql_concat('u.id', '\'#\'', 'sa.attempt').')) AS nbattempts, ';
             $countsql .= 'COUNT(DISTINCT(u.id)) AS nbusers ';
             $countsql .= $from.$where;
 
@@ -620,23 +613,22 @@ class report extends \mod_scorm\report {
  */
 function get_scorm_objectives($scormid) {
     global $DB;
-    $objectives = array();
-    $params = array();
-    $select = "scormid = ? AND ";
-    $select .= $DB->sql_like("element", "?", false);
-    $params[] = $scormid;
-    $params[] = "cmi.objectives%.id";
-    $value = $DB->sql_compare_text('value');
-    $rs = $DB->get_recordset_select("scorm_scoes_track", $select, $params, 'value', "DISTINCT $value AS value, scoid");
-    if ($rs->valid()) {
-        foreach ($rs as $record) {
-            $objectives[$record->scoid][] = $record->value;
-        }
-        // Now naturally sort the sco arrays.
-        foreach ($objectives as $scoid => $sco) {
-            natsort($objectives[$scoid]);
-        }
+    $objectives = [];
+    $params = ['scormid' => $scormid, 'search' => 'cmi.objectives%.id'];
+
+    $value = $DB->sql_compare_text('v.value');
+    $sql = "SELECT DISTINCT $value as value, ss.id
+              FROM {scorm_scoes_value} v
+              JOIN {scorm_scoes} ss ON ss.id = v.scoid AND ss.scorm = :scormid
+              JOIN {scorm_element} e ON v.elementid = e.id
+             WHERE ".$DB->sql_like("element", ":search", false);
+    $rs = $DB->get_records_sql($sql, $params);
+    foreach ($rs as $record) {
+        $objectives[$record->scoid][] = $record->value;
     }
-    $rs->close();
+    // Now naturally sort the sco arrays.
+    foreach ($objectives as $scoid => $sco) {
+        natsort($objectives[$scoid]);
+    }
     return $objectives;
 }

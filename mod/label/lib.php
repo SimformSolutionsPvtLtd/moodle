@@ -34,7 +34,14 @@ define("LABEL_MAX_NAME_LENGTH", 50);
  * @return string
  */
 function get_label_name($label) {
-    $name = html_to_text(format_string($label->intro, true));
+    // Return label name if not empty.
+    if ($label->name) {
+        return $label->name;
+    }
+
+    $context = context_module::instance($label->coursemodule);
+    $intro = format_text($label->intro, $label->introformat, ['filter' => false, 'context' => $context]);
+    $name = html_to_text(format_string($intro, true, ['context' => $context]));
     $name = preg_replace('/@@PLUGINFILE@@\/[[:^space:]]+/i', '', $name);
     // Remove double space and also nbsp; characters.
     $name = preg_replace('/\s+/u', ' ', $name);

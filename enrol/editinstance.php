@@ -38,7 +38,10 @@ if (!$plugin) {
 }
 
 require_login($course);
-require_capability('enrol/' . $type . ':config', $context);
+
+if (!has_any_capability(['enrol/' . $type . ':config', 'moodle/course:editcoursewelcomemessage'], $context)) {
+    throw new \moodle_exception('nopermissiontoaccesspage', 'error');
+}
 
 $url = new moodle_url('/enrol/editinstance.php', ['courseid' => $course->id, 'id' => $instanceid, 'type' => $type]);
 $PAGE->set_url($url);
@@ -85,12 +88,6 @@ if ($mform->is_cancelled()) {
         if (isset($data->status)) {
             $reset = ($instance->status != $data->status);
         }
-
-        foreach ($data as $key => $value) {
-            $instance->$key = $value;
-        }
-
-        $instance->timemodified   = time();
 
         $plugin->update_instance($instance, $data);
 

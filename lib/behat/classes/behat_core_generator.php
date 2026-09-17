@@ -156,6 +156,12 @@ class behat_core_generator extends behat_generator_base {
                 'datagenerator' => 'role',
                 'required' => ['shortname'],
             ],
+            'role capabilities' => [
+                'singular' => 'role capability',
+                'datagenerator' => 'role_capability',
+                'required' => ['role'],
+                'switchids' => ['role' => 'roleid'],
+            ],
             'grade categories' => [
                 'singular' => 'grade category',
                 'datagenerator' => 'grade_category',
@@ -281,6 +287,12 @@ class behat_core_generator extends behat_generator_base {
                 'required' => array('contextlevel', 'reference', 'contenttype', 'user', 'contentname'),
                 'switchids' => array('user' => 'userid')
             ],
+            'user private files' => [
+                'singular' => 'user private file',
+                'datagenerator' => 'user_private_files',
+                'required' => ['user', 'filepath'],
+                'switchids' => ['user' => 'userid']
+            ],
             'badge external backpacks' => [
                 'singular' => 'badge external backpack',
                 'datagenerator' => 'badge_external_backpack',
@@ -303,6 +315,11 @@ class behat_core_generator extends behat_generator_base {
                 'datagenerator' => 'notification',
                 'required' => ['subject', 'userfrom', 'userto'],
                 'switchids' => ['userfrom' => 'userfromid', 'userto' => 'usertoid'],
+            ],
+            'stored progress bars' => [
+                'singular' => 'stored progress bar',
+                'datagenerator' => 'stored_progress_bar',
+                'required' => ['idnumber'],
             ],
         ];
 
@@ -458,13 +475,7 @@ class behat_core_generator extends behat_generator_base {
             }
         }
 
-        // Custom exception.
-        try {
-            $this->datagenerator->create_module($activityname, $data, $cmoptions);
-        } catch (coding_exception $e) {
-            throw new Exception('\'' . $activityname . '\' activity can not be added using this step,' .
-                    ' use the step \'I add a "ACTIVITY_OR_RESOURCE_NAME_STRING" to section "SECTION_NUMBER"\' instead');
-        }
+        $this->datagenerator->create_module($activityname, $data, $cmoptions);
     }
 
     /**
@@ -601,6 +612,16 @@ class behat_core_generator extends behat_generator_base {
 
         if (!isset($data['status'])) {
             $data['status'] = null;
+        } else {
+            $status = strtolower($data['status']);
+            switch ($status) {
+                case 'active':
+                    $data['status'] = ENROL_USER_ACTIVE;
+                    break;
+                case 'suspended':
+                    $data['status'] = ENROL_USER_SUSPENDED;
+                    break;
+            }
         }
 
         // If the provided course shortname is the site shortname we consider it a system role assign.
@@ -725,6 +746,23 @@ class behat_core_generator extends behat_generator_base {
     }
 
     /**
+     * Assign capabilities to a role.
+     *
+     * @param array $data
+     */
+    protected function process_role_capability($data): void {
+        // We require the user to fill the role shortname.
+        if (empty($data['roleid'])) {
+            throw new Exception('\'role capability\' requires the field \'roleid\' to be specified');
+        }
+
+        $roleid = $data['roleid'];
+        unset($data['roleid']);
+
+        $this->datagenerator->create_role_capability($roleid, $data, \context_system::instance());
+    }
+
+    /**
      * Adds members to cohorts
      *
      * @param array $data
@@ -766,7 +804,9 @@ class behat_core_generator extends behat_generator_base {
         }
 
         $data['contextid'] = $context->id;
-        $this->datagenerator->get_plugin_generator('core_question')->create_question_category($data);
+        /** @var core_question_generator $qgenerator */
+        $qgenerator = $this->datagenerator->get_plugin_generator('core_question');
+        $qgenerator->create_question_category($data);
     }
 
     /**
@@ -813,7 +853,9 @@ class behat_core_generator extends behat_generator_base {
             $missingtypespecialcase = true;
         }
 
-        $questiondata = $this->datagenerator->get_plugin_generator('core_question')
+        /** @var core_question_generator $qgenerator */
+        $qgenerator = $this->datagenerator->get_plugin_generator('core_question');
+        $questiondata = $qgenerator
             ->create_question($data['qtype'], $which, $data);
 
         if ($missingtypespecialcase) {
@@ -962,7 +1004,7 @@ class behat_core_generator extends behat_generator_base {
     /**
      * Creates an analytics model
      *
-     * @param target $data
+     * @param array $data target
      * @return void
      */
     protected function process_analytics_model($data) {
@@ -1015,20 +1057,48 @@ class behat_core_generator extends behat_generator_base {
             if (!empty($data['filepath'])) {
                 $filename = basename($data['filepath']);
                 $fs = get_file_storage();
-                $filerecord = array(
+                $filerecord = [
                     'component' => 'contentbank',
                     'filearea' => 'public',
                     'contextid' => $context->id,
                     'userid' => $data['userid'],
                     'itemid' => $content->get_id(),
                     'filename' => $filename,
-                    'filepath' => '/'
-                );
+                    'filepath' => '/',
+                ];
                 $fs->create_file_from_pathname($filerecord, $CFG->dirroot . $data['filepath']);
             }
         } else {
             throw new Exception('The specified "' . $data['contenttype'] . '" contenttype does not exist');
         }
+    }
+
+    /**
+     * Create content in the given user's private files.
+     *
+     * @param array $data
+     * @return void
+     */
+    protected function process_user_private_files(array $data) {
+        global $CFG;
+
+        $userid = $data['userid'];
+        $fs = get_file_storage();
+        $filepath = "{$CFG->dirroot}/{$data['filepath']}";
+
+        if (!file_exists($filepath)) {
+            throw new coding_exception("File '{$filepath}' does not exist");
+        }
+        $filerecord = [
+            'userid' => $userid,
+            'contextid' => context_user::instance($userid)->id,
+            'component' => 'user',
+            'filearea' => 'private',
+            'itemid' => 0,
+            'filepath'  => '/',
+            'filename'  => basename($filepath),
+        ];
+        $fs->create_file_from_pathname($filerecord, $filepath);
     }
 
     /**

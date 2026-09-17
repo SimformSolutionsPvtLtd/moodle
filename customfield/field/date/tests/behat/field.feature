@@ -1,4 +1,4 @@
-@customfield @customfield_date @javascript
+@core_customfield @customfield_date @javascript
 Feature: Managers can manage course custom fields date
   In order to have additional data on the course
   As a manager
@@ -9,7 +9,7 @@ Feature: Managers can manage course custom fields date
       | name              | component   | area   | itemid |
       | Category for test | core_course | course | 0      |
     And I log in as "admin"
-    And I navigate to "Courses > Course custom fields" in site administration
+    And I navigate to "Courses > Default settings > Course custom fields" in site administration
 
   Scenario: Create a custom course date field
     When I click on "Add a new custom field" "link"

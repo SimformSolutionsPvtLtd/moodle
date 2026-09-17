@@ -31,7 +31,7 @@ require_once('all_checks.php');
 /**
  * Class a_links_dont_open_new_window_testcase
  */
-class a_links_dont_open_new_window_test extends all_checks {
+final class a_links_dont_open_new_window_test extends all_checks {
     /** @var string Check type */
     protected $checktype = 'a_links_dont_open_new_window';
 
@@ -87,10 +87,23 @@ EOD;
     </html>
 EOD;
 
+    /** @var string Html pass 4 */
+    private $htmlpass4 = <<<EOD
+    <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN""http://www.w3.org/TR/REC-html40/loose.dtd">
+    <html lang="en">
+    <head>
+    <title>A link can indicate that it will open in a new window</title>
+    </head>
+    <body>
+    <a href="www.youtube.com" target="_blank">This is youtube (opens in a new window)</a>
+    </body>
+    </html>
+EOD;
+
     /**
      * Test for links opening a new tab or window
      */
-    public function test_check() {
+    public function test_check(): void {
         $results = $this->get_checker_results($this->htmlfail);
         $this->assertTrue($results[0]->element->tagName == 'a');
 
@@ -101,6 +114,9 @@ EOD;
         $this->assertEmpty($results);
 
         $results = $this->get_checker_results($this->htmlpass3);
+        $this->assertEmpty($results);
+
+        $results = $this->get_checker_results($this->htmlpass4);
         $this->assertEmpty($results);
     }
 }

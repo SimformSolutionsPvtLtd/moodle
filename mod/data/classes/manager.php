@@ -210,6 +210,17 @@ class manager {
     }
 
     /**
+     * Return if the database has records.
+     *
+     * @return bool true if the database has records
+     */
+    public function has_records(): bool {
+        global $DB;
+
+        return $DB->record_exists('data_records', ['dataid' => $this->instance->id]);
+    }
+
+    /**
      * Return if the database has fields.
      *
      * @return bool true if the database has fields
@@ -411,7 +422,7 @@ class manager {
      * @param int $userid the user id to check ($USER->id if null).
      * @return bool if the user can view the preset.
      */
-    public function can_view_preset (preset $preset, ?int $userid = null): bool {
+    public function can_view_preset(preset $preset, ?int $userid = null): bool {
         global $USER;
         if (!$userid) {
             $userid = $USER->id;

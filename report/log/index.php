@@ -94,22 +94,25 @@ if (($edulevel != -1)) {
 if ($origin !== '') {
     $params['origin'] = $origin;
 }
-// Legacy store hack, as edulevel is not supported.
-if ($logreader == 'logstore_legacy') {
-    $params['edulevel'] = -1;
-    $edulevel = -1;
-}
 $url = new moodle_url("/report/log/index.php", $params);
 
 $PAGE->set_url('/report/log/index.php', array('id' => $id));
 $PAGE->set_pagelayout('report');
 
 // Get course details.
+$sitecoursefilter = 0;
 if ($id != $SITE->id) {
-    $course = $DB->get_record('course', array('id' => $id), '*', MUST_EXIST);
-    require_login($course);
-    $context = context_course::instance($course->id);
-} else {
+    $course = $DB->get_record('course', ['id' => $id], '*');
+    if ($course) {
+        require_login($course);
+        $context = context_course::instance($course->id);
+    } else {
+        // Missing courses may have be deleted, so display them in site context.
+        $sitecoursefilter = $id;
+    }
+}
+
+if (empty($course)) {
     $course = $SITE;
     require_login();
     $context = context_system::instance();
@@ -143,18 +146,25 @@ if ($PAGE->user_allowed_editing() && $adminediting != -1) {
 
 if ($course->id == $SITE->id) {
     admin_externalpage_setup('reportlog', '', null, '', array('pagelayout' => 'report'));
-    $PAGE->set_title($SITE->shortname .': '. $strlogs);
+    $PAGE->set_title($strlogs);
     $PAGE->set_primary_active_tab('siteadminnode');
 } else {
     $PAGE->set_title($course->shortname .': '. $strlogs);
     $PAGE->set_heading($course->fullname);
 }
 
-$reportlog = new report_log_renderable($logreader, $course, $user, $modid, $modaction, $group, $edulevel, $showcourses, $showusers,
-        $chooselog, true, $url, $date, $logformat, $page, $perpage, 'timecreated DESC', $origin);
-$readers = $reportlog->get_readers();
 $output = $PAGE->get_renderer('report_log');
+if (!report_helper::has_valid_group($context)) {
+    echo $output->header();
+    echo $output->notification(get_string('notingroup'));
+    echo $output->footer();
+    exit();
+}
 
+$reportlog = new report_log_renderable($logreader, $course, $user, $modid, $modaction, $group, $edulevel, $showcourses, $showusers,
+        $chooselog, true, $url, $date, $logformat, $page, $perpage, 'timecreated DESC', $origin, $sitecoursefilter);
+
+$readers = $reportlog->get_readers();
 if (empty($readers)) {
     echo $output->header();
     echo $output->heading(get_string('nologreaderenabled', 'report_log'));

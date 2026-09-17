@@ -17,6 +17,7 @@
 namespace core_user;
 
 use core_text;
+use core_user;
 
 /**
  * Class for retrieving information about user fields that are needed for displaying user identity.
@@ -377,9 +378,13 @@ class fields {
                 $allowed = false;
                 if ($allowcustom) {
                     require_once($CFG->dirroot . '/user/profile/lib.php');
+
+                    // Ensure the field exists (it may have been deleted since user identity was configured).
                     $field = profile_get_custom_field_data_by_shortname($matches[1], false);
-                    $fieldinstance = profile_get_user_field($field->datatype, $field->id, 0, $field);
-                    $allowed = $fieldinstance->is_visible($context);
+                    if ($field !== null) {
+                        $fieldinstance = profile_get_user_field($field->datatype, $field->id, 0, $field);
+                        $allowed = $fieldinstance->is_visible($context);
+                    }
                 }
                 if (!$allowed) {
                     unset($extra[$key]);
@@ -581,10 +586,7 @@ class fields {
         $unique = self::$uniqueidentifier++;
 
         $namefields = self::get_name_fields();
-
-        // Create a dummy user object containing all name fields.
-        $dummyuser = (object) array_combine($namefields, $namefields);
-        $dummyfullname = fullname($dummyuser, $override);
+        $dummyfullname = core_user::get_dummy_fullname(null, ['override' => $override]);
 
         // Extract any name fields from the fullname format in the order that they appear.
         $matchednames = array_values(order_in_string($namefields, $dummyfullname));

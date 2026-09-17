@@ -27,8 +27,8 @@ Feature: View fill the blanks attempt report
   Scenario: View attempt in a fill the blanks content
     Given I am on the "Awesome H5P package" "h5pactivity activity" page logged in as student1
     # Do an attempt.
-    And I switch to "h5p-player" class iframe
-    And I switch to "h5p-iframe" class iframe
+    And I wait until "h5p-player" iframe is interactable and switch to it
+    And I wait until "h5p-iframe" iframe is interactable and switch to it
     And I set the field with xpath "//input[contains(@aria-label,\"Blank input 1 of 4\")]" to "Brigadoon"
     And I set the field with xpath "//input[contains(@aria-label,\"Blank input 2 of 4\")]" to "Emerald city"
     And I set the field with xpath "//input[contains(@aria-label,\"Blank input 3 of 4\")]" to "Narnia"
@@ -40,10 +40,10 @@ Feature: View fill the blanks attempt report
     When I navigate to "Attempts report" in current page administration
     And I follow "View report"
     Then I should see "Of which countries are Berlin, Washington, Beijing, Canberra and Brasilia the capitals?"
-    And I should see "brigadoon" in the "brasilia" "table_row"
-    And "Your answer is incorrect" "icon" should exist in the "brasilia" "table_row"
-    And I should see "emerald city" in the "washington" "table_row"
-    And I should see "narnia" in the "berlin" "table_row"
-    And "Your answer is incorrect" "icon" should exist in the "berlin" "table_row"
-    And "Your answer is correct" "icon" should exist in the "canberra" "table_row"
+    And I should see "Brigadoon" in the "Brasilia" "table_row"
+    And "Your answer is incorrect" "icon" should exist in the "Brasilia" "table_row"
+    And I should see "Emerald city" in the "Washington" "table_row"
+    And I should see "Narnia" in the "Berlin" "table_row"
+    And "Your answer is incorrect" "icon" should exist in the "Berlin" "table_row"
+    And "Your answer is correct" "icon" should exist in the "Canberra" "table_row"
     And I should not see "<p>"

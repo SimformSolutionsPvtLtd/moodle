@@ -34,13 +34,13 @@ Feature: Manage custom report schedules
       | Name          | My schedule                 |
       | Starting from | ##tomorrow 11:00##          |
       | Subject       | You're all I've ever wanted |
-    And I set the field "Body" to "And my arms are open wide"
+      | Body          | And my arms are open wide   |
     # Confirm each audience is present in the form, select only the manually added users.
     And I should see "All my lovely users" in the "New schedule" "dialogue"
     And I set the field "Manually added users: User One, User Two" to "1"
     And I click on "Save" "button" in the "New schedule" "dialogue"
-    Then I should see "Schedule created"
-    And the following should exist in the "reportbuilder-table" table:
+    Then "Schedule created" "toast_message" should be visible
+    And the following should exist in the "Report schedules" table:
       | Name        | Starting from                           | Time last sent | Modified by |
       | My schedule | ##tomorrow 11:00##%A, %d %B %Y, %H:%M## | Never          | Admin User  |
 
@@ -64,7 +64,7 @@ Feature: Manage custom report schedules
     And I click on the "Schedules" dynamic tab
     When I set the field "Edit schedule name" in the "My schedule" "table_row" to "My renamed schedule"
     And I reload the page
-    Then I should see "My renamed schedule" in the "reportbuilder-table" "table"
+    Then I should see "My renamed schedule" in the "Report schedules" "table"
 
   Scenario: Rename report schedule using filters
     Given the "multilang" filter is "on"
@@ -76,8 +76,8 @@ Feature: Manage custom report schedules
     And I click on the "Schedules" dynamic tab
     When I set the field "Edit schedule name" in the "My schedule" "table_row" to "<span class=\"multilang\" lang=\"en\">English</span><span class=\"multilang\" lang=\"es\">Spanish</span>"
     And I reload the page
-    Then I should see "English" in the "reportbuilder-table" "table"
-    And I should not see "Spanish" in the "reportbuilder-table" "table"
+    Then I should see "English" in the "Report schedules" "table"
+    And I should not see "Spanish" in the "Report schedules" "table"
     # Confirm schedule name is correctly shown in actions.
     And I press "Send schedule" action in the "English" report row
     And I should see "Are you sure you want to queue the schedule 'English' for sending immediately?" in the "Send schedule" "dialogue"
@@ -86,12 +86,14 @@ Feature: Manage custom report schedules
     And I should see "Are you sure you want to delete the schedule 'English'?" in the "Delete schedule" "dialogue"
     And I click on "Cancel" "button" in the "Delete schedule" "dialogue"
 
+  @accessibility
   Scenario: Toggle report schedule
     Given the following "core_reportbuilder > Schedules" exist:
       | report    | name        |
       | My report | My schedule |
     And I am on the "My report" "reportbuilder > Editor" page logged in as "admin"
     And I click on the "Schedules" dynamic tab
+    And the "Report schedules" "table" should meet accessibility standards with "best-practice" extra tests
     When I click on "Disable schedule" "field" in the "My schedule" "table_row"
     Then the "class" attribute of "My schedule" "table_row" should contain "text-muted"
     And I click on "Enable schedule" "field" in the "My schedule" "table_row"
@@ -108,8 +110,8 @@ Feature: Manage custom report schedules
       | Starting from | ##tomorrow 11:00##  |
       | All users: All site users | 1       |
     And I click on "Save" "button" in the "Edit schedule details" "dialogue"
-    Then I should see "Schedule updated"
-    And the following should exist in the "reportbuilder-table" table:
+    Then "Schedule updated" "toast_message" should be visible
+    And the following should exist in the "Report schedules" table:
       | Name                | Starting from                           |
       | My updated schedule | ##tomorrow 11:00##%A, %d %B %Y, %H:%M## |
 
@@ -121,7 +123,7 @@ Feature: Manage custom report schedules
     And I click on the "Schedules" dynamic tab
     When I press "Send schedule" action in the "My schedule" report row
     And I click on "Confirm" "button" in the "Send schedule" "dialogue"
-    Then I should see "Schedule sent"
+    Then "Schedule sent" "toast_message" should be visible
 
   Scenario: Delete report schedule
     Given the following "core_reportbuilder > Schedules" exist:
@@ -131,5 +133,5 @@ Feature: Manage custom report schedules
     And I click on the "Schedules" dynamic tab
     When I press "Delete schedule" action in the "My schedule" report row
     And I click on "Delete" "button" in the "Delete schedule" "dialogue"
-    Then I should see "Schedule deleted"
+    Then "Schedule deleted" "toast_message" should be visible
     And I should see "Nothing to display"

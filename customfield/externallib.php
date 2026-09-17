@@ -14,21 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+use core_external\external_api;
+use core_external\external_function_parameters;
+use core_external\external_multiple_structure;
+use core_external\external_single_structure;
+use core_external\external_value;
+
 /**
  * External interface library for customfields component
  *
  * @package   core_customfield
- * @copyright 2018 David Matamoros <davidmc@moodle.com>
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-
-defined('MOODLE_INTERNAL') || die;
-
-require_once($CFG->libdir . "/externallib.php");
-
-/**
- * Class core_customfield_external
- *
  * @copyright 2018 David Matamoros <davidmc@moodle.com>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -123,7 +118,9 @@ class core_customfield_external extends external_api {
                     new external_single_structure(
                         array(
                             'id' => new external_value(PARAM_INT, 'id'),
+                            'name' => new external_value(PARAM_TEXT, 'name'),
                             'nameeditable' => new external_value(PARAM_RAW, 'inplace editable name'),
+                            'movetitle' => new external_value(PARAM_TEXT, 'accessible name for the category move handle'),
                             'addfieldmenu' => new external_value(PARAM_RAW, 'addfieldmenu'),
                             'fields' => new external_multiple_structure(
                                 new external_single_structure(
@@ -132,6 +129,7 @@ class core_customfield_external extends external_api {
                                         'shortname' => new external_value(PARAM_NOTAGS, 'shortname'),
                                         'type' => new external_value(PARAM_NOTAGS, 'type'),
                                         'id' => new external_value(PARAM_INT, 'id'),
+                                        'movetitle' => new external_value(PARAM_TEXT, 'accessible name for the field move handle'),
                                     )
                                 )
                             , '', VALUE_OPTIONAL),

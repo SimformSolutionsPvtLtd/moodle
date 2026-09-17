@@ -29,15 +29,6 @@ $string['cohortnonmemberinfo'] = 'Only members of cohort \'{$a}\' can self-enrol
 $string['cohortonly'] = 'Only cohort members';
 $string['cohortonly_help'] = 'Self enrolment may be restricted to members of a specified cohort only. Note that changing this setting has no effect on existing enrolments.';
 $string['confirmbulkdeleteenrolment'] = 'Are you sure you want to delete these user enrolments?';
-$string['customwelcomemessage'] = 'Custom welcome message';
-$string['customwelcomemessage_help'] = 'A custom welcome message may be added as plain text or Moodle-auto format, including HTML tags and multi-lang tags.
-
-The following placeholders may be included in the message:
-
-* Course name {$a->coursename}
-* Link to user\'s profile page {$a->profileurl}
-* User email {$a->email}
-* User fullname {$a->fullname}';
 $string['defaultrole'] = 'Default role assignment';
 $string['defaultrole_desc'] = 'Select role which should be assigned to users during self enrolment';
 $string['deleteselectedusers'] = 'Delete selected user enrolments';
@@ -53,6 +44,12 @@ $string['enrolstartdate'] = 'Start date';
 $string['enrolstartdate_help'] = 'If enabled, users can enrol themselves from this date onward only.';
 $string['expiredaction'] = 'Enrolment expiry action';
 $string['expiredaction_help'] = 'Select action to carry out when user enrolment expires. Please note that some user data and settings are purged from course during course unenrolment.';
+$string['expiryinactivemessageenrolledbody'] = 'Hi {$a->user},
+
+Your enrolment in the course {$a->course} expires on {$a->timeend} as you have not accessed it in the last {$a->inactivetime} days.
+
+To keep your enrolment active, log in and access <a href="{$a->url}">{$a->course}</a> before {$a->timeend}.';
+$string['expiryinactivemessageenrolledsubject'] = 'Your enrolment is expiring: {$a->course}';
 $string['expirymessageenrollersubject'] = 'Self enrolment expiry notification';
 $string['expirymessageenrollerbody'] = 'Self enrolment in the course \'{$a->course}\' will expire within the next {$a->threshold} for the following users:
 
@@ -79,7 +76,7 @@ $string['maxenrolled'] = 'Max enrolled users';
 $string['maxenrolled_help'] = 'Specifies the maximum number of users that can self enrol. 0 means no limit.';
 $string['maxenrolledreached'] = 'Maximum number of users allowed to self-enrol was already reached.';
 $string['messageprovider:expiry_notification'] = 'Self enrolment expiry notifications';
-$string['newenrols'] = 'Allow new enrolments';
+$string['newenrols'] = 'Allow new self enrolments';
 $string['newenrols_desc'] = 'Allow users to self enrol into new courses by default.';
 $string['newenrols_help'] = 'This setting determines whether a user can enrol into this course.';
 $string['nopassword'] = 'No enrolment key required.';
@@ -92,6 +89,7 @@ If an enrolment key is specified, any user attempting to enrol in the course wil
 $string['passwordinvalid'] = 'Incorrect enrolment key, please try again';
 $string['passwordinvalidhint'] = 'That enrolment key was incorrect, please try again<br />
 (Here\'s a hint - it starts with \'{$a}\')';
+$string['passwordmatchesgroupkey'] = 'This enrolment key is already used as a group enrolment key.';
 $string['pluginname'] = 'Self enrolment';
 $string['pluginname_desc'] = 'The self enrolment plugin allows users to choose which courses they want to participate in. The courses may be protected by an enrolment key. Internally the enrolment is done via the manual enrolment plugin which has to be enabled in the same course.';
 $string['requirepassword'] = 'Require enrolment key';
@@ -108,9 +106,9 @@ $string['sendcoursewelcomemessage_help'] = 'When a user self enrols in the cours
 $string['sendexpirynotificationstask'] = "Self enrolment send expiry notifications task";
 $string['showhint'] = 'Show hint';
 $string['showhint_desc'] = 'Show first letter of the guest access key.';
-$string['status'] = 'Allow existing enrolments';
+$string['status'] = 'Keep current self enrolments active';
 $string['status_desc'] = 'Enable self enrolment method in new courses.';
-$string['status_help'] = 'If enabled together with \'Allow new enrolments\' disabled, only users who self enrolled previously can access the course. If disabled, this self enrolment method is effectively disabled, since all existing self enrolments are suspended and new users cannot self enrol.';
+$string['status_help'] = 'If set to No, any existing participants who enrolled themselves into the course will no longer have access.';
 $string['syncenrolmentstask'] = 'Synchronise self enrolments task';
 $string['unenrol'] = 'Unenrol user';
 $string['unenrolselfconfirm'] = 'Do you really want to unenrol yourself from course "{$a}"?';
@@ -118,10 +116,23 @@ $string['unenroluser'] = 'Do you really want to unenrol "{$a->user}" from course
 $string['unenrolusers'] = 'Unenrol users';
 $string['usepasswordpolicy'] = 'Use password policy';
 $string['usepasswordpolicy_desc'] = 'Use standard password policy for enrolment keys.';
+$string['privacy:metadata'] = 'The Self enrolment plugin does not store any personal data.';
+
+// Deprecated since Moodle 4.4.
+$string['customwelcomemessage'] = 'Custom welcome message';
+$string['customwelcomemessage_help'] = 'Accepted formats: Plain text or Moodle-auto format. HTML tags and multi-lang tags are also accepted, as well as the following placeholders:
+<ul>
+<li>Course name {$a->coursename}</li>
+<li>Link to user\'s profile page {$a->profileurl}</li>
+<li>User email {$a->email}</li>
+<li>User fullname {$a->fullname}</li>
+<li>User first name {$a->firstname}</li>
+<li>User last name {$a->lastname}</li>
+<li>User course role {$a->courserole}</li>
+</ul>';
 $string['welcometocourse'] = 'Welcome to {$a}';
 $string['welcometocoursetext'] = 'Welcome to {$a->coursename}!
 
 If you have not done so already, you should edit your profile page so that we can learn more about you:
 
   {$a->profileurl}';
-$string['privacy:metadata'] = 'The Self enrolment plugin does not store any personal data.';

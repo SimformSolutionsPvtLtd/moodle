@@ -27,7 +27,7 @@ Feature: Preview a Multiple choice question
     When I am on the "Multi-choice-001" "core_question > preview" page logged in as teacher
     And I expand all fieldsets
     And I set the field "How questions behave" to "Immediate feedback"
-    And I press "Start again with these options"
+    And I press "Save preview options and start again"
     And I click on "One" "qtype_multichoice > Answer"
     And I click on "Two" "qtype_multichoice > Answer"
     And I press "Check"
@@ -37,11 +37,11 @@ Feature: Preview a Multiple choice question
     And I should see "Parts, but only parts, of your response are correct."
 
   @javascript @_switch_window
-  Scenario: Preview a Multiple choice question and submit a correct response.
+  Scenario: Preview a Multiple choice question and submit multiple correct responses.
     When I am on the "Multi-choice-001" "core_question > preview" page logged in as teacher
     And I expand all fieldsets
     And I set the field "How questions behave" to "Immediate feedback"
-    And I press "Start again with these options"
+    And I press "Save preview options and start again"
     And I click on "One" "qtype_multichoice > Answer"
     And I click on "Three" "qtype_multichoice > Answer"
     And I press "Check"
@@ -53,11 +53,11 @@ Feature: Preview a Multiple choice question
     And I should see "The correct answers are: One, Three"
 
   @javascript @_switch_window
-  Scenario: Preview a Multiple choice question and submit a correct response.
+  Scenario: Preview a Multiple choice question and submit a single correct response.
     When I am on the "Multi-choice-002" "core_question > preview" page logged in as teacher
     And I expand all fieldsets
     And I set the field "How questions behave" to "Immediate feedback"
-    And I press "Start again with these options"
+    And I press "Save preview options and start again"
     And I click on "One" "qtype_multichoice > Answer"
     And I press "Check"
     Then I should see "The oddest number is One."
@@ -70,7 +70,7 @@ Feature: Preview a Multiple choice question
     When I am on the "Multi-choice-002" "core_question > preview" page logged in as teacher
     And I expand all fieldsets
     And I set the field "How questions behave" to "Immediate feedback"
-    And I press "Start again with these options"
+    And I press "Save preview options and start again"
     And I click on "One" "qtype_multichoice > Answer"
     Then I should see "Clear my choice"
     And I click on "Clear my choice" "text"

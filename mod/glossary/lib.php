@@ -1009,8 +1009,8 @@ function glossary_get_entries($glossaryid, $entrylist, $pivot = "") {
 /**
  * @global object
  * @global object
- * @param object $concept
- * @param string $courseid
+ * @param string $concept
+ * @param int $courseid
  * @return array
  */
 function glossary_get_entries_search($concept, $courseid) {
@@ -1050,10 +1050,10 @@ function glossary_get_entries_search($concept, $courseid) {
 }
 
 /**
- * @global object
- * @global object
+ * Print the glossary entry.
+ *
  * @param object $course
- * @param object $course
+ * @param stdClass $cm
  * @param object $glossary
  * @param object $entry
  * @param string $mode
@@ -1061,9 +1061,22 @@ function glossary_get_entries_search($concept, $courseid) {
  * @param int $printicons
  * @param int $displayformat
  * @param bool $printview
+ * @param int $conceptheadinglevel The heading level to use for rendering the concept within the heading element.
  * @return mixed
+ * @package mod_glossary
  */
-function glossary_print_entry($course, $cm, $glossary, $entry, $mode='',$hook='',$printicons = 1, $displayformat  = -1, $printview = false) {
+function glossary_print_entry(
+    $course,
+    $cm,
+    $glossary,
+    $entry,
+    $mode = '',
+    $hook = '',
+    $printicons = 1,
+    $displayformat = -1,
+    $printview = false,
+    $conceptheadinglevel = 3,
+) {
     global $USER, $CFG;
     $return = false;
     if ( $displayformat < 0 ) {
@@ -1080,7 +1093,16 @@ function glossary_print_entry($course, $cm, $glossary, $entry, $mode='',$hook=''
         if (file_exists($formatfile)) {
             include_once($formatfile);
             if (function_exists($functionname)) {
-                $return = $functionname($course, $cm, $glossary, $entry,$mode,$hook,$printicons);
+                $return = $functionname(
+                    $course,
+                    $cm,
+                    $glossary,
+                    $entry,
+                    $mode,
+                    $hook,
+                    $printicons,
+                    conceptheadinglevel: $conceptheadinglevel,
+                );
             } else if ($printview) {
                 //If the glossary_print_entry_XXXX function doesn't exist, print default (old) print format
                 $return = glossary_print_entry_default($entry, $glossary, $cm);
@@ -1123,13 +1145,17 @@ function glossary_print_entry_default ($entry, $glossary, $cm) {
 }
 
 /**
- * Print glossary concept/term as a heading &lt;h4>
- * @param object $entry
+ * Print glossary concept/term as a heading.
+ *
+ * @param object $entry The glossary entry object.
+ * @param bool $return Whether to return the text instead of echoing it.
+ * @param int $headinglevel What heading level to use.
+ * @return string|void
+ * @package mod_glossary
  */
-function  glossary_print_entry_concept($entry, $return=false) {
+function glossary_print_entry_concept($entry, $return = false, int $headinglevel = 3) {
     global $OUTPUT;
-
-    $text = $OUTPUT->heading(format_string($entry->concept), 4);
+    $text = $OUTPUT->heading(format_string($entry->concept), $headinglevel);
     if (!empty($entry->highlight)) {
         $text = highlight($entry->highlight, $text);
     }
@@ -1289,7 +1315,7 @@ function glossary_print_entry_icons($course, $cm, $glossary, $entry, $mode='',$h
 
             $url = "edit.php?cmid=$cm->id&amp;id=$entry->id&amp;mode=$mode&amp;hook=".urlencode($hook);
             $return .= "<a class='icon' title=\"" . get_string("edit") . "\" href=\"$url\">" .
-                       $OUTPUT->pix_icon('t/edit', get_string('editentrya', 'mod_glossary', $altsuffix)) . '</a>';
+                       $OUTPUT->pix_icon('i/edit', get_string('editentrya', 'mod_glossary', $altsuffix)) . '</a>';
         } elseif ( $importedentry ) {
             $return .= "<font size=\"-1\">" . get_string("exportedentry","glossary") . "</font>";
         }
@@ -1367,7 +1393,7 @@ function glossary_print_entry_lower_section($course, $cm, $glossary, $entry, $mo
         $icons   = glossary_print_entry_icons($course, $cm, $glossary, $entry, $mode, $hook,'html');
     }
     if ($aliases || $icons || !empty($entry->rating)) {
-        echo '<table>';
+        echo '<table role="presentation">';
         if ( $aliases ) {
             $id = "keyword-{$entry->id}";
             echo '<tr valign="top"><td class="aliases">' .
@@ -1428,7 +1454,8 @@ function  glossary_print_entry_approval($cm, $entry, $mode, $align="right", $ins
 
     if ($mode == 'approval' and !$entry->approved) {
         if ($insidetable) {
-            echo '<table class="glossaryapproval" align="'.$align.'"><tr><td align="'.$align.'">';
+            echo '<table class="glossaryapproval" align="' . $align . '" role="presentation">';
+            echo '<tr><td align="' . $align . '">';
         }
         echo $OUTPUT->action_icon(
             new moodle_url('approve.php', array('eid' => $entry->id, 'mode' => $mode, 'sesskey' => sesskey())),
@@ -1834,7 +1861,7 @@ function glossary_print_approval_menu($cm, $glossary,$mode, $hook, $sortkey = ''
 
     glossary_print_all_links($cm, $glossary, $mode, $hook);
 
-    glossary_print_sorting_links($cm, $mode, 'CREATION', 'asc');
+    glossary_print_sorting_links($cm, $mode, $sortkey, $sortorder);
 }
 /**
  * @param object $cm
@@ -2056,9 +2083,14 @@ function glossary_print_sorting_links($cm, $mode, $sortkey = '',$sortorder = '')
     $bopen  = '<b>';
     $bclose = '</b>';
 
-     $neworder = '';
-     $currentorder = '';
-     $currentsort = '';
+    $neworder = '';
+    $currentorder = '';
+    $currentsort = '';
+
+    if ($sortkey === '') {
+        $sortkey = 'CREATION';
+    }
+
      if ( $sortorder ) {
          if ( $sortorder == 'asc' ) {
              $currentorder = $asc;
@@ -2081,20 +2113,18 @@ function glossary_print_sorting_links($cm, $mode, $sortkey = '',$sortorder = '')
              $icon = " " . $OUTPUT->pix_icon('asc', $newordertitle, 'glossary');
          }
      }
-     $ficon     = '';
-     $fneworder = '';
-     $fbtag     = '';
-     $fendbtag  = '';
 
-     $sicon     = '';
-     $sneworder = '';
+    $ficon     = '';
+    $fneworder = '';
 
-     $sbtag      = '';
-     $fbtag      = '';
-     $fendbtag      = '';
-     $sendbtag      = '';
+    $sicon     = '';
+    $sneworder = '';
 
-     $sendbtag  = '';
+    $sbtag      = '';
+    $fbtag      = '';
+    $fendbtag      = '';
+
+    $sendbtag  = '';
 
      if ( $sortkey == 'CREATION' or $sortkey == 'FIRSTNAME' ) {
          $ficon       = $icon;
@@ -2363,6 +2393,7 @@ function glossary_generate_export_file($glossary, $ignored = "", $hook = 0) {
                     $co .= glossary_full_tag("CONCEPT",4,false,trim($entry->concept));
                     $co .= glossary_full_tag("DEFINITION",4,false,$entry->definition);
                     $co .= glossary_full_tag("FORMAT",4,false,$entry->definitionformat); // note: use old name for BC reasons
+                    $co .= glossary_full_tag('DEFINITIONTRUST', 4, false, $entry->definitiontrust);
                     $co .= glossary_full_tag("USEDYNALINK",4,false,$entry->usedynalink);
                     $co .= glossary_full_tag("CASESENSITIVE",4,false,$entry->casesensitive);
                     $co .= glossary_full_tag("FULLMATCH",4,false,$entry->fullmatch);
@@ -2791,28 +2822,28 @@ function glossary_get_post_actions() {
 /**
  * Implementation of the function for printing the form elements that control
  * whether the course reset functionality affects the glossary.
- * @param object $mform form passed by reference
+ * @param MoodleQuickForm $mform form passed by reference
  */
 function glossary_reset_course_form_definition(&$mform) {
     $mform->addElement('header', 'glossaryheader', get_string('modulenameplural', 'glossary'));
+    $mform->addElement('static', 'glossarydelete', get_string('delete'));
     $mform->addElement('checkbox', 'reset_glossary_all', get_string('resetglossariesall','glossary'));
 
     $mform->addElement('select', 'reset_glossary_types', get_string('resetglossaries', 'glossary'),
                        array('main'=>get_string('mainglossary', 'glossary'), 'secondary'=>get_string('secondaryglossary', 'glossary')), array('multiple' => 'multiple'));
-    $mform->setAdvanced('reset_glossary_types');
-    $mform->disabledIf('reset_glossary_types', 'reset_glossary_all', 'checked');
+    $mform->hideIf('reset_glossary_types', 'reset_glossary_all', 'checked');
 
     $mform->addElement('checkbox', 'reset_glossary_notenrolled', get_string('deletenotenrolled', 'glossary'));
-    $mform->disabledIf('reset_glossary_notenrolled', 'reset_glossary_all', 'checked');
+    $mform->hideIf('reset_glossary_notenrolled', 'reset_glossary_all', 'checked');
 
     $mform->addElement('checkbox', 'reset_glossary_ratings', get_string('deleteallratings'));
-    $mform->disabledIf('reset_glossary_ratings', 'reset_glossary_all', 'checked');
+    $mform->hideIf('reset_glossary_ratings', 'reset_glossary_all', 'checked');
 
     $mform->addElement('checkbox', 'reset_glossary_comments', get_string('deleteallcomments'));
-    $mform->disabledIf('reset_glossary_comments', 'reset_glossary_all', 'checked');
+    $mform->hideIf('reset_glossary_comments', 'reset_glossary_all', 'checked');
 
     $mform->addElement('checkbox', 'reset_glossary_tags', get_string('removeallglossarytags', 'glossary'));
-    $mform->disabledIf('reset_glossary_tags', 'reset_glossary_all', 'checked');
+    $mform->hideIf('reset_glossary_tags', 'reset_glossary_all', 'checked');
 }
 
 /**
@@ -2861,7 +2892,7 @@ function glossary_reset_userdata($data) {
     require_once($CFG->dirroot.'/rating/lib.php');
 
     $componentstr = get_string('modulenameplural', 'glossary');
-    $status = array();
+    $status = [];
 
     $allentriessql = "SELECT e.id
                         FROM {glossary_entries} e
@@ -2872,7 +2903,7 @@ function glossary_reset_userdata($data) {
                            FROM {glossary} g
                           WHERE g.course = ?";
 
-    $params = array($data->courseid);
+    $params = [$data->courseid];
 
     $fs = get_file_storage();
 
@@ -2881,7 +2912,7 @@ function glossary_reset_userdata($data) {
     $ratingdeloptions->component = 'mod_glossary';
     $ratingdeloptions->ratingarea = 'entry';
 
-    // delete entries if requested
+    // Delete entries if requested.
     if (!empty($data->reset_glossary_all)
          or (!empty($data->reset_glossary_types) and in_array('main', $data->reset_glossary_types) and in_array('secondary', $data->reset_glossary_types))) {
 
@@ -2890,7 +2921,7 @@ function glossary_reset_userdata($data) {
         $DB->delete_records_select('glossary_alias',    "entryid IN ($allentriessql)", $params);
         $DB->delete_records_select('glossary_entries', "glossaryid IN ($allglossariessql)", $params);
 
-        // now get rid of all attachments
+        // Now get rid of all attachments.
         if ($glossaries = $DB->get_records_sql($allglossariessql, $params)) {
             foreach ($glossaries as $glossaryid=>$unused) {
                 if (!$cm = get_coursemodule_from_instance('glossary', $glossaryid)) {
@@ -2899,7 +2930,7 @@ function glossary_reset_userdata($data) {
                 $context = context_module::instance($cm->id);
                 $fs->delete_area_files($context->id, 'mod_glossary', 'attachment');
 
-                //delete ratings
+                // Delete ratings.
                 $ratingdeloptions->contextid = $context->id;
                 $rm->delete_ratings($ratingdeloptions);
 
@@ -2907,18 +2938,22 @@ function glossary_reset_userdata($data) {
             }
         }
 
-        // remove all grades from gradebook
+        // Remove all grades from gradebook.
         if (empty($data->reset_gradebook_grades)) {
             glossary_reset_gradebook($data->courseid);
         }
 
-        $status[] = array('component'=>$componentstr, 'item'=>get_string('resetglossariesall', 'glossary'), 'error'=>false);
+        $status[] = [
+            'component' => $componentstr,
+            'item' => get_string('resetglossariesall', 'glossary'),
+            'error' => false,
+        ];
 
     } else if (!empty($data->reset_glossary_types)) {
-        $mainentriessql         = "$allentriessql AND g.mainglossary=1";
-        $secondaryentriessql    = "$allentriessql AND g.mainglossary=0";
+        $mainentriessql = "$allentriessql AND g.mainglossary=1";
+        $secondaryentriessql = "$allentriessql AND g.mainglossary=0";
 
-        $mainglossariessql      = "$allglossariessql AND g.mainglossary=1";
+        $mainglossariessql = "$allglossariessql AND g.mainglossary=1";
         $secondaryglossariessql = "$allglossariessql AND g.mainglossary=0";
 
         if (in_array('main', $data->reset_glossary_types)) {
@@ -2934,7 +2969,7 @@ function glossary_reset_userdata($data) {
                     $context = context_module::instance($cm->id);
                     $fs->delete_area_files($context->id, 'mod_glossary', 'attachment');
 
-                    //delete ratings
+                    // Delete ratings.
                     $ratingdeloptions->contextid = $context->id;
                     $rm->delete_ratings($ratingdeloptions);
 
@@ -2942,18 +2977,22 @@ function glossary_reset_userdata($data) {
                 }
             }
 
-            // remove all grades from gradebook
+            // Remove all grades from gradebook.
             if (empty($data->reset_gradebook_grades)) {
                 glossary_reset_gradebook($data->courseid, 'main');
             }
 
-            $status[] = array('component'=>$componentstr, 'item'=>get_string('resetglossaries', 'glossary').': '.get_string('mainglossary', 'glossary'), 'error'=>false);
+            $status[] = [
+                'component' => $componentstr,
+                'item' => get_string('resetglossaries', 'glossary').': '.get_string('mainglossary', 'glossary'),
+                'error' => false,
+            ];
 
         } else if (in_array('secondary', $data->reset_glossary_types)) {
             $params[] = 'glossary_entry';
             $DB->delete_records_select('comments', "itemid IN ($secondaryentriessql) AND commentarea=?", $params);
             $DB->delete_records_select('glossary_entries', "glossaryid IN ($secondaryglossariessql)", $params);
-            // remove exported source flag from entries in main glossary
+            // Remove exported source flag from entries in main glossary.
             $DB->execute("UPDATE {glossary_entries}
                              SET sourceglossaryid=0
                            WHERE glossaryid IN ($mainglossariessql)", $params);
@@ -2966,7 +3005,7 @@ function glossary_reset_userdata($data) {
                     $context = context_module::instance($cm->id);
                     $fs->delete_area_files($context->id, 'mod_glossary', 'attachment');
 
-                    //delete ratings
+                    // Delete ratings.
                     $ratingdeloptions->contextid = $context->id;
                     $rm->delete_ratings($ratingdeloptions);
 
@@ -2974,16 +3013,20 @@ function glossary_reset_userdata($data) {
                 }
             }
 
-            // remove all grades from gradebook
+            // Remove all grades from gradebook.
             if (empty($data->reset_gradebook_grades)) {
                 glossary_reset_gradebook($data->courseid, 'secondary');
             }
 
-            $status[] = array('component'=>$componentstr, 'item'=>get_string('resetglossaries', 'glossary').': '.get_string('secondaryglossary', 'glossary'), 'error'=>false);
+            $status[] = [
+                'component' => $componentstr,
+                'item' => get_string('resetglossaries', 'glossary').': '.get_string('secondaryglossary', 'glossary'),
+                'error' => false,
+            ];
         }
     }
 
-    // remove entries by users not enrolled into course
+    // Remove entries by users not enrolled into course.
     if (!empty($data->reset_glossary_notenrolled)) {
         $entriessql = "SELECT e.id, e.userid, e.glossaryid, u.id AS userexists, u.deleted AS userdeleted
                          FROM {glossary_entries} e
@@ -2991,15 +3034,15 @@ function glossary_reset_userdata($data) {
                               LEFT JOIN {user} u ON e.userid = u.id
                         WHERE g.course = ? AND e.userid > 0";
 
-        $course_context = context_course::instance($data->courseid);
-        $notenrolled = array();
+        $coursecontext = context_course::instance($data->courseid);
+        $notenrolled = [];
         $rs = $DB->get_recordset_sql($entriessql, $params);
         if ($rs->valid()) {
             foreach ($rs as $entry) {
-                if (array_key_exists($entry->userid, $notenrolled) or !$entry->userexists or $entry->userdeleted
-                  or !is_enrolled($course_context , $entry->userid)) {
-                    $DB->delete_records('comments', array('commentarea'=>'glossary_entry', 'itemid'=>$entry->id));
-                    $DB->delete_records('glossary_entries', array('id'=>$entry->id));
+                if (array_key_exists($entry->userid, $notenrolled) || !$entry->userexists || $entry->userdeleted
+                  || !is_enrolled($coursecontext , $entry->userid)) {
+                    $DB->delete_records('comments', ['commentarea' => 'glossary_entry', 'itemid' => $entry->id]);
+                    $DB->delete_records('glossary_entries', ['id' => $entry->id]);
 
                     if ($cm = get_coursemodule_from_instance('glossary', $entry->glossaryid)) {
                         $context = context_module::instance($cm->id);
@@ -3011,14 +3054,18 @@ function glossary_reset_userdata($data) {
                     }
                 }
             }
-            $status[] = array('component'=>$componentstr, 'item'=>get_string('deletenotenrolled', 'glossary'), 'error'=>false);
+            $status[] = [
+                'component' => $componentstr,
+                'item' => get_string('deletenotenrolled', 'glossary'),
+                'error' => false,
+            ];
         }
         $rs->close();
     }
 
-    // remove all ratings
+    // Remove all ratings.
     if (!empty($data->reset_glossary_ratings)) {
-        //remove ratings
+        // Remove ratings.
         if ($glossaries = $DB->get_records_sql($allglossariessql, $params)) {
             foreach ($glossaries as $glossaryid=>$unused) {
                 if (!$cm = get_coursemodule_from_instance('glossary', $glossaryid)) {
@@ -3026,24 +3073,32 @@ function glossary_reset_userdata($data) {
                 }
                 $context = context_module::instance($cm->id);
 
-                //delete ratings
+                // Delete ratings.
                 $ratingdeloptions->contextid = $context->id;
                 $rm->delete_ratings($ratingdeloptions);
             }
         }
 
-        // remove all grades from gradebook
+        // Remove all grades from gradebook.
         if (empty($data->reset_gradebook_grades)) {
             glossary_reset_gradebook($data->courseid);
         }
-        $status[] = array('component'=>$componentstr, 'item'=>get_string('deleteallratings'), 'error'=>false);
+        $status[] = [
+            'component' => $componentstr,
+            'item' => get_string('deleteallratings'),
+            'error' => false,
+        ];
     }
 
-    // remove comments
+    // Remove comments.
     if (!empty($data->reset_glossary_comments)) {
         $params[] = 'glossary_entry';
         $DB->delete_records_select('comments', "itemid IN ($allentriessql) AND commentarea= ? ", $params);
-        $status[] = array('component'=>$componentstr, 'item'=>get_string('deleteallcomments'), 'error'=>false);
+        $status[] = [
+            'component' => $componentstr,
+            'item' => get_string('deleteallcomments'),
+            'error' => false,
+        ];
     }
 
     // Remove all the tags.
@@ -3059,15 +3114,23 @@ function glossary_reset_userdata($data) {
             }
         }
 
-        $status[] = array('component' => $componentstr, 'item' => get_string('tagsdeleted', 'glossary'), 'error' => false);
+        $status[] = [
+            'component' => $componentstr,
+            'item' => get_string('removeallglossarytags', 'glossary'),
+            'error' => false,
+        ];
     }
 
-    /// updating dates - shift may be negative too
+    // Updating dates - shift may be negative too.
     if ($data->timeshift) {
         // Any changes to the list of dates that needs to be rolled should be same during course restore and course reset.
         // See MDL-9367.
-        shift_course_mod_dates('glossary', array('assesstimestart', 'assesstimefinish'), $data->timeshift, $data->courseid);
-        $status[] = array('component'=>$componentstr, 'item'=>get_string('datechanged'), 'error'=>false);
+        shift_course_mod_dates('glossary', ['assesstimestart', 'assesstimefinish'], $data->timeshift, $data->courseid);
+        $status[] = [
+            'component' => $componentstr,
+            'item' => get_string('date'),
+            'error' => false,
+        ];
     }
 
     return $status;
@@ -3167,7 +3230,7 @@ function glossary_extend_settings_navigation(settings_navigation $settings, navi
     // Safe guard check - Ideally, there shouldn't be any hidden entries if the glossary has 'defaultapproval'.
     if (has_capability('mod/glossary:approve', $settings->get_page()->cm->context) &&
             (!$glossary->defaultapproval || $hiddenentries)) {
-        $glossarynode->add(get_string('pendingapproval', 'glossary'),
+        $glossarynode->add(get_string('pendingapprovalcount', 'glossary', $hiddenentries),
             new moodle_url('/mod/glossary/view.php', ['id' => $settings->get_page()->cm->id, 'mode' => 'approval']),
             navigation_node::TYPE_CUSTOM, null, 'pendingapproval');
     }
@@ -4202,8 +4265,10 @@ function glossary_check_updates_since(cm_info $cm, $from, $filter = array()) {
  */
 function mod_glossary_get_fontawesome_icon_map() {
     return [
-        'mod_glossary:export' => 'fa-download',
-        'mod_glossary:minus' => 'fa-minus'
+        'mod_glossary:asc' => 'fa-sort-down',
+        'mod_glossary:desc' => 'fa-sort-up',
+        'mod_glossary:export' => 'fa-arrow-turn-up',
+        'mod_glossary:minus' => 'fa-minus',
     ];
 }
 
@@ -4506,4 +4571,53 @@ function mod_glossary_prepare_entry_for_edition(stdClass $entry): stdClass {
     }
 
     return $entry;
+}
+
+/**
+ * Checks whether the current user can see ratings for a given itemid.
+ *
+ * @param array $params submitted data
+ *            contextid => int contextid [required]
+ *            component => The component for this module - should always be mod_glossary [required]
+ *            ratingarea => Should always be entry (the only rating area in glossary) [required]
+ *            itemid => int the ID of the entry being rated [required]
+ * @return bool
+ */
+function mod_glossary_rating_can_see_item_ratings(array $params): bool {
+    global $DB, $USER;
+
+    if (!isset($params['component']) || $params['component'] != 'mod_glossary') {
+        throw new rating_exception('invalidcomponent');
+    }
+
+    if (!isset($params['ratingarea']) || $params['ratingarea'] != 'entry') {
+        throw new rating_exception('invalidratingarea');
+    }
+
+    if (!isset($params['itemid'])) {
+        throw new rating_exception('invaliditemid');
+    }
+
+    $entry = $DB->get_record('glossary_entries', ['id' => $params['itemid']], '*', MUST_EXIST);
+    $glossary = $DB->get_record('glossary', ['id' => $entry->glossaryid], '*', MUST_EXIST);
+    $cm = get_coursemodule_from_instance('glossary', $glossary->id, $glossary->course, false, MUST_EXIST);
+    $cminfo = get_fast_modinfo($glossary->course)->instances['glossary'][$cm->instance];
+
+    if ($cminfo->context->id != $params['contextid']) {
+        throw new rating_exception('invalidcontext');
+    }
+
+    $context = context::instance_by_id($params['contextid']);
+
+    $ratingpermissions = glossary_rating_permissions($context->id, 'mod_glossary', 'entry');
+    $requiredpermission = ($entry->userid != $USER->id) ? 'viewall' : 'view';
+    if (!$ratingpermissions[$requiredpermission]) {
+        return false;
+    }
+
+    if (!glossary_can_view_entry($entry, $cminfo)) {
+        return false;
+    }
+
+    return true;
 }

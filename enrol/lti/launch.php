@@ -29,7 +29,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-use enrol_lti\local\ltiadvantage\lib\http_client;
+use core\http_client;
+use enrol_lti\local\ltiadvantage\lib\lti_cookie;
 use enrol_lti\local\ltiadvantage\lib\issuer_database;
 use enrol_lti\local\ltiadvantage\lib\launch_cache_session;
 use enrol_lti\local\ltiadvantage\repository\application_registration_repository;
@@ -40,7 +41,6 @@ use enrol_lti\local\ltiadvantage\repository\resource_link_repository;
 use enrol_lti\local\ltiadvantage\repository\user_repository;
 use enrol_lti\local\ltiadvantage\service\tool_launch_service;
 use enrol_lti\local\ltiadvantage\utility\message_helper;
-use Packback\Lti1p3\ImsStorage\ImsCookie;
 use Packback\Lti1p3\LtiMessageLaunch;
 use Packback\Lti1p3\LtiServiceConnector;
 
@@ -64,14 +64,14 @@ if (empty($idtoken) && empty($launchid)) {
 // Support caching the launch and retrieving it after the account binding process described in auth::complete_login().
 $sesscache = new launch_cache_session();
 $issdb = new issuer_database(new application_registration_repository(), new deployment_repository());
-$cookie = new ImsCookie();
-$serviceconnector = new LtiServiceConnector($sesscache, new http_client(new curl()));
+$cookie = new lti_cookie();
+$serviceconnector = new LtiServiceConnector($sesscache, new http_client());
 if ($idtoken) {
     $messagelaunch = LtiMessageLaunch::new($issdb, $sesscache, $cookie, $serviceconnector)
-        ->validate();
+        ->initialize($_POST);
 }
 if ($launchid) {
-    $messagelaunch = LtiMessageLaunch::fromCache($launchid, $issdb, $sesscache, $serviceconnector);
+    $messagelaunch = LtiMessageLaunch::fromCache($launchid, $issdb, $sesscache, $cookie, $serviceconnector);
 }
 if (empty($messagelaunch)) {
     throw new moodle_exception('Bad launch. Message launch data could not be found');
@@ -108,10 +108,12 @@ $auth->complete_login(
     $legacyconsumersecrets ?? []
 );
 
-require_login(null, false);
 global $USER, $CFG, $PAGE;
+// Page URL must be set before the require_login check, so that things like policies can redirect back with the launchid.
+$PAGE->set_url(new moodle_url('/enrol/lti/launch.php'), ['launchid' => $messagelaunch->getLaunchId()]);
+
+require_login(null, false);
 $PAGE->set_context(context_system::instance());
-$PAGE->set_url(new moodle_url('/enrol/lti/launch.php'));
 $PAGE->set_pagelayout('popup'); // Same layout as the tool.php page in Legacy 1.1/2.0 launches.
 $PAGE->set_title(get_string('opentool', 'enrol_lti'));
 

@@ -31,22 +31,25 @@ require_once($CFG->dirroot . '/question/type/multichoice/edit_multichoice_form.p
 /**
  * Unit tests for the multiple choice question definition class.
  *
- * @package    qtype_multichoice
- * @copyright  2009 The Open University
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package   qtype_multichoice
+ * @copyright 2009 The Open University
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @covers    \qtype_multichoice
  */
-class question_type_test extends \advanced_testcase {
+final class question_type_test extends \advanced_testcase {
     protected $qtype;
 
     protected function setUp(): void {
+        parent::setUp();
         $this->qtype = new qtype_multichoice();
     }
 
     protected function tearDown(): void {
         $this->qtype = null;
+        parent::tearDown();
     }
 
-    public function test_name() {
+    public function test_name(): void {
         $this->assertEquals($this->qtype->name(), 'multichoice');
     }
 
@@ -63,22 +66,28 @@ class question_type_test extends \advanced_testcase {
         return $q;
     }
 
-    public function test_can_analyse_responses() {
+    public function test_can_analyse_responses(): void {
         $this->assertTrue($this->qtype->can_analyse_responses());
     }
 
-    public function test_get_random_guess_score() {
+    public function test_get_random_guess_score(): void {
         $q = $this->get_test_question_data();
         $this->assertEquals(0.5, $this->qtype->get_random_guess_score($q));
     }
 
-    public function test_get_random_guess_score_multi() {
+    public function test_get_random_guess_score_broken_question(): void {
+        $q = $this->get_test_question_data();
+        $q->options->answers = [];
+        $this->assertNull($this->qtype->get_random_guess_score($q));
+    }
+
+    public function test_get_random_guess_score_multi(): void {
         $q = $this->get_test_question_data();
         $q->options->single = false;
         $this->assertNull($this->qtype->get_random_guess_score($q));
     }
 
-    public function test_get_possible_responses_single() {
+    public function test_get_possible_responses_single(): void {
         $q = $this->get_test_question_data();
         $responses = $this->qtype->get_possible_responses($q);
 
@@ -90,7 +99,7 @@ class question_type_test extends \advanced_testcase {
             )), $this->qtype->get_possible_responses($q));
     }
 
-    public function test_get_possible_responses_multi() {
+    public function test_get_possible_responses_multi(): void {
         $q = $this->get_test_question_data();
         $q->options->single = false;
 
@@ -100,14 +109,14 @@ class question_type_test extends \advanced_testcase {
         ), $this->qtype->get_possible_responses($q));
     }
 
-    public function get_question_saving_which() {
+    public static function get_question_saving_which(): array {
         return array(array('two_of_four'), array('one_of_four'));
     }
 
     /**
      * @dataProvider get_question_saving_which
      */
-    public function test_question_saving_two_of_four($which) {
+    public function test_question_saving_two_of_four($which): void {
         $this->resetAfterTest(true);
         $this->setAdminUser();
 
@@ -166,7 +175,7 @@ class question_type_test extends \advanced_testcase {
     /**
      * Test to make sure that loading of question options works, including in an error case.
      */
-    public function test_get_question_options() {
+    public function test_get_question_options(): void {
         global $DB;
 
         $this->resetAfterTest(true);

@@ -54,12 +54,15 @@ Feature: Primary navigation
     And "Side panel" "button" should exist
     And I click on "Side panel" "button"
     And I should see "Home" in the "theme_boost-drawers-primary" "region"
+    And I click on "[data-region='site-home-link']" "css_element"
+    And I should see "Dashboard" in the "page-header" "region"
 
   @theme_boost
-  Scenario: Guest users can only see the Home item in the primary navigation menu
+  Scenario: Guest users can only see the Home and Calendar items in the primary navigation menu
     Given I log in as "guest"
     When I am on site homepage
     Then I should see "Home" in the ".primary-navigation" "css_element"
+    And I should see "Calendar" in the ".primary-navigation" "css_element"
     And I should not see "Dashboard" in the ".primary-navigation" "css_element"
     And I should not see "My courses" in the ".primary-navigation" "css_element"
     And I should not see "Site administration" in the ".primary-navigation" "css_element"

@@ -23,7 +23,7 @@
  * @category  files
  * @param stdClass $course course object
  * @param stdClass $birecord_or_cm block instance record
- * @param stdClass $context context object
+ * @param context $context context object
  * @param string $filearea file area
  * @param array $args extra arguments
  * @param bool $forcedownload whether or not force download
@@ -32,7 +32,9 @@
  * @todo MDL-36050 improve capability check on stick blocks, so we can check user capability before sending images.
  */
 function block_html_pluginfile($course, $birecord_or_cm, $context, $filearea, $args, $forcedownload, array $options=array()) {
-    global $DB, $CFG, $USER;
+    global $CFG;
+
+    require_once("{$CFG->dirroot}/user/lib.php");
 
     if ($context->contextlevel != CONTEXT_BLOCK) {
         send_file_not_found();
@@ -51,9 +53,12 @@ function block_html_pluginfile($course, $birecord_or_cm, $context, $filearea, $a
             if (!core_course_category::get($parentcontext->instanceid, IGNORE_MISSING)) {
                 send_file_not_found();
             }
-        } else if ($parentcontext->contextlevel === CONTEXT_USER && $parentcontext->instanceid != $USER->id) {
-            // The block is in the context of a user, it is only visible to the user who it belongs to.
-            send_file_not_found();
+        } else if ($parentcontext->contextlevel === CONTEXT_USER) {
+            $user = core_user::get_user($parentcontext->instanceid, '*', MUST_EXIST);
+            $extracaps = block_method_result('html', 'get_extra_capabilities');
+            if (!user_can_view_profile($user, null, $parentcontext) || !has_any_capability($extracaps, $context)) {
+                send_file_not_found();
+            }
         }
         // At this point there is no way to check SYSTEM context, so ignoring it.
     }
@@ -117,7 +122,7 @@ function block_html_global_db_replace($search, $replace) {
  * @param  array  $args The path (the part after the filearea and before the filename).
  * @return array The itemid and the filepath inside the $args path, for the defined filearea.
  */
-function block_html_get_path_from_pluginfile(string $filearea, array $args) : array {
+function block_html_get_path_from_pluginfile(string $filearea, array $args): array {
     // This block never has an itemid (the number represents the revision but it's not stored in database).
     array_shift($args);
 

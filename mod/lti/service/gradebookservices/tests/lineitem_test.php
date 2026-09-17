@@ -17,6 +17,8 @@
 namespace ltiservice_gradebookservices;
 
 use ltiservice_gradebookservices\local\resources\lineitem;
+use ltiservice_gradebookservices\local\resources\results;
+use ltiservice_gradebookservices\local\resources\scores;
 use ltiservice_gradebookservices\local\service\gradebookservices;
 
 /**
@@ -28,14 +30,14 @@ use ltiservice_gradebookservices\local\service\gradebookservices;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @coversDefaultClass \mod_lti\service\gradebookservices\local\resources\lineitem
  */
-class lineitem_test extends \advanced_testcase {
+final class lineitem_test extends \advanced_testcase {
 
     /**
      * @covers ::execute
      *
      * Test updating the line item with submission review.
      */
-    public function test_execute_put_nosubreview() {
+    public function test_execute_put_nosubreview(): void {
         global $CFG;
         require_once($CFG->dirroot . '/mod/lti/locallib.php');
         $this->resetAfterTest();
@@ -79,7 +81,7 @@ class lineitem_test extends \advanced_testcase {
      *
      * Test updating the line item with submission review.
      */
-    public function test_execute_put_withsubreview() {
+    public function test_execute_put_withsubreview(): void {
         global $CFG;
         require_once($CFG->dirroot . '/mod/lti/locallib.php');
         $this->resetAfterTest();
@@ -130,7 +132,7 @@ class lineitem_test extends \advanced_testcase {
      *
      * Test updating the line item with submission review.
      */
-    public function test_execute_put_addsubreview() {
+    public function test_execute_put_addsubreview(): void {
         global $CFG;
         require_once($CFG->dirroot . '/mod/lti/locallib.php');
         $this->resetAfterTest();
@@ -175,6 +177,99 @@ class lineitem_test extends \advanced_testcase {
     }
 
     /**
+     * Test running a series of score updates, highlighting problems with the score posting logic.
+     *
+     * @covers ::execute
+     *
+     * @return void
+     */
+    public function test_sequential_score_posts(): void {
+        global $CFG;
+        require_once($CFG->dirroot . '/mod/lti/locallib.php');
+        $this->resetAfterTest();
+        $resourceid = 'test-resource-id';
+        $tag = 'tag';
+        $course = $this->getDataGenerator()->create_course();
+        $typeid = $this->create_type();
+        $user = $this->getDataGenerator()->create_and_enrol($course);
+
+        // Create mod instance with line item - nothing pushed via services yet.
+        $gbservice = new gradebookservices();
+        $gbservice->set_type(lti_get_type($typeid));
+        $modinstance = $this->create_graded_lti($typeid, $course, $resourceid, $tag);
+        $gradeitems = $gbservice->get_lineitems($course->id, null, null, null, null, null, $typeid);
+        $this->assertEquals(1, $gradeitems[0]); // The 1st item in the array is the items count.
+
+        // Post a score so that there's at least one grade present at the time of lineitem update.
+        $score = new scores($gbservice);
+        $_SERVER['REQUEST_METHOD'] = \mod_lti\local\ltiservice\resource_base::HTTP_POST;
+        $_SERVER['PATH_INFO'] = "/$course->id/lineitems/{$gradeitems[1][0]->id}/lineitem/scores?type_id=$typeid";
+        $token = lti_new_access_token($typeid, ['https://purl.imsglobal.org/spec/lti-ags/scope/score']);
+        $_SERVER['HTTP_Authorization'] = 'Bearer '.$token->token;
+        $_GET['type_id'] = (string)$typeid;
+        $requestdata = [
+            'scoreGiven' => "8.0",
+            'scoreMaximum' => "10.0",
+            'activityProgress' => "Completed",
+            'timestamp' => "2024-08-07T18:54:36.736+00:00",
+            'gradingProgress' => "FullyGraded",
+            'userId' => $user->id,
+        ];
+        $response = new \mod_lti\local\ltiservice\response();
+        $response->set_content_type('application/vnd.ims.lis.v1.score+json');
+        $response->set_request_data(json_encode($requestdata));
+        $score->execute($response);
+
+        // The grade in Moodle should reflect the score->timestamp, not the time of the score post.
+        $grades = grade_get_grades($course->id, 'mod', 'lti', $modinstance->id, $user->id);
+        $studentgrade = array_shift($grades->items[0]->grades);
+        $this->assertEquals(strtotime($requestdata['timestamp']), $studentgrade->dategraded);
+
+        // Read the results via the service. This should also return the correct dategraded time (timemodified in LTI terms).
+        $_SERVER['REQUEST_METHOD'] = \mod_lti\local\ltiservice\resource_base::HTTP_GET;
+        $_SERVER['PATH_INFO'] = "/$course->id/lineitems/{$gradeitems[1][0]->id}/lineitem/results?type_id=$typeid";
+        $token = lti_new_access_token($typeid, ['https://purl.imsglobal.org/spec/lti-ags/scope/result.readonly']);
+        $_SERVER['HTTP_Authorization'] = 'Bearer '.$token->token;
+        $_GET['type_id'] = (string)$typeid;
+        $result = new results($gbservice);
+        $response = new \mod_lti\local\ltiservice\response();
+        $response->set_content_type('application/vnd.ims.lis.v2.resultcontainer+json');
+        $result->execute($response);
+        $body = json_decode($response->get_body());
+        $result = array_shift($body);
+        $this->assertEquals(strtotime($requestdata['timestamp']), strtotime($result->timestamp));
+
+        // Now, try to post a newer score using a timestamp that is greater than the one originally sent, but less than the time at
+        // which the score was last posted. This should be valid since the timestamp is greater than the original posted score.
+        $_SERVER['REQUEST_METHOD'] = \mod_lti\local\ltiservice\resource_base::HTTP_POST;
+        $_SERVER['PATH_INFO'] = "/$course->id/lineitems/{$gradeitems[1][0]->id}/lineitem/scores?type_id=$typeid";
+        $token = lti_new_access_token($typeid, ['https://purl.imsglobal.org/spec/lti-ags/scope/score']);
+        $_SERVER['HTTP_Authorization'] = 'Bearer '.$token->token;
+        $_GET['type_id'] = (string)$typeid;
+        $requestdata['scoreGiven'] = "14";
+        $requestdata['timestamp'] = "2024-08-08T18:54:36.736+00:00";
+        $response = new \mod_lti\local\ltiservice\response();
+        $response->set_content_type('application/vnd.ims.lis.v1.score+json');
+        $response->set_request_data(json_encode($requestdata));
+        $score->execute($response);
+        $this->assertEquals(200, json_decode($response->get_code()));
+
+        // Finally, post a score that's just been updated (i.e. score->timestamp = now).
+        $_SERVER['REQUEST_METHOD'] = \mod_lti\local\ltiservice\resource_base::HTTP_POST;
+        $_SERVER['PATH_INFO'] = "/$course->id/lineitems/{$gradeitems[1][0]->id}/lineitem/scores?type_id=$typeid";
+        $token = lti_new_access_token($typeid, ['https://purl.imsglobal.org/spec/lti-ags/scope/score']);
+        $_SERVER['HTTP_Authorization'] = 'Bearer '.$token->token;
+        $_GET['type_id'] = (string)$typeid;
+        $requestdata['scoreGiven'] = "15";
+        $requestdata['timestamp'] = date('c', time());
+        $response = new \mod_lti\local\ltiservice\response();
+        $response->set_content_type('application/vnd.ims.lis.v1.score+json');
+        $response->set_request_data(json_encode($requestdata));
+        $score->execute($response);
+        $this->assertEquals(200, json_decode($response->get_code()));
+    }
+
+    /**
      * Inserts a graded lti instance, which should create a grade_item and gradebookservices record.
      *
      * @param int $typeid Type ID of the LTI Tool.
@@ -187,7 +282,7 @@ class lineitem_test extends \advanced_testcase {
      * @return object lti instance created
      */
     private function create_graded_lti(int $typeid, object $course, ?string $resourceid, ?string $tag,
-            ?string $subreviewurl = null, ?string $subreviewparams = null) : object {
+            ?string $subreviewurl = null, ?string $subreviewparams = null): object {
 
         $lti = ['course' => $course->id,
             'typeid' => $typeid,

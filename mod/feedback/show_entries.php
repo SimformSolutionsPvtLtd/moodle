@@ -22,6 +22,8 @@
  * @package mod_feedback
  */
 
+use mod_feedback\manager;
+
 require_once("../../config.php");
 require_once("lib.php");
 
@@ -85,20 +87,22 @@ if ($data = $courseselectform->get_data()) {
 // Print the page header.
 navigation_node::override_active_url($baseurl);
 $PAGE->set_heading($course->fullname);
-$PAGE->set_title($feedback->name);
+
+/** @var \mod_feedback\output\renderer $renderer */
+$renderer = $PAGE->get_renderer('mod_feedback');
+$renderer->set_title(
+        [format_string($feedback->name), format_string($course->fullname)],
+        get_string('responses', 'feedback')
+);
+
 $PAGE->activityheader->set_attrs([
     'hidecompletion' => true,
     'description' => ''
 ]);
-$PAGE->add_body_class('limitedwidth');
-echo $OUTPUT->header();
 
-/** @var \mod_feedback\output\renderer $renderer */
-$renderer = $PAGE->get_renderer('mod_feedback');
+echo $OUTPUT->header();
 echo $renderer->main_action_bar($actionbar);
 echo $OUTPUT->heading(get_string('show_entries', 'mod_feedback'), 3);
-
-$current_tab = 'showentries';
 
 /// Print the main part of the page
 ///////////////////////////////////////////////////////////////////////////
@@ -150,6 +154,11 @@ if ($userid || $showcompleted) {
     // Print the list of responses.
     $courseselectform->display();
 
+    if (!manager::can_see_others_in_groups($feedbackstructure->get_cm())) {
+        echo $OUTPUT->notification(get_string('notingroup'));
+        echo $OUTPUT->footer();
+        exit();
+    }
     // Show non-anonymous responses (always retrieve them even if current feedback is anonymous).
     $totalrows = $responsestable->get_total_responses_count();
     if (!$feedbackstructure->is_anonymous() || $totalrows) {

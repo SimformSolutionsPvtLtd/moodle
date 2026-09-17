@@ -68,13 +68,13 @@ class api {
         $timesortaftereventid = null,
         $limitnum = 20,
         $type = null,
-        array $usersfilter = null,
-        array $groupsfilter = null,
-        array $coursesfilter = null,
-        array $categoriesfilter = null,
+        ?array $usersfilter = null,
+        ?array $groupsfilter = null,
+        ?array $coursesfilter = null,
+        ?array $categoriesfilter = null,
         $withduration = true,
         $ignorehidden = true,
-        callable $filter = null
+        ?callable $filter = null
     ) {
         global $USER;
 
@@ -325,6 +325,12 @@ class api {
                 'core_calendar_event_timestart_updated',
                 [$legacyevent, $moduleinstance]
             );
+
+            // Rebuild the course cache to make sure the updated dates are reflected.
+            $courseid = $event->get_course()->get('id');
+            $cmid = $event->get_course_module()->get('id');
+            \course_modinfo::purge_course_module_cache($courseid, $cmid);
+            rebuild_course_cache($courseid, true, true);
         }
 
         return $mapper->from_legacy_event_to_event($legacyevent);

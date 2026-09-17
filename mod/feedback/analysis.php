@@ -25,8 +25,6 @@
 require_once("../../config.php");
 require_once("lib.php");
 
-$current_tab = 'analysis';
-
 $id = required_param('id', PARAM_INT);  // Course module id.
 
 $url = new moodle_url('/mod/feedback/analysis.php', array('id'=>$id));
@@ -47,7 +45,13 @@ if (!$feedbackstructure->can_view_analysis()) {
 /// Print the page header
 
 $PAGE->set_heading($course->fullname);
-$PAGE->set_title($feedback->name);
+
+$renderer = $PAGE->get_renderer('mod_feedback');
+$renderer->set_title(
+    [format_string($feedback->name), format_string($course->fullname)],
+    get_string('analysis', 'feedback')
+);
+
 $PAGE->activityheader->set_attrs([
     'hidecompletion' => true,
     'description' => ''

@@ -52,7 +52,7 @@ class tool_installaddon_installer {
      * @param array optional parameters
      * @return moodle_url
      */
-    public function index_url(array $params = null) {
+    public function index_url(?array $params = null) {
         return new moodle_url('/admin/tool/installaddon/index.php', $params);
     }
 
@@ -70,6 +70,25 @@ class tool_installaddon_installer {
             $url = 'https://moodle.org/plugins/get.php';
         }
 
+        return $this->get_external_service_url($url);
+    }
+
+    /**
+     * Returns URL to Moodle Marketplace.
+     *
+     * @return moodle_url
+     */
+    public function get_marketplace_url(): moodle_url {
+        return $this->get_external_service_url('https://marketplace.moodle.com/');
+    }
+
+    /**
+     * Returns URL to external service with optional encoded site information.
+     *
+     * @param string $url The external service base URL.
+     * @return moodle_url
+     */
+    protected function get_external_service_url(string $url): moodle_url {
         if (!$this->should_send_site_info()) {
             return new moodle_url($url);
         }

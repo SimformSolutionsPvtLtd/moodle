@@ -392,7 +392,7 @@ class core_date {
             'Argentina Standard Time' => 'America/Argentina/Buenos_Aires',
             'SA Eastern Standard Time' => 'America/Cayenne',
             'S.A. Eastern Standard Time' => 'America/Cayenne',
-            'Greenland Standard Time' => 'America/Godthab',
+            'Greenland Standard Time' => 'America/Nuuk',
             'Montevideo Standard Time' => 'America/Montevideo',
             'Bahia Standard Time' => 'America/Bahia',
             'Azores Standard Time' => 'Atlantic/Azores',
@@ -412,7 +412,7 @@ class core_date {
             'Egypt Standard Time' => 'Africa/Cairo',
             'Syria Standard Time' => 'Asia/Damascus',
             'South Africa Standard Time' => 'Africa/Johannesburg',
-            'FLE Standard Time' => 'Europe/Kiev',
+            'FLE Standard Time' => 'Europe/Kyiv',
             'Turkey Standard Time' => 'Europe/Istanbul',
             'Israel Standard Time' => 'Asia/Jerusalem',
             'Kaliningrad Standard Time' => 'Europe/Kaliningrad',
@@ -608,6 +608,7 @@ class core_date {
             'America/Cordoba' => 'America/Argentina/Cordoba',
             'America/Ensenada' => 'America/Tijuana',
             'America/Fort_Wayne' => 'America/Indiana/Indianapolis',
+            'America/Godthab' => 'America/Nuuk',
             'America/Indianapolis' => 'America/Indiana/Indianapolis',
             'America/Jujuy' => 'America/Argentina/Jujuy',
             'America/Knox_IN' => 'America/Indiana/Knox',
@@ -641,8 +642,10 @@ class core_date {
             'Australia/Canberra' => 'Australia/Sydney',
             'Australia/Yancowinna' => 'Australia/Broken_Hill',
             'Europe/Belfast' => 'Europe/London',
+            'Europe/Kiev' => 'Europe/Kyiv',
             'Europe/Nicosia' => 'Asia/Nicosia',
             'Europe/Tiraspol' => 'Europe/Chisinau',
+            'Pacific/Enderbury' => 'Pacific/Kanton',
             'Pacific/Johnston' => 'Pacific/Honolulu',
             'Pacific/Ponape' => 'Pacific/Pohnpei',
             'Pacific/Samoa' => 'Pacific/Pago_Pago',
@@ -677,7 +680,7 @@ class core_date {
         // Legacy Moodle half an hour offsets - pick any city nearby, ideally without DST.
         self::$badzones['4.5'] = 'Asia/Kabul';
         self::$badzones['5.5'] = 'Asia/Kolkata';
-        self::$badzones['6.5'] = 'Asia/Rangoon';
+        self::$badzones['6.5'] = 'Asia/Yangon';
         self::$badzones['9.5'] = 'Australia/Darwin';
 
         // Remove bad zones that are elsewhere.
@@ -707,17 +710,17 @@ class core_date {
      * @return string
      * @author BohwaZ <https://bohwaz.net/>
      */
-    public static function strftime(string $format, $timestamp = null, ?string $locale = null) : string {
+    public static function strftime(string $format, $timestamp = null, ?string $locale = null): string {
         // Moodle-specific modification. For the IntlDateFormatter we need to use unix-style locale
         // from the string 'locale' even for Windows, so we can neither use moodle_getlocale().
         // nor rely on the setlocale() use below. We also ignore $CFG->locale because it can use
         // Windows format.
         $locale = $locale ?: get_string('locale', 'langconfig');
 
-        // The following code is taken from https://github.com/alphp/strftime without modifications.
+        // The following code is taken from https://github.com/alphp/strftime.
         // phpcs:disable
         if (!($timestamp instanceof DateTimeInterface)) {
-          $timestamp = is_int($timestamp) ? '@' . $timestamp : (string) $timestamp;
+          $timestamp = is_numeric($timestamp) ? '@' . $timestamp : (string) $timestamp;
 
           try {
             $timestamp = new DateTime($timestamp);
@@ -738,13 +741,31 @@ class core_date {
         $intl_formats = [
           '%a' => 'EEE',	// An abbreviated textual representation of the day	Sun through Sat
           '%A' => 'EEEE',	// A full textual representation of the day	Sunday through Saturday
-          '%b' => 'MMM',	// Abbreviated month name, based on the locale	Jan through Dec
-          '%B' => 'MMMM',	// Full month name, based on the locale	January through December
-          '%h' => 'MMM',	// Abbreviated month name, based on the locale (an alias of %b)	Jan through Dec
         ];
 
-        $intl_formatter = function (DateTimeInterface $timestamp, string $format) use ($intl_formats, $locale) {
+        $originalformat = $format;
+        $intl_formatter = function (DateTimeInterface $timestamp, string $format) use (
+            $intl_formats,
+            $locale,
+            $originalformat,
+        ) {
+          // Map IANA timezone DB names (used by PHP) to those used internally by the "intl" extension. The extension uses its
+          // own data based on ICU timezones, which may not necessarily be in-sync with IANA depending on the version installed
+          // on the local system. See: https://unicode-org.github.io/icu/userguide/datetime/timezone/#updating-the-time-zone-data
           $tz = $timestamp->getTimezone();
+          $intltz = IntlTimeZone::fromDateTimeZone($tz);
+          if ($intltz === null) {
+              // Where intl doesn't know about a recent timezone, map it to an equivalent existing zone.
+              $intltzname = strtr($tz->getName(), [
+                  'America/Coyhaique' => 'America/Santiago',
+                  'America/Ciudad_Juarez' => 'America/Denver',
+                  'America/Nuuk' => 'America/Godthab',
+                  'Europe/Kyiv' => 'Europe/Kiev',
+                  'Pacific/Kanton' => 'Pacific/Enderbury',
+              ]);
+              $intltz = IntlTimeZone::createTimeZone($intltzname);
+          }
+
           $date_type = IntlDateFormatter::FULL;
           $time_type = IntlDateFormatter::FULL;
           $pattern = '';
@@ -770,6 +791,19 @@ class core_date {
               $time_type = IntlDateFormatter::MEDIUM;
               break;
 
+            case "%B":
+            case "%b":
+            case "%h":
+                // Check for any day (%d, or %e) in the string.
+                if (preg_match('/%[de]/', $originalformat)) {
+                    // The day is present so use the standard format.
+                    $pattern = $format === '%B' ? 'MMMM' : 'MMM';
+                } else {
+                    // The day is not present so use the stand-alone format.
+                    $pattern = $format === '%B' ? 'LLLL' : 'LLL';
+                }
+                break;
+
             default:
               $pattern = $intl_formats[$format];
           }
@@ -782,10 +816,20 @@ class core_date {
           // This leads to the same instants in time, as expressed in Unix time, having different representations
           //  in formatted strings.
           // To adjust for this, a custom calendar can be supplied with a cutover date arbitrarily far in the past.
-          $calendar = IntlGregorianCalendar::createInstance();
+          $calendar = IntlGregorianCalendar::createInstance($intltz);
           $calendar->setGregorianChange(PHP_INT_MIN);
 
-          return (new IntlDateFormatter($locale, $date_type, $time_type, $tz, $calendar, $pattern))->format($timestamp);
+          // We need to account for invalid locales here in recent PHP versions, and ensure we catch errors and switch
+          // back to a default value where an invalid locale is provided.
+          try {
+              $formatter = new IntlDateFormatter($locale, $date_type, $time_type, $intltz, $calendar, $pattern);
+              $result = $formatter->format($timestamp);
+          } catch (Error $e) {
+              $formatter = new IntlDateFormatter(null, $date_type, $time_type, $intltz, $calendar, $pattern);
+              $result = $formatter->format($timestamp);
+          }
+
+          return $result;
         };
 
         // Same order as https://www.php.net/manual/en/function.strftime.php

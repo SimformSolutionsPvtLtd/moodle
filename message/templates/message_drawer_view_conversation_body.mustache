@@ -15,7 +15,7 @@
     along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 }}
 {{!
-    @template core_message/message_drawer_conversation_body
+    @template core_message/message_drawer_view_conversation_body
 
     This template will render the body container for the conversation page in
     the message drawer.
@@ -47,7 +47,7 @@
 >
     <div class="position-relative h-100" data-region="content-container" style="overflow-y: auto; overflow-x: hidden">
         <div class="content-message-container hidden h-100 px-2 pt-0" data-region="content-message-container" role="log" style="overflow-y: auto; overflow-x: hidden">
-            <div class="py-3 sticky-top z-index-1 border-bottom text-center hidden" data-region="contact-request-sent-message-container">
+            <div class="py-3 border-bottom text-center hidden" data-region="contact-request-sent-message-container">
                 <p class="m-0">{{#str}} contactrequestsent, core_message {{/str}}</p>
                 <p class="font-italic font-weight-light" data-region="text"></p>
             </div>
