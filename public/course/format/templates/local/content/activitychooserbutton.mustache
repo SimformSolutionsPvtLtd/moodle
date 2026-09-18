@@ -42,17 +42,6 @@
     <button class="btn add-content d-flex justify-content-center align-items-center p-1 icon-no-margin"
             type="button"
             id="dropdownMenuButton-{{#modid}}{{modid}}{{/modid}}{{^modid}}{{uniqid}}{{/modid}}"
-<<<<<<<< HEAD:public/course/templates/activitychooserbutton.mustache
-            data-toggle="dropdown"
-            aria-haspopup="true"
-            aria-expanded="false"
-            {{#modid}}
-            aria-label="{{#str}}insertcontentbefore, core, { "activityname": {{#quote}} {{activityname}} {{/quote}} } {{/str}}"
-            {{/modid}}
-            {{^modid}}
-            aria-label="{{#str}}insertcontentsection, core, { "sectionname": {{#quote}} {{sectionname}} {{/quote}} } {{/str}}"
-            {{/modid}}
-========
             data-bs-toggle="dropdown"
             data-action="open-addingcontent"
             {{#modid}}
@@ -64,18 +53,13 @@
             {{/modid}}
             aria-haspopup="true"
             aria-expanded="false"
->>>>>>>> upstream/MOODLE_501_STABLE:public/course/format/templates/local/content/activitychooserbutton.mustache
             tabindex="0"
             title="{{#str}}addcontent, core{{/str}}"
     >
         {{#pix}} t/add, core {{/pix}}
     </button>
     <div class="dropdown-menu" aria-labelledby="dropdownMenuButton-{{#modid}}{{modid}}{{/modid}}{{^modid}}{{uniqid}}{{/modid}}">
-<<<<<<<< HEAD:public/course/templates/activitychooserbutton.mustache
-        {{> core_course/addresourceoractivitybutton }}
-========
         {{> core_courseformat/local/content/addresourceoractivitybutton }}
->>>>>>>> upstream/MOODLE_501_STABLE:public/course/format/templates/local/content/activitychooserbutton.mustache
         {{#actionlinks}}
             {{> core/action_link}}
         {{/actionlinks}}

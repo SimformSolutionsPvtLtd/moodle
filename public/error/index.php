@@ -15,20 +15,6 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
-<<<<<<<< HEAD:public/lib/tests/fixtures/fakeplugins/auth/passwordpolicyprobe/version.php
- * Fake auth plugin for testing the check_password_policy plugin callback.
- *
- * @package    core
- * @copyright  Meirza Arson <meirza.arson@moodle.com>
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-
-defined('MOODLE_INTERNAL') || die();
-
-$plugin->version   = 2026080300;
-$plugin->requires  = 2022041200;
-$plugin->component = 'auth_passwordpolicyprobe';
-========
  * Moodle 404 Error page
  *
  * This is for 404 error pages served by the webserver and then passed
@@ -41,4 +27,3 @@ $plugin->component = 'auth_passwordpolicyprobe';
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 require_once("../r.php");
->>>>>>>> upstream/MOODLE_501_STABLE:public/error/index.php

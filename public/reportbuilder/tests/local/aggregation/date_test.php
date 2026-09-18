@@ -30,9 +30,6 @@ use core_user\reportbuilder\datasource\users;
  * @copyright   2024 Paul Holden <paulh@moodle.com>
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-<<<<<<<< HEAD:public/reportbuilder/tests/local/aggregation/count_test.php
-final class count_test extends core_reportbuilder_testcase {
-========
 final class date_test extends core_reportbuilder_testcase {
 
     /**
@@ -44,7 +41,6 @@ final class date_test extends core_reportbuilder_testcase {
         $this->setTimezone('Europe/London', 'Europe/London');
         $this->mock_clock_with_frozen(1609495200);
     }
->>>>>>>> upstream/MOODLE_501_STABLE:public/reportbuilder/tests/local/aggregation/date_test.php
 
     /**
      * Test aggregation when applied to column

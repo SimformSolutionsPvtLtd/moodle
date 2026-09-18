@@ -259,12 +259,8 @@ class manager {
         self::$nojscommentpage = (int) optional_param('comment_page', '', PARAM_INT);
         self::$nojscommentarea = optional_param('comment_area', '', PARAM_AREA);
 
-<<<<<<<< HEAD:public/comment/lib.php
-        $page->requires->strings_for_js(array(
-========
         $page->requires->strings_for_js(
             [
->>>>>>>> upstream/MOODLE_501_STABLE:public/comment/classes/manager.php
                 'comments',
                 'commentsrequirelogin',
                 'deletecommentbyon',
@@ -473,11 +469,7 @@ class manager {
                 }
                 $collapsedimage = 't/collapsed';
                 if (right_to_left()) {
-<<<<<<<< HEAD:public/comment/lib.php
-                    $collapsedimage= 't/collapsed_rtl';
-========
                     $collapsedimage = 't/collapsed_rtl';
->>>>>>>> upstream/MOODLE_501_STABLE:public/comment/classes/manager.php
                 }
                 $html .= html_writer::start_tag('a', [
                     'class' => 'comment-link',
@@ -496,12 +488,6 @@ class manager {
                     $this->linktext . ' ' . $countstring,
                     ['id' => 'comment-link-text-' . $this->cid],
                 );
-<<<<<<<< HEAD:public/comment/lib.php
-                $html .= html_writer::img($OUTPUT->image_url($collapsedimage), $this->linktext,
-                    ['id' => 'comment-img-' . $this->cid, 'class' => 'icon']);
-                $html .= html_writer::tag('span', $this->linktext.' '.$countstring, array('id' => 'comment-link-text-'.$this->cid));
-========
->>>>>>>> upstream/MOODLE_501_STABLE:public/comment/classes/manager.php
                 $html .= html_writer::end_tag('a');
             }
 
@@ -537,17 +523,10 @@ class manager {
                 $textareaattrs = [
                     'name' => 'content',
                     'rows' => 2,
-<<<<<<<< HEAD:public/comment/lib.php
-                    'id' => 'dlg-content-'.$this->cid,
-                    'aria-label' => get_string('addcomment'),
-                    'placeholder' => get_string('addcomment'),
-                );
-========
                     'id' => 'dlg-content-' . $this->cid,
                     'aria-label' => get_string('addcomment'),
                     'placeholder' => get_string('addcomment'),
                 ];
->>>>>>>> upstream/MOODLE_501_STABLE:public/comment/classes/manager.php
                 if (!$this->fullwidth) {
                     $textareaattrs['cols'] = '20';
                 } else {
@@ -567,11 +546,7 @@ class manager {
                 // SC 2.5.8: add spacing above the action links so the "Save comment" link
                 // meets the target size minimum relative to the textarea above it.
                 $html .= html_writer::start_tag('div', ['class' => 'fd mt-1', 'id' => 'comment-action-' . $this->cid]);
-<<<<<<<< HEAD:public/comment/lib.php
-                $html .= html_writer::link('#', get_string('savecomment'), array('id' => 'comment-action-post-'.$this->cid));
-========
                 $html .= html_writer::link('#', get_string('savecomment'), ['id' => 'comment-action-post-' . $this->cid]);
->>>>>>>> upstream/MOODLE_501_STABLE:public/comment/classes/manager.php
 
                 if ($this->displaycancel) {
                     $html .= html_writer::tag('span', ' | ');

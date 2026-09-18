@@ -40,12 +40,8 @@ require_once(__DIR__.'/../../tests/fixtures/event_fixtures.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @covers     \moodle_read_replica_trait
  */
-<<<<<<<< HEAD:public/lib/dml/tests/dml_read_slave_test.php
-final class dml_read_slave_test extends \base_testcase {
-========
 final class dml_read_replica_test extends \database_driver_testcase {
 
->>>>>>>> upstream/MOODLE_501_STABLE:public/lib/dml/tests/dml_read_replica_test.php
     /** @var float */
     static private $dbreadonlylatency = 0.8;
 

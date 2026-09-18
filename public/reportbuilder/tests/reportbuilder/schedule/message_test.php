@@ -38,12 +38,7 @@ use core_user\reportbuilder\datasource\users;
  * @copyright   2025 Paul Holden <paulh@moodle.com>
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-<<<<<<<< HEAD:public/reportbuilder/tests/task/send_schedule_test.php
-final class send_schedule_test extends advanced_testcase {
-
-========
 final class message_test extends advanced_testcase {
->>>>>>>> upstream/MOODLE_501_STABLE:public/reportbuilder/tests/reportbuilder/schedule/message_test.php
     /**
      * Data provider for {@see test_execute_viewas_user}
      *

@@ -26,11 +26,7 @@ import Dropzone from 'core/dropzone';
 import uploadFile from 'editor_tiny/uploader';
 import {prefetchStrings} from 'core/prefetch';
 import {getStrings} from 'core/str';
-<<<<<<<< HEAD:public/lib/editor/tiny/plugins/media/amd/src/imageinsert.js
-import {component} from "./common";
-========
 import {component} from "../common";
->>>>>>>> upstream/MOODLE_501_STABLE:public/lib/editor/tiny/plugins/media/amd/src/image/imageinsert.js
 import {getFilePicker} from 'editor_tiny/options';
 import {displayFilepicker} from 'editor_tiny/utils';
 import {ImageDetails} from './imagedetails';

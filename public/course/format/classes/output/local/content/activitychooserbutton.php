@@ -49,11 +49,7 @@ class activitychooserbutton implements named_templatable, renderable {
         /** @var cm_info|null the course module instance */
         protected ?cm_info $mod = null,
         /** @var int|null the section to return to */
-<<<<<<<< HEAD:public/course/classes/output/activitychooserbutton.php
-        protected ?int $sectionreturn = null,
-========
         protected section_info|int|null $sectionreturn = null,
->>>>>>>> upstream/MOODLE_501_STABLE:public/course/format/classes/output/local/content/activitychooserbutton.php
         /** @var array|null action_link[] the action links */
         protected ?array $actionlinks = [],
     ) {
@@ -85,18 +81,12 @@ class activitychooserbutton implements named_templatable, renderable {
         $sectionreturn = $this->sectionreturn;
 
         return (object)[
-<<<<<<<< HEAD:public/course/classes/output/activitychooserbutton.php
-            'sectionnum' => $this->section->section,
-            'sectionname' => get_section_name($this->section->course, $this->section),
-            'sectionreturn' => $this->sectionreturn ?? false,
-========
             // We keep the old sectionnum properties for backwards compatibility.
             'sectionnum' => $this->section->sectionnum,
             'sectionid' => $this->section->id,
             'sectionname' => get_section_name($this->section->course, $this->section),
             'sectionreturn' => $sectionreturn?->sectionnum ?? false,
             'sectionreturnid' => $sectionreturn?->id ?? false,
->>>>>>>> upstream/MOODLE_501_STABLE:public/course/format/classes/output/local/content/activitychooserbutton.php
             'modid' => $this->mod ? $this->mod->id : false,
             'activityname' => $this->mod ? $this->mod->get_formatted_name() : false,
             'hasactionlinks' => !empty($this->actionlinks),

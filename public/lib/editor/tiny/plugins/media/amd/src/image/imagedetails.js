@@ -360,26 +360,6 @@ export class ImageDetails extends MediaBase {
             const presentationEle = e.target.closest(Selectors.IMAGE.elements.presentation);
             if (presentationEle) {
                 await this.presentationChanged();
-<<<<<<<< HEAD:public/lib/editor/tiny/plugins/media/amd/src/imagedetails.js
-            }
-
-            const constrainEle = e.target.closest(Selectors.IMAGE.elements.constrain);
-            if (constrainEle) {
-                this.autoAdjustSize();
-            }
-
-            const sizeOriginalEle = e.target.closest(Selectors.IMAGE.elements.sizeOriginal);
-            if (sizeOriginalEle) {
-                this.sizeChecked('original');
-            }
-
-            const sizeCustomEle = e.target.closest(Selectors.IMAGE.elements.sizeCustom);
-            if (sizeCustomEle) {
-                this.sizeChecked('custom');
-            }
-        });
-
-========
             }
         });
 
@@ -399,7 +379,6 @@ export class ImageDetails extends MediaBase {
             });
         }
 
->>>>>>>> upstream/MOODLE_501_STABLE:public/lib/editor/tiny/plugins/media/amd/src/image/imagedetails.js
         this.root.addEventListener('blur', async(e) => {
             if (e.target.nodeType === Node.ELEMENT_NODE) {
 

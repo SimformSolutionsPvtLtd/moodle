@@ -38,27 +38,8 @@ class createdby_condition extends user_condition {
         return 'createdby';
     }
 
-<<<<<<<< HEAD:public/mod/chat/db/upgrade.php
-    // Automatically generated Moodle v4.2.0 release upgrade line.
-    // Put any upgrade step following this.
-
-    // Automatically generated Moodle v4.3.0 release upgrade line.
-    // Put any upgrade step following this.
-
-    // Automatically generated Moodle v4.4.0 release upgrade line.
-    // Put any upgrade step following this.
-
-    // Automatically generated Moodle v4.5.0 release upgrade line.
-    // Put any upgrade step following this.
-
-    // Automatically generated Moodle v4.1.0 release upgrade line.
-    // Put any upgrade step following this.
-
-    return true;
-========
     #[\Override]
     protected static function get_table_alias(): string {
         return 'uc';
     }
->>>>>>>> upstream/MOODLE_501_STABLE:public/question/bank/viewcreator/classes/createdby_condition.php
 }

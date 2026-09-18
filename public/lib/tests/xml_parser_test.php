@@ -27,11 +27,7 @@ use core\exception\xml_format_exception;
  * @copyright  2017 Kilian Singer {@link http://quantumtechnology.info}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-<<<<<<<< HEAD:public/lib/tests/xmlize_test.php
-final class xmlize_test extends \basic_testcase {
-========
 final class xml_parser_test extends \basic_testcase {
->>>>>>>> upstream/MOODLE_501_STABLE:public/lib/tests/xml_parser_test.php
     /**
      * Test an XML import using a valid XML file.
      *

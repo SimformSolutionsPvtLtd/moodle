@@ -40,11 +40,7 @@ require_once(__DIR__.'/fixtures/read_replica_moodle_database_mock_mysqli.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @covers     \mysqli_native_moodle_database
  */
-<<<<<<<< HEAD:public/lib/dml/tests/dml_mysqli_read_slave_test.php
-final class dml_mysqli_read_slave_test extends \base_testcase {
-========
 final class dml_mysqli_read_replica_test extends \database_driver_testcase {
->>>>>>>> upstream/MOODLE_501_STABLE:public/lib/dml/tests/dml_mysqli_read_replica_test.php
     /**
      * Test readonly handle is not used for reading from special pg_*() call queries,
      * pg_try_advisory_lock and pg_advisory_unlock.

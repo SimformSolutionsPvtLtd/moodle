@@ -24,12 +24,8 @@ namespace core;
  * @copyright  2013 Andrew Nicols
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-<<<<<<<< HEAD:public/lib/tests/ajaxlib_test.php
-final class ajaxlib_test extends \advanced_testcase {
-========
 #[\PHPUnit\Framework\Attributes\CoversClass(\core\ajax::class)]
 final class ajax_test extends \advanced_testcase {
->>>>>>>> upstream/MOODLE_501_STABLE:public/lib/tests/ajax_test.php
     /** @var string Original error log */
     protected string $oldlog;
 
