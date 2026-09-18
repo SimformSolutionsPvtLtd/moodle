@@ -29,6 +29,8 @@ if (!defined('MOODLE_INTERNAL')) {
     die('Direct access to this script is forbidden.');    ///  It must be included from a Moodle page
 }
 
+require_once(__DIR__ . '/deprecatedlib.php');
+
 /**
  *  These are read by the administration component to provide default values
  */
@@ -1178,17 +1180,11 @@ class calendar_information {
     }
 
     /**
-     * Initialize calendar information
-     *
      * @deprecated 3.4
-     * @param stdClass $course object
-     * @param array $coursestoload An array of courses [$course->id => $course]
-     * @param bool $ignorefilters options to use filter
      */
-    public function prepare_for_view(stdClass $course, array $coursestoload, $ignorefilters = false) {
-        debugging('The prepare_for_view() function has been deprecated. Please update your code to use set_sources()',
-                DEBUG_DEVELOPER);
-        $this->set_sources($course, $coursestoload);
+    #[\core\attribute\deprecated('prepare_for_view', since: '3.4', mdl: 'MDL-59890', final: true)]
+    public function prepare_for_view() {
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
     }
 
     /**
@@ -1515,28 +1511,6 @@ function calendar_get_starting_weekday() {
 }
 
 /**
- * Get a HTML link to a course.
- *
- * @param int|stdClass $course the course id or course object
- * @return string a link to the course (as HTML); empty if the course id is invalid
- */
-function calendar_get_courselink($course) {
-    if (!$course) {
-        return '';
-    }
-
-    if (!is_object($course)) {
-        $course = calendar_get_course_cached($coursecache, $course);
-    }
-    $context = \context_course::instance($course->id);
-    $fullname = format_string($course->fullname, true, array('context' => $context));
-    $url = new \moodle_url('/course/view.php', array('id' => $course->id));
-    $link = \html_writer::link($url, $fullname);
-
-    return $link;
-}
-
-/**
  * Get current module cache.
  *
  * Only use this method if you do not know courseid. Otherwise use:
@@ -1584,72 +1558,6 @@ function calendar_get_group_cached($groupid) {
 }
 
 /**
- * Add calendar event metadata
- *
- * @deprecated since 3.9
- *
- * @param stdClass $event event info
- * @return stdClass $event metadata
- */
-function calendar_add_event_metadata($event) {
-    debugging('This function is no longer used', DEBUG_DEVELOPER);
-    global $CFG, $OUTPUT;
-
-    // Support multilang in event->name.
-    $event->name = format_string($event->name, true);
-
-    if (!empty($event->modulename)) { // Activity event.
-        // The module name is set. I will assume that it has to be displayed, and
-        // also that it is an automatically-generated event. And of course that the
-        // instace id and modulename are set correctly.
-        $instances = get_fast_modinfo($event->courseid)->get_instances_of($event->modulename);
-        if (!array_key_exists($event->instance, $instances)) {
-            return;
-        }
-        $module = $instances[$event->instance];
-
-        $modulename = $module->get_module_type_name(false);
-        if (get_string_manager()->string_exists($event->eventtype, $event->modulename)) {
-            // Will be used as alt text if the event icon.
-            $eventtype = get_string($event->eventtype, $event->modulename);
-        } else {
-            $eventtype = '';
-        }
-
-        $event->icon = '<img src="' . s($module->get_icon_url()) . '" alt="' . s($eventtype) .
-            '" title="' . s($modulename) . '" class="icon" />';
-        $event->referer = html_writer::link($module->url, $event->name);
-        $event->courselink = calendar_get_courselink($module->get_course());
-        $event->cmid = $module->id;
-    } else if ($event->courseid == SITEID) { // Site event.
-        $event->icon = '<img src="' . $OUTPUT->image_url('i/siteevent') . '" alt="' .
-            get_string('siteevent', 'calendar') . '" class="icon" />';
-        $event->cssclass = 'calendar_event_site';
-    } else if ($event->courseid != 0 && $event->courseid != SITEID && $event->groupid == 0) { // Course event.
-        $event->icon = '<img src="' . $OUTPUT->image_url('i/courseevent') . '" alt="' .
-            get_string('courseevent', 'calendar') . '" class="icon" />';
-        $event->courselink = calendar_get_courselink($event->courseid);
-        $event->cssclass = 'calendar_event_course';
-    } else if ($event->groupid) { // Group event.
-        if ($group = calendar_get_group_cached($event->groupid)) {
-            $groupname = format_string($group->name, true, \context_course::instance($group->courseid));
-        } else {
-            $groupname = '';
-        }
-        $event->icon = \html_writer::empty_tag('image', array('src' => $OUTPUT->image_url('i/groupevent'),
-            'alt' => get_string('groupevent', 'calendar'), 'title' => $groupname, 'class' => 'icon'));
-        $event->courselink = calendar_get_courselink($event->courseid) . ', ' . $groupname;
-        $event->cssclass = 'calendar_event_group';
-    } else if ($event->userid) { // User event.
-        $event->icon = '<img src="' . $OUTPUT->image_url('i/userevent') . '" alt="' .
-            get_string('userevent', 'calendar') . '" class="icon" />';
-        $event->cssclass = 'calendar_event_user';
-    }
-
-    return $event;
-}
-
-/**
  * Get calendar events by id.
  *
  * @since Moodle 2.5
@@ -1667,245 +1575,6 @@ function calendar_get_events_by_id($eventids) {
     $wheresql = "id $wheresql";
 
     return $DB->get_records_select('event', $wheresql, $params);
-}
-
-/**
- * Get control options for calendar.
- *
- * @deprecated since Moodle 4.3
- * @param string $type of calendar
- * @param array $data calendar information
- * @return string $content return available control for the calendar in html
- */
-function calendar_top_controls($type, $data) {
-    debugging(__FUNCTION__ . ' has been deprecated and should not be used anymore.', DEBUG_DEVELOPER);
-
-    global $PAGE, $OUTPUT;
-
-    // Get the calendar type we are using.
-    $calendartype = \core_calendar\type_factory::get_calendar_instance();
-
-    $content = '';
-
-    // Ensure course id passed if relevant.
-    $courseid = '';
-    if (!empty($data['id'])) {
-        $courseid = '&amp;course=' . $data['id'];
-    }
-
-    // If we are passing a month and year then we need to convert this to a timestamp to
-    // support multiple calendars. No where in core should these be passed, this logic
-    // here is for third party plugins that may use this function.
-    if (!empty($data['m']) && !empty($date['y'])) {
-        if (!isset($data['d'])) {
-            $data['d'] = 1;
-        }
-        if (!checkdate($data['m'], $data['d'], $data['y'])) {
-            $time = time();
-        } else {
-            $time = make_timestamp($data['y'], $data['m'], $data['d']);
-        }
-    } else if (!empty($data['time'])) {
-        $time = $data['time'];
-    } else {
-        $time = time();
-    }
-
-    // Get the date for the calendar type.
-    $date = $calendartype->timestamp_to_date_array($time);
-
-    $urlbase = $PAGE->url;
-
-    // We need to get the previous and next months in certain cases.
-    if ($type == 'frontpage' || $type == 'course' || $type == 'month') {
-        $prevmonth = calendar_sub_month($date['mon'], $date['year']);
-        $prevmonthtime = $calendartype->convert_to_gregorian($prevmonth[1], $prevmonth[0], 1);
-        $prevmonthtime = make_timestamp($prevmonthtime['year'], $prevmonthtime['month'], $prevmonthtime['day'],
-            $prevmonthtime['hour'], $prevmonthtime['minute']);
-
-        $nextmonth = calendar_add_month($date['mon'], $date['year']);
-        $nextmonthtime = $calendartype->convert_to_gregorian($nextmonth[1], $nextmonth[0], 1);
-        $nextmonthtime = make_timestamp($nextmonthtime['year'], $nextmonthtime['month'], $nextmonthtime['day'],
-            $nextmonthtime['hour'], $nextmonthtime['minute']);
-    }
-
-    switch ($type) {
-        case 'frontpage':
-            $prevlink = calendar_get_link_previous(get_string('monthprev', 'calendar'), $urlbase, false, false, false,
-                true, $prevmonthtime);
-            $nextlink = calendar_get_link_next(get_string('monthnext', 'calendar'), $urlbase, false, false, false, true,
-                $nextmonthtime);
-            $calendarlink = calendar_get_link_href(new \moodle_url(CALENDAR_URL . 'view.php', array('view' => 'month')),
-                false, false, false, $time);
-
-            if (!empty($data['id'])) {
-                $calendarlink->param('course', $data['id']);
-            }
-
-            $right = $nextlink;
-
-            $content .= \html_writer::start_tag('div', array('class' => 'calendar-controls'));
-            $content .= $prevlink . '<span class="hide"> | </span>';
-            $content .= \html_writer::tag('span', \html_writer::link($calendarlink,
-                userdate($time, get_string('strftimemonthyear')), array('title' => get_string('monththis', 'calendar'))
-            ), array('class' => 'current'));
-            $content .= '<span class="hide"> | </span>' . $right;
-            $content .= "<span class=\"clearer\"><!-- --></span>\n";
-            $content .= \html_writer::end_tag('div');
-
-            break;
-        case 'course':
-            $prevlink = calendar_get_link_previous(get_string('monthprev', 'calendar'), $urlbase, false, false, false,
-                true, $prevmonthtime);
-            $nextlink = calendar_get_link_next(get_string('monthnext', 'calendar'), $urlbase, false, false, false,
-                true, $nextmonthtime);
-            $calendarlink = calendar_get_link_href(new \moodle_url(CALENDAR_URL . 'view.php', array('view' => 'month')),
-                false, false, false, $time);
-
-            if (!empty($data['id'])) {
-                $calendarlink->param('course', $data['id']);
-            }
-
-            $content .= \html_writer::start_tag('div', array('class' => 'calendar-controls'));
-            $content .= $prevlink . '<span class="hide"> | </span>';
-            $content .= \html_writer::tag('span', \html_writer::link($calendarlink,
-                userdate($time, get_string('strftimemonthyear')), array('title' => get_string('monththis', 'calendar'))
-            ), array('class' => 'current'));
-            $content .= '<span class="hide"> | </span>' . $nextlink;
-            $content .= "<span class=\"clearer\"><!-- --></span>";
-            $content .= \html_writer::end_tag('div');
-            break;
-        case 'upcoming':
-            $calendarlink = calendar_get_link_href(new \moodle_url(CALENDAR_URL . 'view.php', array('view' => 'upcoming')),
-                false, false, false, $time);
-            if (!empty($data['id'])) {
-                $calendarlink->param('course', $data['id']);
-            }
-            $calendarlink = \html_writer::link($calendarlink, userdate($time, get_string('strftimemonthyear')));
-            $content .= \html_writer::tag('div', $calendarlink, array('class' => 'centered'));
-            break;
-        case 'display':
-            $calendarlink = calendar_get_link_href(new \moodle_url(CALENDAR_URL . 'view.php', array('view' => 'month')),
-                false, false, false, $time);
-            if (!empty($data['id'])) {
-                $calendarlink->param('course', $data['id']);
-            }
-            $calendarlink = \html_writer::link($calendarlink, userdate($time, get_string('strftimemonthyear')));
-            $content .= \html_writer::tag('h3', $calendarlink);
-            break;
-        case 'month':
-            $prevlink = calendar_get_link_previous(userdate($prevmonthtime, get_string('strftimemonthyear')),
-                'view.php?view=month' . $courseid . '&amp;', false, false, false, false, $prevmonthtime);
-            $nextlink = calendar_get_link_next(userdate($nextmonthtime, get_string('strftimemonthyear')),
-                'view.php?view=month' . $courseid . '&amp;', false, false, false, false, $nextmonthtime);
-
-            $content .= \html_writer::start_tag('div', array('class' => 'calendar-controls'));
-            $content .= $prevlink . '<span class="hide"> | </span>';
-            $content .= $OUTPUT->heading(userdate($time, get_string('strftimemonthyear')), 2, 'current');
-            $content .= '<span class="hide"> | </span>' . $nextlink;
-            $content .= '<span class="clearer"><!-- --></span>';
-            $content .= \html_writer::end_tag('div')."\n";
-            break;
-        case 'day':
-            $days = calendar_get_days();
-
-            $prevtimestamp = strtotime('-1 day', $time);
-            $nexttimestamp = strtotime('+1 day', $time);
-
-            $prevdate = $calendartype->timestamp_to_date_array($prevtimestamp);
-            $nextdate = $calendartype->timestamp_to_date_array($nexttimestamp);
-
-            $prevname = $days[$prevdate['wday']]['fullname'];
-            $nextname = $days[$nextdate['wday']]['fullname'];
-            $prevlink = calendar_get_link_previous($prevname, 'view.php?view=day' . $courseid . '&amp;', false, false,
-                false, false, $prevtimestamp);
-            $nextlink = calendar_get_link_next($nextname, 'view.php?view=day' . $courseid . '&amp;', false, false, false,
-                false, $nexttimestamp);
-
-            $content .= \html_writer::start_tag('div', array('class' => 'calendar-controls'));
-            $content .= $prevlink;
-            $content .= '<span class="hide"> | </span><span class="current">' .userdate($time,
-                    get_string('strftimedaydate')) . '</span>';
-            $content .= '<span class="hide"> | </span>' . $nextlink;
-            $content .= "<span class=\"clearer\"><!-- --></span>";
-            $content .= \html_writer::end_tag('div') . "\n";
-
-            break;
-    }
-
-    return $content;
-}
-
-/**
- * Return the representation day.
- *
- * @param int $tstamp Timestamp in GMT
- * @param int|bool $now current Unix timestamp
- * @param bool $usecommonwords
- * @return string the formatted date/time
- */
-function calendar_day_representation($tstamp, $now = false, $usecommonwords = true) {
-    static $shortformat;
-
-    if (empty($shortformat)) {
-        $shortformat = get_string('strftimedayshort');
-    }
-
-    if ($now === false) {
-        $now = time();
-    }
-
-    // To have it in one place, if a change is needed.
-    $formal = userdate($tstamp, $shortformat);
-
-    $datestamp = usergetdate($tstamp);
-    $datenow = usergetdate($now);
-
-    if ($usecommonwords == false) {
-        // We don't want words, just a date.
-        return $formal;
-    } else if ($datestamp['year'] == $datenow['year'] && $datestamp['yday'] == $datenow['yday']) {
-        return get_string('today', 'calendar');
-    } else if (($datestamp['year'] == $datenow['year'] && $datestamp['yday'] == $datenow['yday'] - 1 ) ||
-        ($datestamp['year'] == $datenow['year'] - 1 && $datestamp['mday'] == 31 && $datestamp['mon'] == 12
-            && $datenow['yday'] == 1)) {
-        return get_string('yesterday', 'calendar');
-    } else if (($datestamp['year'] == $datenow['year'] && $datestamp['yday'] == $datenow['yday'] + 1 ) ||
-        ($datestamp['year'] == $datenow['year'] + 1 && $datenow['mday'] == 31 && $datenow['mon'] == 12
-            && $datestamp['yday'] == 1)) {
-        return get_string('tomorrow', 'calendar');
-    } else {
-        return $formal;
-    }
-}
-
-/**
- * return the formatted representation time.
- *
-
- * @param int $time the timestamp in UTC, as obtained from the database
- * @return string the formatted date/time
- */
-function calendar_time_representation($time) {
-    static $langtimeformat = null;
-
-    if ($langtimeformat === null) {
-        $langtimeformat = get_string('strftimetime');
-    }
-
-    $timeformat = get_user_preferences('calendar_timeformat');
-    if (empty($timeformat)) {
-        $timeformat = get_config(null, 'calendar_site_timeformat');
-    }
-
-    // Allow language customization of selected time format.
-    if ($timeformat === CALENDAR_TF_12) {
-        $timeformat = get_string('strftimetime12', 'langconfig');
-    } else if ($timeformat === CALENDAR_TF_24) {
-        $timeformat = get_string('strftimetime24', 'langconfig');
-    }
-
-    return userdate($time, empty($timeformat) ? $langtimeformat : $timeformat);
 }
 
 /**
@@ -1934,68 +1603,6 @@ function calendar_get_link_href($linkbase, $d, $m, $y, $time = 0) {
 }
 
 /**
- * Build and return a previous month HTML link, with an arrow.
- *
- * @deprecated since Moodle 4.3
- * @param string $text The text label.
- * @param string|moodle_url $linkbase The URL stub.
- * @param int $d The number of the date.
- * @param int $m The number of the month.
- * @param int $y year The number of the year.
- * @param bool $accesshide Default visible, or hide from all except screenreaders.
- * @param int $time the unixtime, used for multiple calendar support. The values $d,
- *     $m and $y are kept for backwards compatibility.
- * @return string HTML string.
- */
-function calendar_get_link_previous($text, $linkbase, $d, $m, $y, $accesshide = false, $time = 0) {
-    debugging(__FUNCTION__ . ' has been deprecated and should not be used anymore.', DEBUG_DEVELOPER);
-
-    $href = calendar_get_link_href(new \moodle_url($linkbase), $d, $m, $y, $time);
-
-    if (empty($href)) {
-        return $text;
-    }
-
-    $attrs = [
-        'data-time' => calendar_get_timestamp($d, $m, $y, $time),
-        'data-drop-zone' => 'nav-link',
-    ];
-
-    return link_arrow_left($text, $href->out(false), $accesshide, 'previous', $attrs);
-}
-
-/**
- * Build and return a next month HTML link, with an arrow.
- *
- * @deprecated since Moodle 4.3
- * @param string $text The text label.
- * @param string|moodle_url $linkbase The URL stub.
- * @param int $d the number of the Day
- * @param int $m The number of the month.
- * @param int $y The number of the year.
- * @param bool $accesshide Default visible, or hide from all except screenreaders.
- * @param int $time the unixtime, used for multiple calendar support. The values $d,
- *     $m and $y are kept for backwards compatibility.
- * @return string HTML string.
- */
-function calendar_get_link_next($text, $linkbase, $d, $m, $y, $accesshide = false, $time = 0) {
-    debugging(__FUNCTION__ . ' has been deprecated and should not be used anymore.', DEBUG_DEVELOPER);
-
-    $href = calendar_get_link_href(new \moodle_url($linkbase), $d, $m, $y, $time);
-
-    if (empty($href)) {
-        return $text;
-    }
-
-    $attrs = [
-        'data-time' => calendar_get_timestamp($d, $m, $y, $time),
-        'data-drop-zone' => 'nav-link',
-    ];
-
-    return link_arrow_right($text, $href->out(false), $accesshide, 'next', $attrs);
-}
-
-/**
  * Return the number of days in month.
  *
  * @param int $month the number of the month.
@@ -2005,130 +1612,6 @@ function calendar_get_link_next($text, $linkbase, $d, $m, $y, $accesshide = fals
 function calendar_days_in_month($month, $year) {
     $calendartype = \core_calendar\type_factory::get_calendar_instance();
     return $calendartype->get_num_days_in_month($year, $month);
-}
-
-/**
- * Get the next following month.
- *
- * @param int $month the number of the month.
- * @param int $year the number of the year.
- * @return array the following month
- */
-function calendar_add_month($month, $year) {
-    $calendartype = \core_calendar\type_factory::get_calendar_instance();
-    return $calendartype->get_next_month($year, $month);
-}
-
-/**
- * Get the previous month.
- *
- * @param int $month the number of the month.
- * @param int $year the number of the year.
- * @return array previous month
- */
-function calendar_sub_month($month, $year) {
-    $calendartype = \core_calendar\type_factory::get_calendar_instance();
-    return $calendartype->get_prev_month($year, $month);
-}
-
-/**
- * Get per-day basis events
- *
- * @param array $events list of events
- * @param int $month the number of the month
- * @param int $year the number of the year
- * @param array $eventsbyday event on specific day
- * @param array $durationbyday duration of the event in days
- * @param array $typesbyday event type (eg: site, course, user, or group)
- * @param array $courses list of courses
- * @return void
- */
-function calendar_events_by_day($events, $month, $year, &$eventsbyday, &$durationbyday, &$typesbyday, &$courses) {
-    $calendartype = \core_calendar\type_factory::get_calendar_instance();
-
-    $eventsbyday = array();
-    $typesbyday = array();
-    $durationbyday = array();
-
-    if ($events === false) {
-        return;
-    }
-
-    foreach ($events as $event) {
-        $startdate = $calendartype->timestamp_to_date_array($event->timestart);
-        if ($event->timeduration) {
-            $enddate = $calendartype->timestamp_to_date_array($event->timestart + $event->timeduration - 1);
-        } else {
-            $enddate = $startdate;
-        }
-
-        // Simple arithmetic: $year * 13 + $month is a distinct integer for each distinct ($year, $month) pair.
-        if (!($startdate['year'] * 13 + $startdate['mon'] <= $year * 13 + $month) &&
-            ($enddate['year'] * 13 + $enddate['mon'] >= $year * 13 + $month)) {
-            continue;
-        }
-
-        $eventdaystart = intval($startdate['mday']);
-
-        if ($startdate['mon'] == $month && $startdate['year'] == $year) {
-            // Give the event to its day.
-            $eventsbyday[$eventdaystart][] = $event->id;
-
-            // Mark the day as having such an event.
-            if ($event->courseid == SITEID && $event->groupid == 0) {
-                $typesbyday[$eventdaystart]['startsite'] = true;
-                // Set event class for site event.
-                $events[$event->id]->class = 'calendar_event_site';
-            } else if ($event->courseid != 0 && $event->courseid != SITEID && $event->groupid == 0) {
-                $typesbyday[$eventdaystart]['startcourse'] = true;
-                // Set event class for course event.
-                $events[$event->id]->class = 'calendar_event_course';
-            } else if ($event->groupid) {
-                $typesbyday[$eventdaystart]['startgroup'] = true;
-                // Set event class for group event.
-                $events[$event->id]->class = 'calendar_event_group';
-            } else if ($event->userid) {
-                $typesbyday[$eventdaystart]['startuser'] = true;
-                // Set event class for user event.
-                $events[$event->id]->class = 'calendar_event_user';
-            }
-        }
-
-        if ($event->timeduration == 0) {
-            // Proceed with the next.
-            continue;
-        }
-
-        // The event starts on $month $year or before.
-        if ($startdate['mon'] == $month && $startdate['year'] == $year) {
-            $lowerbound = intval($startdate['mday']);
-        } else {
-            $lowerbound = 0;
-        }
-
-        // Also, it ends on $month $year or later.
-        if ($enddate['mon'] == $month && $enddate['year'] == $year) {
-            $upperbound = intval($enddate['mday']);
-        } else {
-            $upperbound = calendar_days_in_month($month, $year);
-        }
-
-        // Mark all days between $lowerbound and $upperbound (inclusive) as duration.
-        for ($i = $lowerbound + 1; $i <= $upperbound; ++$i) {
-            $durationbyday[$i][] = $event->id;
-            if ($event->courseid == SITEID && $event->groupid == 0) {
-                $typesbyday[$i]['durationsite'] = true;
-            } else if ($event->courseid != 0 && $event->courseid != SITEID && $event->groupid == 0) {
-                $typesbyday[$i]['durationcourse'] = true;
-            } else if ($event->groupid) {
-                $typesbyday[$i]['durationgroup'] = true;
-            } else if ($event->userid) {
-                $typesbyday[$i]['durationuser'] = true;
-            }
-        }
-
-    }
-    return;
 }
 
 /**
@@ -2489,97 +1972,6 @@ function calendar_get_default_courses($courseid = null, $fields = '*', $canmanag
     }
 
     return $courses;
-}
-
-/**
- * Get event format time.
- *
- * @param calendar_event $event event object
- * @param int $now current time in gmt
- * @param array $linkparams list of params for event link
- * @param bool $usecommonwords the words as formatted date/time.
- * @param int $showtime determine the show time GMT timestamp
- * @return string $eventtime link/string for event time
- */
-function calendar_format_event_time($event, $now, $linkparams = null, $usecommonwords = true, $showtime = 0) {
-    $starttime = $event->timestart;
-    $endtime = $event->timestart + $event->timeduration;
-
-    if (empty($linkparams) || !is_array($linkparams)) {
-        $linkparams = array();
-    }
-
-    $linkparams['view'] = 'day';
-
-    // OK, now to get a meaningful display.
-    // Check if there is a duration for this event.
-    if ($event->timeduration) {
-        // Get the midnight of the day the event will start.
-        $usermidnightstart = usergetmidnight($starttime);
-        // Get the midnight of the day the event will end.
-        $usermidnightend = usergetmidnight($endtime);
-        // Check if we will still be on the same day.
-        if ($usermidnightstart == $usermidnightend) {
-            // Check if we are running all day.
-            if ($event->timeduration == DAYSECS) {
-                $time = get_string('allday', 'calendar');
-            } else { // Specify the time we will be running this from.
-                $datestart = calendar_time_representation($starttime);
-                $dateend = calendar_time_representation($endtime);
-                $time = $datestart . ' <strong>&raquo;</strong> ' . $dateend;
-            }
-
-            // Set printable representation.
-            if (!$showtime) {
-                $day = calendar_day_representation($event->timestart, $now, $usecommonwords);
-                $url = calendar_get_link_href(new \moodle_url(CALENDAR_URL . 'view.php', $linkparams), 0, 0, 0, $endtime);
-                $eventtime = \html_writer::link($url, $day) . ', ' . $time;
-            } else {
-                $eventtime = $time;
-            }
-        } else { // It must spans two or more days.
-            $daystart = calendar_day_representation($event->timestart, $now, $usecommonwords) . ', ';
-            if ($showtime == $usermidnightstart) {
-                $daystart = '';
-            }
-            $timestart = calendar_time_representation($event->timestart);
-            $dayend = calendar_day_representation($event->timestart + $event->timeduration, $now, $usecommonwords) . ', ';
-            if ($showtime == $usermidnightend) {
-                $dayend = '';
-            }
-            $timeend = calendar_time_representation($event->timestart + $event->timeduration);
-
-            // Set printable representation.
-            if ($now >= $usermidnightstart && $now < strtotime('+1 day', $usermidnightstart)) {
-                $url = calendar_get_link_href(new \moodle_url(CALENDAR_URL . 'view.php', $linkparams), 0, 0, 0, $endtime);
-                $eventtime = $timestart . ' <strong>&raquo;</strong> ' . \html_writer::link($url, $dayend) . $timeend;
-            } else {
-                // The event is in the future, print start and end links.
-                $url = calendar_get_link_href(new \moodle_url(CALENDAR_URL . 'view.php', $linkparams), 0, 0, 0, $starttime);
-                $eventtime = \html_writer::link($url, $daystart) . $timestart . ' <strong>&raquo;</strong> ';
-
-                $url = calendar_get_link_href(new \moodle_url(CALENDAR_URL . 'view.php', $linkparams),  0, 0, 0, $endtime);
-                $eventtime .= \html_writer::link($url, $dayend) . $timeend;
-            }
-        }
-    } else { // There is no time duration.
-        $time = calendar_time_representation($event->timestart);
-        // Set printable representation.
-        if (!$showtime) {
-            $day = calendar_day_representation($event->timestart, $now, $usecommonwords);
-            $url = calendar_get_link_href(new \moodle_url(CALENDAR_URL . 'view.php', $linkparams),  0, 0, 0, $starttime);
-            $eventtime = \html_writer::link($url, $day) . ', ' . trim($time);
-        } else {
-            $eventtime = $time;
-        }
-    }
-
-    // Check if It has expired.
-    if ($event->timestart + $event->timeduration < $now) {
-        $eventtime = '<span class="dimmed_text">' . str_replace(' href=', ' class="dimmed" href=', $eventtime) . '</span>';
-    }
-
-    return $eventtime;
 }
 
 /**
@@ -3290,7 +2682,10 @@ function calendar_can_edit_subscription($subscriptionorid) {
     $category = null;
 
     if (!empty($categoryid)) {
-        $category = \core_course_category::get($categoryid);
+        $category = \core_course_category::get($categoryid, IGNORE_MISSING, true);
+        if (!$category) {
+            return false;
+        }
     }
     calendar_get_allowed_types($allowed, $courseid, null, $category);
     switch ($subscription->eventtype) {
@@ -3298,13 +2693,13 @@ function calendar_can_edit_subscription($subscriptionorid) {
             return ($USER->id == $subscription->userid && $allowed->user);
         case 'course':
             if (isset($allowed->courses[$courseid])) {
-                return $allowed->courses[$courseid];
+                return (bool)$allowed->courses[$courseid];
             } else {
                 return false;
             }
         case 'category':
             if (isset($allowed->categories[$categoryid])) {
-                return $allowed->categories[$categoryid];
+                return (bool)$allowed->categories[$categoryid];
             } else {
                 return false;
             }
@@ -3312,7 +2707,7 @@ function calendar_can_edit_subscription($subscriptionorid) {
             return $allowed->site;
         case 'group':
             if (isset($allowed->groups[$groupid])) {
-                return $allowed->groups[$groupid];
+                return (bool)$allowed->groups[$groupid];
             } else {
                 return false;
             }

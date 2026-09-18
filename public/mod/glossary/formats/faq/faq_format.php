@@ -29,7 +29,7 @@ function glossary_show_entry_faq(
     global $USER, $OUTPUT;
     if ( $entry ) {
 
-        echo '<table class="glossarypost faq" cellspacing="0" role="presentation">';
+        echo '<table class="glossarypost faq table-reboot" cellspacing="0" role="presentation">';
 
         echo '<tr valign="top">';
         echo '<th class="entryheader">';

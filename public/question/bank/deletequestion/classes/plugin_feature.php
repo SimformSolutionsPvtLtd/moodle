@@ -44,8 +44,12 @@ class plugin_feature extends plugin_features_base {
         ];
     }
 
-    #[\Override]
-    public function get_bulk_actions(?view $qbank = null): array {
+    /**
+     * Initialise the bulk action.
+     * @param view $qbank
+     * @return bulk_delete_action[]
+     */
+    public function get_bulk_actions(view $qbank): array {
         return [
             new bulk_delete_action($qbank),
         ];

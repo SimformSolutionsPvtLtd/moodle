@@ -31,6 +31,7 @@ $courseid = required_param('id', PARAM_INT);
 // 0 - view all reports. null - view own report. non-zero and non-null - view other user report.
 $userid   = optional_param('userid', null, PARAM_INT);
 $userview = optional_param('userview', 0, PARAM_INT);
+$reset = optional_param('reset', 0, PARAM_BOOL);
 
 $PAGE->set_url(new moodle_url('/grade/report/user/index.php', ['id' => $courseid]));
 
@@ -85,12 +86,30 @@ if (!isset($USER->grade_last_report)) {
 $USER->grade_last_report[$course->id] = 'user';
 
 // First make sure we have proper final grades.
-grade_regrade_final_grades_if_required($course);
+$taskindicator = new \core\output\task_indicator(
+    \core_course\task\regrade_final_grades::create($courseid),
+    get_string('recalculatinggrades', 'grades'),
+    get_string('recalculatinggradesadhoc', 'grades'),
+    $PAGE->url,
+);
+if (!$taskindicator->has_task_record()) {
+    grade_regrade_final_grades_if_required($course);
+}
 
 $gradesrenderer = $PAGE->get_renderer('core_grades');
 
 // Teachers will see all student reports.
 if (has_capability('moodle/grade:viewall', $context)) {
+    if ($taskindicator->has_task_record()) {
+        // We need to bail out early as getting the gradeable users requires calculations to be complete,
+        // so just display a basic header with navigation, and the indicator.
+        $actionbar = new \core_grades\output\general_action_bar($context, $PAGE->url, 'report', 'user');
+        print_grade_page_head($course->id, 'report', 'user', actionbar: $actionbar);
+        echo $OUTPUT->render($taskindicator);
+        echo $OUTPUT->footer();
+        exit;
+    }
+
     // Verify if we are using groups or not.
     $groupmode = groups_get_course_groupmode($course);
     $currentgroup = $gpr->groupid;
@@ -112,6 +131,10 @@ if (has_capability('moodle/grade:viewall', $context)) {
         $userid = $USER->id;
     }
 
+    // If the reset parameter is set, clear any stored (last viewed) user in a session variable.
+    if ($reset) {
+        unset($SESSION->gradereport_user["useritem-{$context->id}"]);
+    }
     // If there is a stored (last viewed) user in a session variable, bypass the user select zero state and display the
     // report for that user.
     $lastvieweduserid = $SESSION->gradereport_user["useritem-{$context->id}"] ?? null;
@@ -203,7 +226,9 @@ if (has_capability('moodle/grade:viewall', $context)) {
     // Print the page.
     print_grade_page_head($courseid, 'report', 'user', false, false, false, true, null, null, $report->user);
 
-    if ($report->fill_table()) {
+    if ($taskindicator->has_task_record()) {
+        echo $OUTPUT->render($taskindicator);
+    } else if ($report->fill_table()) {
         echo $report->print_table(true);
     }
 }

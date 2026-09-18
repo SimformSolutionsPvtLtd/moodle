@@ -83,7 +83,7 @@
 }}
 
 <div class="{{classes}} d-inline-block">
-    <form method="{{method}}" action="{{action}}" id="{{formid}}">
+    <form method="{{method}}" action="{{action}}" class="d-flex flex-wrap align-items-center gap-2" id="{{formid}}">
         {{#params}}
             <input type="hidden" name="{{name}}" value="{{value}}">
         {{/params}}
@@ -95,7 +95,7 @@
         {{#helpicon}}
             {{>core/help_icon}}
         {{/helpicon}}
-        <select {{#attributes}}{{name}}="{{value}}" {{/attributes}} id="{{id}}" class="custom-select {{classes}}" name="{{name}}"
+        <select {{#attributes}}{{name}}="{{value}}" {{/attributes}} id="{{id}}" class="form-select {{classes}}" name="{{name}}"
                 {{#title}}title="{{.}}"{{/title}} {{#disabled}}disabled{{/disabled}}>
             {{#options}}
                 {{#optgroup}}

@@ -14,10 +14,10 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Screen reader-only (sr-only) reactive mutations logger class.
+ * Screen reader-only (visually-hidden) reactive mutations logger class.
  *
  * This logger can be used by the StateManager to log mutation feedbacks and actions.
- * The feedback messages logged by this logger will be rendered in a sr-only, ARIA live region.
+ * The feedback messages logged by this logger will be rendered in a visually-hidden, ARIA live region.
  *
  * @module     core/local/reactive/srlogger
  * @class      SRLogger
@@ -36,7 +36,7 @@ import Logger from 'core/local/reactive/logger';
  */
 
 /**
- * Screen reader-only (sr-only) reactive mutations logger class.
+ * Screen reader-only (visually-hidden) reactive mutations logger class.
  *
  * @class SRLogger
  */

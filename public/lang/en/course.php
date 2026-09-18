@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Strings for component 'course', language 'en', branch 'MOODLE_20_STABLE'
+ * Strings for component 'core_course', language 'en', branch 'MOODLE_20_STABLE'
  *
  * @package   core_course
  * @copyright 2018 Adrian Greeve <adriangreeve.com>
@@ -28,30 +28,25 @@ $string['activitychoosersettings'] = 'Activity chooser settings';
 $string['activitychooseractivefooter'] = 'Activity chooser footer';
 $string['activitychooseractivefooter_desc'] = 'The activity chooser can support plugins that add items to the footer.';
 $string['activitychooserhidefooter'] = 'No footer';
-$string['activitychoosertabmode'] = 'Activity chooser tabs';
-$string['activitychoosertabmode_desc'] = "The activity chooser lists activities and resources for a teacher to add to their course. To add items to the Recommended tab, go to <a href='../course/recommendations.php'>Recommended activities</a>.";
-$string['activitychoosertabmodeone'] = 'Starred, All, Activities, Resources, Recommended';
-$string['activitychoosertabmodetwo'] = 'Starred, All, Recommended';
-$string['activitychoosertabmodethree'] = 'Starred, Activities, Resources, Recommended';
-$string['activitychoosertabmodefour'] = 'Starred, Recommended, All, Activities, Resources';
-$string['activitychoosertabmodefive'] = 'Starred, Recommended, All';
-$string['activitychoosertabmodesix'] = 'Starred, Recommended, Activities, Resources';
 $string['activitydate:closed'] = 'Closed:';
 $string['activitydate:closes'] = 'Closes:';
 $string['activitydate:opened'] = 'Opened:';
 $string['activitydate:opens'] = 'Opens:';
+$string['activitylink'] = 'Permalink';
 $string['activitynavigation'] = 'Activity navigation';
 $string['activitynavigation:jumptoactivity'] = 'Jump to activity';
 $string['activitynavigation:nexta'] = 'Next activity: {$a}';
 $string['activitynavigation:preva'] = 'Previous activity: {$a}';
+$string['addselectedactivity'] = 'Add selected activity';
 $string['aria:coursecategory'] = 'Course category';
 $string['aria:courseshortname'] = 'Course short name';
 $string['aria:coursename'] = 'Course name';
 $string['aria:defaulttab'] = 'Default activities';
 $string['aria:favourite'] = 'Course is starred';
 $string['aria:favouritestab'] = 'Starred activities';
+$string['aria:modulefavourite'] = 'Add {$a} to starred';
+$string['aria:moduleunfavourite'] = 'Remove {$a} from starred';
 $string['aria:recommendedtab'] = 'Recommended activities';
-$string['aria:modulefavourite'] = 'Star {$a} activity';
 $string['browsecourseadminindex'] = 'Browse the course administration with this index.';
 $string['browsesettingindex'] = 'Browse settings with this index.';
 $string['communicationroomlink'] = 'Chat to course participants';
@@ -81,8 +76,9 @@ $string['coursenotyetstarted'] = 'The course has not yet started';
 $string['coursenotyetfinished'] = 'The course has not yet finished';
 $string['courseparticipants'] = 'Course participants';
 $string['coursetoolong'] = 'The course is too long';
+$string['courseurl'] = 'Course URL';
 $string['customfield_islocked'] = 'Locked';
-$string['customfield_islocked_help'] = 'If the field is locked, only users with the capability to change locked custom fields (by default users with the default role of manager only) will be able to change it in the course settings.';
+$string['customfield_islocked_help'] = 'If the field is locked, only users with the capability to change locked course custom fields (users with the default role of manager) will be able to change it in the course settings.';
 $string['customfield_notvisible'] = 'Nobody';
 $string['customfield_visibility'] = 'Visible to';
 $string['customfield_visibility_help'] = 'This setting determines who can view the custom field name and value in the list of courses or in the available custom field filter of the Dashboard.';
@@ -108,6 +104,19 @@ $string['gradetopassnotset'] = 'This course does not have a grade to pass set. I
 $string['hideendedcoursestask'] = 'Hide courses on end date';
 $string['informationformodule'] = 'Information about the {$a} activity';
 $string['locked'] = 'Locked';
+$string['mod_purpose_administration'] = 'Administration';
+$string['mod_purpose_administration_help'] = 'Tools for course management.';
+$string['mod_purpose_assessment'] = 'Assessment';
+$string['mod_purpose_assessment_help'] = 'Activities that support evaluation and measurement of student understanding and performance, including individual and collaborative assessment, and peer assessment.';
+$string['mod_purpose_collaboration'] = 'Collaboration';
+$string['mod_purpose_collaboration_help'] = 'Activities for collaborative learning that encourage knowledge sharing, discussion, and teamwork.';
+$string['mod_purpose_communication'] = 'Communication';
+$string['mod_purpose_communication_help'] = 'Activities for real-time communication, asynchronous interactions, and feedback collection.';
+$string['mod_purpose_content'] = 'Resources';
+$string['mod_purpose_content_help'] = 'Activities and tools for organising and displaying course materials such as documents, web links, and multimedia.';
+$string['mod_purpose_interactivecontent'] = 'Interactive content';
+$string['mod_purpose_interactivecontent_help'] = 'Engaging interactive activities that encourage active learner participation.';
+$string['mod_purposes'] = 'Categories';
 $string['module'] = 'Activity';
 $string['namewithlink'] = 'Category name with link';
 $string['nocourseactivity'] = 'Not enough course activity between the start and the end of the course';
@@ -120,6 +129,14 @@ $string['norecentaccessesinfomessage'] = 'Hi {$a->userfirstname},
 <p>A number of students in {$a->coursename} have not accessed the course recently.</p>';
 $string['noteachinginfomessage'] = 'Hi {$a->userfirstname},
 <p>Courses with start dates in the next week have been identified as having no teacher or student enrolments.</p>';
+$string['overview_info'] = 'An overview of all activities in the course, with dates and other information.';
+$string['overview_missing_notice'] = 'Go to the {$a}.';
+$string['overview_missing_title'] = '{$a} information not available.';
+$string['overview_modname'] = '{$a} overview';
+$string['overview_nogroups_error'] = 'You are not a member of any group';
+$string['overview_nogroups_title'] = 'Information not available because you are not a member of any group';
+$string['overview_page_title'] = 'Course activities: {$a}';
+$string['overview_table_caption'] = 'Table listing all {$a} activities';
 $string['participants:perpage'] = 'Number of participants per page';
 $string['participants:perpage_help'] = 'The number of users shown per page on the participants page in each course.';
 $string['participantsnavigation'] = 'Participants tertiary navigation.';
@@ -133,6 +150,7 @@ $string['privacy:metadata:completionsummary'] = 'The course contains completion 
 $string['privacy:metadata:favouritessummary'] = 'The course contains information relating to the course being starred by the user.';
 $string['recommend'] = 'Recommend';
 $string['recommendcheckbox'] = 'Recommend activity: {$a}';
+$string['recommended_help'] = 'Activities recommended by your organisation.';
 $string['relativedatessubmissionduedateafter'] = '{$a->datediffstr} after course start';
 $string['relativedatessubmissionduedatebefore'] = '{$a->datediffstr} before course start';
 $string['searchactivitiesbyname'] = 'Search for activities by name';
@@ -140,6 +158,8 @@ $string['searchresults'] = 'Search results: {$a}';
 $string['sectionlink'] = 'Permalink';
 $string['showstartedcoursestask'] = 'Show courses on start date';
 $string['submitsearch'] = 'Submit search';
+$string['subsectiondescriptionwarning'] = '<strong>Subsection descriptions will be discontinued in Moodle 5.2</strong>. To add a description, use a <strong>Text and media area</strong> instead.';
+$string['supports'] = 'This activity supports';
 $string['studentsatriskincourse'] = 'Students at risk in {$a} course';
 $string['studentsatriskinfomessage'] = 'Hi {$a->userfirstname},
 <p>Students in the {$a->coursename} course have been identified as being at risk.</p>';
@@ -172,9 +192,6 @@ $string['targetlabelteachingyes'] = 'Users with teaching capabilities who have a
 $string['targetlabelteachingno'] = 'Courses at risk of not starting';
 $string['totalactivities'] = 'Activities: {$a}';
 $string['gotosection'] = 'Go to section {$a}';
-
-// Deprecated since Moodle 4.3.
-$string['aria:courseimage'] = 'Course image';
 
 // Deprecated since Moodle 4.5.
 $string['daystakingcourse'] = 'Days taking course';

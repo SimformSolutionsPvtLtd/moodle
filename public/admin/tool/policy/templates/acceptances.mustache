@@ -79,7 +79,7 @@
     <div class="alert alert-info">{{#str}} contactdpo, tool_policy {{/str}}</div>
 {{/canrevoke}}
 
-<table class="generaltable fullwidth">
+<table class="table generaltable">
     <thead>
     <tr>
         <th>{{#str}} policydocname, tool_policy {{/str}}</th>
@@ -99,11 +99,6 @@
                 {{#agreement}}
                     <tr {{^isfirst}}class="archived{{policyid}}" style="display:none"{{/isfirst}}>
                         <td>
-                            {{^isfirst}}
-                                <div style="float:left">
-                                    {{#pix}} level, tool_policy {{/pix}}
-                                </div>
-                            {{/isfirst}}
                             <div {{^isfirst}}style="margin-left: 24px" {{/isfirst}}>
                                 <div><a href="{{viewurl}}">{{{name}}}</a></div>
                             </div>

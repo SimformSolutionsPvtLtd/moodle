@@ -48,15 +48,20 @@ function(
      *                         functionality.
      * data-skip-active-class - Add to the .dropdown-menu to prevent this code from
      *                          adding the active class to the dropdown items
-     * data-active-item-text - Add to an element within the data-toggle="dropdown" element
+     * data-active-item-text - Add to an element within the data-bs-toggle="dropdown" element
      *                         to use it as the active option text placeholder otherwise the
-     *                         data-toggle="dropdown" element itself will be used.
+     *                         data-bs-toggle="dropdown" element itself will be used.
      * data-active-item-button-aria-label-components - String components to set the aria
      *                         lable on the dropdown button. The string will be given the
      *                         active item text.
      */
     var initActionOptionDropdownHandler = function() {
         var body = $('body');
+
+        // Ensure on load that the "current" item is always marked to ensure we make space for active item indicator.
+        body.find('.dropdown-menu').each(function() {
+            $(this).find('[aria-current="true"]').addClass('dropdown-item-active');
+        });
 
         CustomEvents.define(body, [CustomEvents.events.activate]);
         body.on(CustomEvents.events.activate, '[data-show-active-item]', function(e) {
@@ -77,7 +82,7 @@ function(
 
             // Clear the active class from all other options.
             var dropdownItems = menuContainer.find('.dropdown-item');
-            dropdownItems.removeClass('active');
+            dropdownItems.removeClass(['active', 'dropdown-item-active']);
             dropdownItems.removeAttr('aria-current');
 
             if (!menuContainer.attr('data-skip-active-class')) {
@@ -86,12 +91,13 @@ function(
                 // adding the active class itself.
                 option.addClass('active');
             }
+            option.addClass('dropdown-item-active');
 
             // Update aria attribute for active item.
             option.attr('aria-current', true);
 
             var activeOptionText = option.text();
-            var dropdownToggle = menuContainer.parent().find('[data-toggle="dropdown"]');
+            var dropdownToggle = menuContainer.parent().find('[data-bs-toggle="dropdown"]');
             var dropdownToggleText = dropdownToggle.find('[data-active-item-text]');
 
             if (dropdownToggleText.length) {

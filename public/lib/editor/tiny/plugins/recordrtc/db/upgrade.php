@@ -24,7 +24,7 @@
 
 /**
  * Run all Tiny recordrtc upgrade steps between the current DB version and the current version on disk.
- * @param int $oldversion The old version of atto equation in the DB.
+ * @param int $oldversion The old version of the plugin in the DB.
  * @return bool
  */
 function xmldb_tiny_recordrtc_upgrade($oldversion) {
@@ -48,7 +48,7 @@ function xmldb_tiny_recordrtc_upgrade($oldversion) {
     // Automatically generated Moodle v4.5.0 release upgrade line.
     // Put any upgrade step following this.
 
-    if ($oldversion < 2024100701) {
+    if ($oldversion < 2024112000) {
         // The input bitrate to be converted.
         $currentbitrate = get_config('tiny_recordrtc', 'audiobitrate');
 
@@ -62,8 +62,14 @@ function xmldb_tiny_recordrtc_upgrade($oldversion) {
         // Update the bitrate setting with the nearest supported bitrate.
         set_config('audiobitrate', $nearestbitrate, 'tiny_recordrtc');
 
-        upgrade_plugin_savepoint(true, 2024100701, 'tiny', 'recordrtc');
+        upgrade_plugin_savepoint(true, 2024112000, 'tiny', 'recordrtc');
     }
+
+    // Automatically generated Moodle v5.0.0 release upgrade line.
+    // Put any upgrade step following this.
+
+    // Automatically generated Moodle v5.1.0 release upgrade line.
+    // Put any upgrade step following this.
 
     return true;
 }

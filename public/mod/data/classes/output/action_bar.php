@@ -116,7 +116,7 @@ class action_bar {
             $fieldselectparams['newtype'] = $fieldtype;
             $fieldselect->add(new \action_menu_link(
                 new moodle_url('/mod/data/field.php', $fieldselectparams),
-                new \pix_icon('field/' . $fieldtype, $fieldname, 'data'),
+                new \image_icon('icon', $fieldtype, 'datafield_' . $fieldtype),
                 $fieldname,
                 false
             ));
@@ -151,7 +151,7 @@ class action_bar {
         }
 
         $urlselect = new url_select($menu, $activeurl->out(false), null, 'viewactionselect');
-        $urlselect->set_label(get_string('viewnavigation', 'mod_data'), ['class' => 'sr-only']);
+        $urlselect->set_label(get_string('viewnavigation', 'mod_data'), ['class' => 'visually-hidden']);
         $renderer = $PAGE->get_renderer('mod_data');
         $viewactionbar = new view_action_bar($this->id, $urlselect, $hasentries, $mode);
 
@@ -187,8 +187,8 @@ class action_bar {
             $rsstemplatelink->out(false) => get_string('rsstemplate', 'mod_data'),
         ];
 
-        $selectmenu = new \core\output\select_menu('presetsactions', $menu, $this->currenturl->out(false));
-        $selectmenu->set_label(get_string('templatesnavigation', 'mod_data'), ['class' => 'sr-only']);
+        $selectmenu = new \core\output\select_menu('presetsactions', $menu, $this->currenturl->out(false), true);
+        $selectmenu->set_label(get_string('templatesnavigation', 'mod_data'), ['class' => 'visually-hidden']);
 
         $renderer = $PAGE->get_renderer('mod_data');
 
@@ -268,7 +268,7 @@ class action_bar {
             }
         }
         $urlselect = new url_select($menu, $selected, null);
-        $urlselect->set_label(get_string('templatesnavigation', manager::PLUGINNAME), ['class' => 'sr-only']);
+        $urlselect->set_label(get_string('templatesnavigation', manager::PLUGINNAME), ['class' => 'visually-hidden']);
 
         $data = [
             'title' => get_string('preview', manager::PLUGINNAME, preset::get_name_from_plugin($fullname)),

@@ -50,7 +50,7 @@ class grade_grade extends grade_object {
     public $required_fields = array('id', 'itemid', 'userid', 'rawgrade', 'rawgrademax', 'rawgrademin',
                                  'rawscaleid', 'usermodified', 'finalgrade', 'hidden', 'locked',
                                  'locktime', 'exported', 'overridden', 'excluded', 'timecreated',
-                                 'timemodified', 'aggregationstatus', 'aggregationweight');
+                                 'timemodified', 'aggregationstatus', 'aggregationweight', 'deductedmark');
 
     /**
      * Array of optional fields with default values (these should match db defaults)
@@ -217,6 +217,15 @@ class grade_grade extends grade_object {
      * @var string $label
      */
     public $label;
+
+    /** @var float $deductedmark mark deducted from final grade */
+    public float $deductedmark = 0;
+
+    /**
+     * Date when this grade was last graded.
+     * @var int $dategraded
+     */
+    public $dategraded = null;
 
     /**
      * Date when this grade was last graded.
@@ -1289,5 +1298,18 @@ class grade_grade extends grade_object {
     public function get_context() {
         $this->load_grade_item();
         return $this->grade_item->get_context();
+    }
+
+    /**
+     * Whether the penalty is applied to this final grade.
+     *
+     * @return bool whether penalty is applied
+     */
+    public function is_penalty_applied_to_final_grade(): bool {
+        // Return false if the grade is overridden.
+        if ($this->is_overridden()) {
+            return false;
+        }
+        return $this->deductedmark > 0;
     }
 }

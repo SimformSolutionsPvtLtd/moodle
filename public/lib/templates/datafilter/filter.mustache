@@ -19,6 +19,8 @@
 
     Template for the form containing one or more filter rows.
 
+    This must be included inside a <form> element to support validation on filter fields.
+
     Example context (json):
     {
         "filtertypes": [
@@ -57,7 +59,7 @@
             <button data-filteraction="showall" data-perpage="{{ perpage }}" data-status="0" type="button" class="btn btn-light ms-auto me-2">{{#str}}showall{{/str}}</button>
         {{/showallbutton}}
         <button data-filteraction="reset" type="button" class="btn btn-secondary {{^showallbutton}}ms-auto{{/showallbutton}} me-2">{{#str}}clearfilters{{/str}}</button>
-        <button data-filteraction="apply" type="button" class="btn btn-primary">{{#str}}applyfilters{{/str}}</button>
+        <button data-filteraction="apply" type="submit" class="btn btn-primary">{{#str}}applyfilters{{/str}}</button>
     </div>
 
     {{> core/datafilter/filter_types }}

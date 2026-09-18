@@ -438,7 +438,10 @@ final class manager_test extends \advanced_testcase {
         // Call the method to be tested.
         $manager = new manager();
         try {
+            $invokable = self::get_invokable();
+            set_error_handler($invokable, E_WARNING);
             list($xml, $preset, $settingsfound, $pluginsfound) = $manager->import_preset($filecontents);
+            restore_error_handler();
         } catch (\exception $e) {
             if ($expectedexception) {
                 $this->assertInstanceOf($expectedexception, $e);
@@ -506,7 +509,7 @@ final class manager_test extends \advanced_testcase {
                             'activity_modules' => 1,
                         ],
                         'mod' => [
-                            'chat' => 0,
+                            'page' => 0,
                             'data' => 0,
                             'lesson' => 1,
                         ],
@@ -808,6 +811,43 @@ final class manager_test extends \advanced_testcase {
         // This plugin won't change (because it had the same value than before the preset was applied).
         $enabledplugins = \core\plugininfo\qtype::get_enabled_plugins();
         $this->assertArrayHasKey('truefalse', $enabledplugins);
+    }
+
+    /**
+     * Test apply_preset for a deprecated plugin type.
+     *
+     * @runInSeparateProcess
+     *
+     * @covers ::apply_preset
+     * @return void
+     */
+    public function test_apply_preset_deprecated_plugintype(): void {
+        global $CFG;
+        $this->resetAfterTest();
+
+        // Create a preset.
+        $generator = $this->getDataGenerator()->get_plugin_generator('core_adminpresets');
+        $presetid = $generator->create_preset();
+
+        // Add a mock plugin into the preset. This plugin will be mocked and deprecated below.
+        helper::add_plugin($presetid, 'fake', 'fullfeatured', true);
+
+        // Inject the mock plugin type + plugin, and deprecate it.
+        $this->add_mocked_plugintype('fake', "$CFG->libdir/tests/fixtures/fakeplugins/fake", true);
+        $this->add_mocked_plugin('fake', 'fullfeatured', $CFG->libdir . '/tests/fixtures/fakeplugins/fake/fullfeatured');
+
+        // Pre-flight check to ensure that the plugin is deprecated.
+        $pluginman = \core\plugin_manager::instance();
+        $plugininfo = $pluginman->get_plugin_info('fake_fullfeatured');
+        // Expected, unit-test-only debugging, since \core\plugin_manager isn't aware of the mock plugininfo class for this type.
+        $this->assertDebuggingCalled();
+        $this->assertTrue($plugininfo->is_deprecated());
+
+        // Finally, check apply_preset method, verifying the deprecated plugin is skipped.
+        $manager = new manager();
+        [$applied, $skipped] = $manager->apply_preset($presetid);
+        $this->assertdebuggingcalledcount(2); // Expected unit-test-only debugging, as above.
+        $this->assertContains('fake', array_column($skipped, 'plugin'));
     }
 
     /**

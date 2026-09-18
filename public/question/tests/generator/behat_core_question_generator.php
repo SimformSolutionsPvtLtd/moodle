@@ -45,7 +45,12 @@ class behat_core_question_generator extends behat_generator_base {
                 'singular' => 'question',
                 'datagenerator' => 'updated_question',
                 'required' => ['question', 'questioncategory'],
-                'switchids' => ['question' => 'id', 'questioncategory' => 'category'],
+                'switchids' => [
+                    'question' => 'id',
+                    'questioncategory' => 'category',
+                    'modifiedbyuser' => 'modifiedby',
+                    'createdbyuser' => 'createdby',
+                ],
             ],
         ];
     }
@@ -66,6 +71,26 @@ class behat_core_question_generator extends behat_generator_base {
     }
 
     /**
+     * Look up the id of the createdby user from their username
+     *
+     * @param string $username The username for the createdby user.
+     * @return int The user ID.
+     */
+    protected function get_createdbyuser_id(string $username): int {
+        return $this->get_user_id($username);
+    }
+
+    /**
+     * Look up the id of the modifiedby user from their username
+     *
+     * @param string $username The username for the modifiedby user.
+     * @return int The user ID.
+     */
+    protected function get_modifiedbyuser_id(string $username): int {
+        return $this->get_user_id($username);
+    }
+
+    /**
      * Update a question
      *
      * This will update a question matching the supplied name with the provided data, creating a new version in the process.
@@ -80,6 +105,7 @@ class behat_core_question_generator extends behat_generator_base {
         foreach ($data as $key => $value) {
             $overrides[$key] = $value;
         }
-        $this->datagenerator->get_plugin_generator('core_question')->update_question($question, null, $overrides);
+
+        $this->datagenerator->get_plugin_generator('core_question')->update_question($question, overrides: $overrides);
     }
 }

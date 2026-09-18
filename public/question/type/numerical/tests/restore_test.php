@@ -39,7 +39,8 @@ final class restore_test extends \advanced_testcase {
         // Create a course and a user with editing teacher capabilities.
         $generator = $this->getDataGenerator();
         $course1 = $generator->create_course();
-        $context = \context_course::instance($course1->id);
+        $qbank = $generator->get_plugin_generator('mod_qbank')->create_instance(['course' => $course1->id]);
+        $context = \context_module::instance($qbank->cmid);
         $questiongenerator = $this->getDataGenerator()->get_plugin_generator('core_question');
         $initialcount = $DB->count_records('question');
 

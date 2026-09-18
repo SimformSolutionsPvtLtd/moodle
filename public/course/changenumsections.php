@@ -23,6 +23,8 @@
  * @copyright 2012 Dan Poltawski
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @since Moodle 2.3
+ * @todo Remove file in Moodle 6.0 (MDL-86395).
+ * @deprecated since Moodle 5.1 (MDL-85284)
  */
 
 require_once(__DIR__.'/../config.php');
@@ -45,28 +47,20 @@ require_login($course);
 require_capability('moodle/course:update', context_course::instance($course->id));
 require_sesskey();
 
+debugging(
+    'The changenumsections.php script is deprecated. Please use course/format/update.php instead.',
+    DEBUG_DEVELOPER,
+);
+
 $desirednumsections = 0;
 $courseformat = course_get_format($course);
 $lastsectionnumber = $courseformat->get_last_section_number();
-$maxsections = $courseformat->get_max_sections();
 
 if (isset($courseformatoptions['numsections']) && $increase !== null) {
     $desirednumsections = $courseformatoptions['numsections'] + 1;
 } else if (course_get_format($course)->uses_sections() && $insertsection !== null) {
     // Count the sections in the course.
     $desirednumsections = $lastsectionnumber + $numsections;
-}
-
-if ($desirednumsections > $maxsections) {
-    // Increase in number of sections is not allowed.
-    \core\notification::warning(get_string('maxsectionslimit', 'moodle', $maxsections));
-    $increase = null;
-    $insertsection = null;
-    $numsections = 0;
-
-    if (!$returnurl) {
-        $returnurl = course_get_url($course);
-    }
 }
 
 if (isset($courseformatoptions['numsections']) && $increase !== null) {

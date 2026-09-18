@@ -16,35 +16,58 @@
 
 namespace aiprovider_azureai;
 
+use core_ai\manager;
+
 /**
  * Test Azure AI provider methods.
  *
  * @package    aiprovider_azureai
  * @copyright  2024 Matt Porritt <matt.porritt@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @covers     \core_ai\provider\azureai
+ * @covers     \aiprovider_azureai\provider
  */
 final class provider_test extends \advanced_testcase {
 
+    /** @var manager $manager */
+    private manager $manager;
+
+    /** @var provider $provider */
+    private provider $provider;
+
+    /**
+     * Overriding setUp() function to always reset after tests.
+     */
+    public function setUp(): void {
+        parent::setUp();
+        $this->resetAfterTest();
+
+        // Create the provider instance.
+        $this->manager = \core\di::get(\core_ai\manager::class);
+        $config = ['data' => 'goeshere'];
+        $this->provider = $this->manager->create_provider_instance(
+            classname: '\aiprovider_azureai\provider',
+            name: 'dummy',
+            config: $config,
+        );
+    }
     /**
      * Test get_action_list
      */
     public function test_get_action_list(): void {
-        $provider = new \aiprovider_azureai\provider();
-        $actionlist = $provider->get_action_list();
+        $actionlist = $this->provider->get_action_list();
         $this->assertIsArray($actionlist);
-        $this->assertEquals(3, count($actionlist));
+        $this->assertEquals(4, count($actionlist));
         $this->assertContains(\core_ai\aiactions\generate_text::class, $actionlist);
         $this->assertContains(\core_ai\aiactions\generate_image::class, $actionlist);
         $this->assertContains(\core_ai\aiactions\summarise_text::class, $actionlist);
+        $this->assertContains(\core_ai\aiactions\explain_text::class, $actionlist);
     }
 
     /**
      * Test generate_userid.
      */
     public function test_generate_userid(): void {
-        $provider = new \aiprovider_azureai\provider();
-        $userid = $provider->generate_userid(1);
+        $userid = $this->provider->generate_userid(1);
 
         // Assert that the generated userid is a string of proper length.
         $this->assertIsString($userid);
@@ -55,13 +78,20 @@ final class provider_test extends \advanced_testcase {
      * Test is_request_allowed.
      */
     public function test_is_request_allowed(): void {
-        $this->resetAfterTest(true);
+        // Create the provider instance.
+        $config = [
+            'enableuserratelimit' => true,
+            'userratelimit' => 3,
+            'enableglobalratelimit' => true,
+            'globalratelimit' => 5,
+        ];
 
-        // Set plugin config rate limiter settings.
-        set_config('enableglobalratelimit', 1, 'aiprovider_azureai');
-        set_config('globalratelimit', 5, 'aiprovider_azureai');
-        set_config('enableuserratelimit', 1, 'aiprovider_azureai');
-        set_config('userratelimit', 3, 'aiprovider_azureai');
+        /** @var provider $provider */
+        $provider = $this->manager->create_provider_instance(
+            classname: provider::class,
+            name: 'dummy',
+            config: $config,
+        );
 
         $contextid = 1;
         $userid = 1;
@@ -79,7 +109,6 @@ final class provider_test extends \advanced_testcase {
             numimages: $numimages,
             style: $style
         );
-        $provider = new provider();
 
         // Make 3 requests, all should be allowed.
         for ($i = 0; $i < 3; $i++) {
@@ -89,7 +118,10 @@ final class provider_test extends \advanced_testcase {
         // The 4th request for the same user should be denied.
         $result = $provider->is_request_allowed($action);
         $this->assertFalse($result['success']);
-        $this->assertEquals('User rate limit exceeded', $result['errormessage']);
+        $this->assertEquals(
+            'You have reached the maximum number of AI requests you can make in an hour. Try again later.',
+            $result['errormessage'],
+        );
 
         // Change user id to make a request for a different user, should pass (4 requests for global rate).
         $action = new \core_ai\aiactions\generate_image(
@@ -108,29 +140,35 @@ final class provider_test extends \advanced_testcase {
         // The 6th request should be denied.
         $result = $provider->is_request_allowed($action);
         $this->assertFalse($result['success']);
-        $this->assertEquals('Global rate limit exceeded', $result['errormessage']);
+        $this->assertEquals(
+            expected: 'The AI service has reached the maximum number of site-wide requests per hour. Try again later.',
+            actual: $result['errormessage'],
+        );
     }
 
     /**
      * Test is_provider_configured.
      */
     public function test_is_provider_configured(): void {
-        $this->resetAfterTest();
 
         // No configured values.
-        $provider = new \aiprovider_azureai\provider();
-        $this->assertFalse($provider->is_provider_configured());
+        $this->assertFalse($this->provider->is_provider_configured());
 
         // Partially configured values.
-        set_config('apikey', '123', 'aiprovider_azureai');
-        set_config('endpoint', '', 'aiprovider_azureai');
-        $provider = new \aiprovider_azureai\provider();
-        $this->assertFalse($provider->is_provider_configured());
+        $updatedprovider = $this->manager->update_provider_instance(
+            provider: $this->provider,
+            config: ['apikey' => '123'],
+        );
+        $this->assertFalse($updatedprovider->is_provider_configured());
 
         // Properly configured values.
-        set_config('apikey', '123', 'aiprovider_azureai');
-        set_config('endpoint', 'abc', 'aiprovider_azureai');
-        $provider = new \aiprovider_azureai\provider();
-        $this->assertTrue($provider->is_provider_configured());
+        $updatedprovider = $this->manager->update_provider_instance(
+            provider: $this->provider,
+            config: [
+                'apikey' => '123',
+                'endpoint' => 'abc',
+            ],
+        );
+        $this->assertTrue($updatedprovider->is_provider_configured());
     }
 }

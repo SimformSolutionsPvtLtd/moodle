@@ -534,7 +534,11 @@ class renderer extends plugin_renderer_base {
      */
     public function during_attempt_tertiary_nav($quizviewurl): string {
         $output = '';
-        $output .= html_writer::start_div('container-fluid tertiary-navigation');
+        if ($this->page->pagelayout === 'secure') {
+            // Do not show the back button in the secure layout on quiz pages.
+            return $output;
+        }
+        $output .= html_writer::start_div('tertiary-navigation');
         $output .= html_writer::start_div('row');
         $output .= html_writer::start_div('navitem');
         $output .= html_writer::link($quizviewurl, get_string('back'),
@@ -756,7 +760,7 @@ class renderer extends plugin_renderer_base {
     public function summary_table($attemptobj, $displayoptions) {
         // Prepare the summary table header.
         $table = new html_table();
-        $table->attributes['class'] = 'generaltable quizsummaryofattempt boxaligncenter';
+        $table->attributes['class'] = 'table generaltable table-striped quizsummaryofattempt table-hover';
         $table->head = [get_string('question', 'quiz'), get_string('status', 'quiz')];
         $table->align = ['left', 'left'];
         $table->size = ['', ''];
@@ -923,16 +927,17 @@ class renderer extends plugin_renderer_base {
             $attemptbtn = $this->start_attempt_button($viewobj->buttontext,
                     $viewobj->startattempturl, $viewobj->preflightcheckform,
                     $viewobj->popuprequired, $viewobj->popupoptions);
-            $content .= $attemptbtn;
+            $content .= html_writer::div($attemptbtn, 'navitem');
         }
 
         if ($viewobj->canedit && !$viewobj->quizhasquestions) {
-            $content .= html_writer::link($viewobj->editurl, get_string('addquestion', 'quiz'),
+            $addquestionbutton = html_writer::link($viewobj->editurl, get_string('addquestion', 'quiz'),
                     ['class' => 'btn btn-secondary']);
+            $content .= html_writer::div($addquestionbutton, 'navitem');
         }
 
         if ($content) {
-            return html_writer::div(html_writer::div($content, 'row'), 'container-fluid tertiary-navigation');
+            return html_writer::div(html_writer::div($content, 'd-flex'), 'tertiary-navigation');
         } else {
             return '';
         }
@@ -998,29 +1003,11 @@ class renderer extends plugin_renderer_base {
     }
 
     /**
-     * Generate a message saying that this quiz has no questions, with a button to
-     * go to the edit page, if the user has the right capability.
-     *
-     * @param bool $canedit can the current user edit the quiz?
-     * @param moodle_url $editurl URL of the edit quiz page.
-     * @return string HTML to output.
-     *
      * @deprecated since Moodle 4.0 MDL-71915 - please do not use this function any more.
      */
+    #[\core\attribute\deprecated('generate_no_questions_message()', since: '4.0', mdl: 'MDL-71915', final: true)]
     public function no_questions_message($canedit, $editurl) {
-        debugging('no_questions_message() is deprecated, please use generate_no_questions_message() instead.', DEBUG_DEVELOPER);
-
-        $output = html_writer::start_tag('div', ['class' => 'card text-center mb-3']);
-        $output .= html_writer::start_tag('div', ['class' => 'card-body']);
-
-        $output .= $this->notification(get_string('noquestions', 'quiz'), 'warning', false);
-        if ($canedit) {
-            $output .= $this->single_button($editurl, get_string('editquiz', 'quiz'), 'get');
-        }
-        $output .= html_writer::end_tag('div');
-        $output .= html_writer::end_tag('div');
-
-        return $output;
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
     }
 
     /**
@@ -1140,7 +1127,7 @@ class renderer extends plugin_renderer_base {
 
         // Prepare table header.
         $table = new html_table();
-        $table->attributes['class'] = 'generaltable quizattemptsummary';
+        $table->attributes['class'] = 'table generaltable quizattemptsummary table-hover';
         $table->caption = get_string('summaryofattempts', 'quiz');
         $table->captionhide = true;
         $table->head = [];
@@ -1478,38 +1465,26 @@ class renderer extends plugin_renderer_base {
     }
 
     /**
-     * Deprecated version of render_links_to_other_attempts.
-     *
-     * @param links_to_other_attempts $links
-     * @return string HTML fragment.
      * @deprecated since Moodle 4.2. Please use render_links_to_other_attempts instead.
-     * @todo MDL-76612 Final deprecation in Moodle 4.6
      */
+    #[\core\attribute\deprecated('render_links_to_other_attempts()', since: '4.2', mdl: 'MDL-76614', final: true)]
     protected function render_mod_quiz_links_to_other_attempts(links_to_other_attempts $links) {
-        return $this->render_links_to_other_attempts($links);
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
     }
 
     /**
-     * Deprecated version of render_navigation_question_button.
-     *
-     * @param navigation_question_button $button
-     * @return string HTML fragment.
-     * @deprecated since Moodle 4.2. Please use render_links_to_other_attempts instead.
-     * @todo MDL-76612 Final deprecation in Moodle 4.6
+     * @deprecated since Moodle 4.2. Please use render_navigation_question_button instead.
      */
+    #[\core\attribute\deprecated('render_navigation_question_button()', since: '4.2', mdl: 'MDL-76614', final: true)]
     protected function render_quiz_nav_question_button(navigation_question_button $button) {
-        return $this->render_navigation_question_button($button);
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
     }
 
     /**
-     * Deprecated version of render_navigation_section_heading.
-     *
-     * @param navigation_section_heading $heading the heading.
-     * @return string HTML fragment.
-     * @deprecated since Moodle 4.2. Please use render_links_to_other_attempts instead.
-     * @todo MDL-76612 Final deprecation in Moodle 4.6
+     * @deprecated since Moodle 4.2. Please use render_navigation_section_heading instead.
      */
+    #[\core\attribute\deprecated('render_navigation_section_heading()', since: '4.2', mdl: 'MDL-76614', final: true)]
     protected function render_quiz_nav_section_heading(navigation_section_heading $heading) {
-        return $this->render_navigation_section_heading($heading);
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
     }
 }

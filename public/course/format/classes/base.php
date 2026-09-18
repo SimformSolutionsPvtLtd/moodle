@@ -33,8 +33,8 @@ use html_writer;
 use section_info;
 use context_course;
 use editsection_form;
-use moodle_exception;
-use coding_exception;
+use core\exception\moodle_exception;
+use core\exception\coding_exception;
 use moodle_url;
 use lang_string;
 use core_external\external_api;
@@ -388,6 +388,37 @@ abstract class base {
     }
 
     /**
+     * Return a format state updates instance.
+     */
+    public function get_stateupdates_instance(): \core_courseformat\stateupdates {
+        $defaultupdatesclass = 'core_courseformat\\stateupdates';
+        $updatesclass = 'format_' . $this->format . '\\courseformat\\stateupdates';
+        if (!class_exists($updatesclass)) {
+            $updatesclass = $defaultupdatesclass;
+        }
+
+        $updates = new $updatesclass($this);
+        if (!is_a($updates, $defaultupdatesclass)) {
+            throw new coding_exception("The \"$updatesclass\" class must extend \"$defaultupdatesclass\"");
+        }
+
+        return $updates;
+    }
+
+    /**
+     * Return a format state actions instance.
+     * @return \core_courseformat\stateactions
+     */
+    public function get_stateactions_instance(): \core_courseformat\stateactions {
+        // Get the actions class from the course format.
+        $actionsclass = 'format_'. $this->format.'\\courseformat\\stateactions';
+        if (!class_exists($actionsclass)) {
+            $actionsclass = 'core_courseformat\\stateactions';
+        }
+        return new $actionsclass();
+    }
+
+    /**
      * Method used in the rendered and during backup instead of legacy 'numsections'
      *
      * Default renderer will treat sections with sectionnumber greater that the value returned by this
@@ -417,9 +448,19 @@ abstract class base {
 
     /**
      * Method used to get the maximum number of sections for this course format.
+     *
+     * @deprecated Since 5.1 the setting is removed.
+     * @todo Remove this method in Moodle 6.0 (MDL-85272).
      * @return int
      */
+    #[\core\attribute\deprecated(
+        replacement: null,
+        reason: 'The maxsection setting is removed.',
+        since: '5.1',
+        mdl: 'MDL-84291',
+    )]
     public function get_max_sections() {
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
         $maxsections = get_config('moodlecourse', 'maxsections');
         if (!isset($maxsections) || !is_numeric($maxsections)) {
             $maxsections = 52;
@@ -566,6 +607,18 @@ abstract class base {
     }
 
     /**
+     * Returns the generic name for sections in this course format.
+     *
+     * @return string
+     */
+    public function get_generic_section_name() {
+        if (get_string_manager()->string_exists('sectionname', 'format_' . $this->format)) {
+            return get_string('sectionname', 'format_' . $this->format);
+        }
+        return get_string('section');
+    }
+
+    /**
      * Returns the name for the highlighted section.
      *
      * @return string The name for the highlighted section based on the given course format.
@@ -594,7 +647,7 @@ abstract class base {
             throw new coding_exception('Invalid sectionid: '. $sectionid);
         }
 
-        $this->singlesection = $sectioninfo->section;
+        $this->singlesection = $sectioninfo->sectionnum;
         $this->singlesectionid = $sectionid;
     }
 
@@ -612,26 +665,16 @@ abstract class base {
     }
 
     /**
-     * Set if the current format instance will show multiple sections or an individual one.
-     *
-     * Some formats has the hability to swith from one section to multiple sections per page.
-     *
-     * @param int $singlesection zero for all sections or a section number
      * @deprecated Since 4.4. Use set_sectionnum instead.
-     * @todo MDL-80116 This will be deleted in Moodle 4.8.
      */
+    #[\core\attribute\deprecated(
+        replacement: 'base::set_sectionnum',
+        since: '4.4',
+        mdl: 'MDL-80248',
+        final: true,
+    )]
     public function set_section_number(int $singlesection): void {
-
-        debugging(
-            'The method core_courseformat\base::set_section_number() has been deprecated, please use set_sectionnum() instead.',
-            DEBUG_DEVELOPER
-        );
-
-        if ($singlesection === 0) {
-            // Convert zero to null, to guarantee all the sections are displayed.
-            $singlesection = null;
-        }
-        $this->set_sectionnum($singlesection);
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
     }
 
     /**
@@ -670,29 +713,32 @@ abstract class base {
     }
 
     /**
-     * Set if the current format instance will show multiple sections or an individual one.
+     * Returns the section info for the current single section.
      *
-     * Some formats has the hability to swith from one section to multiple sections per page,
-     * output components will use this method to know if the current display is a single or
-     * multiple sections.
+     * If the course format is not a single section format, this will return null.
      *
-     * @return int zero for all sections or the sectin number
-     * @deprecated Since 4.4. Use get_sectionnum instead.
-     * @todo MDL-80116 This will be deleted in Moodle 4.8.
+     * @return section_info|null
      */
-    public function get_section_number(): int {
-
-        debugging(
-            'The method core_courseformat\base::get_section_number() has been deprecated, please use get_sectionnum() instead.',
-            DEBUG_DEVELOPER
-        );
-
-        if ($this->singlesection === null) {
-            // Convert null to zero, to guarantee all the sections are displayed.
-            return 0;
+    public function get_return_section(): section_info|null {
+        if ($this->singlesectionid === null) {
+            return null;
         }
+        $modinfo = get_fast_modinfo($this->courseid);
+        return $modinfo->get_section_info_by_id($this->singlesectionid);
+    }
 
-        return $this->singlesection;
+    /**
+     * @deprecated Since 4.4. Use get_sectionnum instead.
+     */
+    #[\core\attribute\deprecated(
+        replacement: 'base::get_sectionnum',
+        since: '4.4',
+        mdl: 'MDL-80248',
+        final: true,
+    )]
+    public function get_section_number(): int {
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
+        return 0;
     }
 
     /**
@@ -874,7 +920,7 @@ abstract class base {
      * of the view script, it is not enough to change just this function. Do not forget
      * to add proper redirection.
      *
-     * @param int|stdClass|section_info $section Section object from database or just field course_sections.section
+     * @param int|stdClass|section_info|null $section Section object from database or just field course_sections.section
      *     if null the course view page is returned
      * @param array $options options for view URL. At the moment core uses:
      *     'navigation' (bool) if true and section not empty, the function returns section page; otherwise, it returns course page.
@@ -882,35 +928,80 @@ abstract class base {
      *     'expanded' (bool) if true the section will be shown expanded, true by default
      * @return null|moodle_url
      */
-    public function get_view_url($section, $options = array()) {
+    public function get_view_url($section, $options = []) {
         $course = $this->get_course();
-        $url = new moodle_url('/course/view.php', ['id' => $course->id]);
+        $section = (is_object($section) || is_null($section)) ? $section : $this->get_section($section, IGNORE_MISSING);
 
+        // Determine page.
         if (array_key_exists('sr', $options)) {
-            $sectionno = $options['sr'];
-        } else if (is_object($section)) {
-            $sectionno = $section->section;
+            $pagesection = !is_null($options['sr']) ? $this->get_section($options['sr'], IGNORE_MISSING) : null;
+        } else if ($options['navigation'] ?? false) {
+            $pagesection = $section;
         } else {
-            $sectionno = $section;
+            $pagesection = null;
         }
-        if ((!empty($options['navigation']) || array_key_exists('sr', $options)) && $sectionno !== null) {
-            // Display section on separate page.
-            $sectioninfo = $this->get_section($sectionno);
-            return new moodle_url('/course/section.php', ['id' => $sectioninfo->id]);
+
+        // Base URL.
+        if (is_null($pagesection)) {
+            $url = new moodle_url('/course/view.php', ['id' => $course->id]);
+        } else {
+            $url = new moodle_url('/course/section.php', ['id' => $pagesection->id]);
         }
-        if ($this->uses_sections() && $sectionno !== null) {
-            // The url includes the parameter to expand the section by default.
-            if (!array_key_exists('expanded', $options)) {
-                $options['expanded'] = true;
+
+        // Add details.
+        if ($this->uses_sections() && $section && ($section->id != $pagesection?->id)) {
+            if ($options['expanded'] ?? true) {
+                $url->param('expandsection', $section->section);
             }
-            if ($options['expanded']) {
-                // This parameter is being set by default.
-                $url->param('expandsection', $sectionno);
-            }
-            $url->set_anchor('section-'.$sectionno);
+            $url->set_anchor('section-' . $section->section);
         }
 
         return $url;
+    }
+
+    /**
+     * The URL to update the course format.
+     *
+     * If no section is specified, the update will redirect to the general course page.
+     *
+     * @param string $action action name the reactive action
+     * @param array $ids list of ids to update
+     * @param int|null $targetsectionid optional target section id
+     * @param int|null $targetcmid optional target cm id
+     * @param moodle_url|null $returnurl optional custom return url
+     * @return moodle_url
+     */
+    public function get_update_url(
+        string $action,
+        array $ids = [],
+        ?int $targetsectionid = null,
+        ?int $targetcmid = null,
+        ?moodle_url $returnurl = null
+    ): moodle_url {
+        $params = [
+            'courseid' => $this->get_courseid(),
+            'sesskey' => sesskey(),
+            'action' => $action,
+        ];
+
+        if (count($ids) === 1) {
+            $params['id'] = reset($ids);
+        } else {
+            foreach ($ids as $key => $id) {
+                $params["ids[]"] = $id;
+            }
+        }
+
+        if (isset($targetsectionid)) {
+            $params['targetsectionid'] = $targetsectionid;
+        }
+        if (isset($targetcmid)) {
+            $params['targetcmid'] = $targetcmid;
+        }
+        if ($returnurl) {
+            $params['returnurl'] = $returnurl->out_as_local_url();
+        }
+        return new moodle_url('/course/format/update.php', $params);
     }
 
     /**
@@ -920,30 +1011,36 @@ abstract class base {
      * so we must translate to an old non-ajax url while non-ajax
      * course editing is still supported.
      *
+     * @deprecated since Moodle 5.0
+     * @todo Remove this method in Moodle 6.0 (MDL-83530).
+     *
      * @param string $action action name the reactive action
      * @param cm_info $cm course module
      * @return moodle_url
      */
+    #[\core\attribute\deprecated(
+        replacement: 'core_courseformat\base::get_update_url',
+        since: '5.0',
+        mdl: 'MDL-82767',
+    )]
     public function get_non_ajax_cm_action_url(string $action, cm_info $cm): moodle_url {
         $nonajaxactions = [
-            'cmDelete' => 'delete',
-            'cmDuplicate' => 'duplicate',
-            'cmHide' => 'hide',
-            'cmShow' => 'show',
-            'cmStealth' => 'stealth',
+            'cmDelete' => 'cm_delete',
+            'cmDuplicate' => 'cm_duplicate',
+            'cmHide' => 'cm_hide',
+            'cmShow' => 'cm_show',
+            'cmStealth' => 'cm_stealth',
         ];
         if (!isset($nonajaxactions[$action])) {
             throw new coding_exception('Unknown activity action: ' . $action);
         }
+        \core\deprecation::emit_deprecation([$this, __FUNCTION__]);
         $nonajaxaction = $nonajaxactions[$action];
-        $nonajaxurl = new moodle_url(
-            '/course/mod.php',
-            ['sesskey' => sesskey(), $nonajaxaction => $cm->id]
+        return $this->get_update_url(
+            action: $nonajaxaction,
+            ids: [$cm->id],
+            returnurl: $this->get_view_url($this->get_sectionnum(), ['navigation' => true]),
         );
-        if (!is_null($this->get_sectionid())) {
-            $nonajaxurl->param('sr', $this->get_sectionnum());
-        }
-        return $nonajaxurl;
     }
 
     /**
@@ -1619,8 +1716,8 @@ abstract class base {
         // but there is some available info text which explains the reason & should display,
         // OR it is hidden but the course has a setting to display hidden sections as unavailable.
         return $section->uservisible ||
-            ($section->visible && !$section->available && !empty($section->availableinfo)) ||
-            (!$section->visible && !$hidesections);
+            ($section->visible || !$hidesections)
+            && ($section->available || !empty($section->availableinfo));
     }
 
     /**
@@ -2112,6 +2209,12 @@ abstract class base {
         if (array_key_exists($originalsection->section, $modinfo->sections)) {
             foreach ($modinfo->sections[$originalsection->section] as $modnumber) {
                 $originalcm = $modinfo->cms[$modnumber];
+                // We don't want to duplicate any modules with the FEATURE_CAN_DISPLAY set to false.
+                // These mod types are always in section 0 so safe to say we are currently duplicating that section,
+                // and we don't want to inadvertantly duplicate mods we can't see.
+                if (!$originalcm->is_of_type_that_can_display()) {
+                    continue;
+                }
                 if (!$originalcm->deletioninprogress) {
                     duplicate_module($course, $originalcm, $newsection->id, false);
                 }

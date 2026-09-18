@@ -187,8 +187,8 @@ class general_action_bar extends action_bar {
             $menu[][get_string('moremenu')] = $moregroup;
         }
 
-        $selectmenu = new select_menu('gradesactionselect', $menu, $this->activeurl->out(false));
-        $selectmenu->set_label(get_string('gradebooknavigationmenu', 'grades'), ['class' => 'sr-only']);
+        $selectmenu = new select_menu('gradesactionselect', $menu, $this->activeurl->out(false), true);
+        $selectmenu->set_label(get_string('gradebooknavigationmenu', 'grades'), ['class' => 'visually-hidden']);
 
         return $selectmenu;
     }

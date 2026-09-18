@@ -67,9 +67,6 @@ class section implements named_templatable, renderable {
     /** @var section availability output class */
     protected $availabilityclass;
 
-    /** @var optional move here output class */
-    protected $movehereclass;
-
     /** @var optional visibility output class */
     protected $visibilityclass;
 
@@ -104,7 +101,6 @@ class section implements named_templatable, renderable {
         $this->cmsummaryclass = $format->get_output_classname('content\\section\\cmsummary');
         $this->controlmenuclass = $format->get_output_classname('content\\section\\controlmenu');
         $this->availabilityclass = $format->get_output_classname('content\\section\\availability');
-        $this->movehereclass = $format->get_output_classname('content\\section\\movehere');
         $this->visibilityclass = $format->get_output_classname('content\\section\\visibility');
     }
 
@@ -314,11 +310,7 @@ class section implements named_templatable, renderable {
             $data->controlmenu = $controlmenu->export_for_template($output);
         }
         if (!$this->isstealth) {
-            $data->cmcontrols = $output->course_section_add_cm_control(
-                $course,
-                $this->section->section,
-                $this->format->get_sectionnum()
-            );
+            $data->cmcontrols = $output->section_add_cm_controls($this->format, $this->section);
         }
         return true;
     }

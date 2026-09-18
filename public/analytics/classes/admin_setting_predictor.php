@@ -51,13 +51,6 @@ class admin_setting_predictor extends \admin_setting_configselect {
             return '';
         }
 
-        // Calling it here without checking if it is ready because we check it below and show it as a controlled case.
-        $selectedprocessor = \core_analytics\manager::get_predictions_processor($data, false);
-        $isready = $selectedprocessor->is_ready();
-        if ($isready !== true) {
-            return get_string('errorprocessornotready', 'analytics', $isready);
-        }
-
         $currentvalue = get_config('analytics', 'predictionsprocessor');
         if (!empty($currentvalue) && $currentvalue != str_replace('\\\\', '\\', $data)) {
             // Clear all models data.

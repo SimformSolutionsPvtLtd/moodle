@@ -58,7 +58,7 @@ final class lib_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->assertTrue(bigbluebuttonbn_supports(FEATURE_IDNUMBER));
         $this->assertTrue(bigbluebuttonbn_supports(FEATURE_MOD_INTRO));
-        $this->assertFalse(bigbluebuttonbn_supports(FEATURE_GRADE_HAS_GRADE));
+        $this->assertTrue(bigbluebuttonbn_supports(FEATURE_GRADE_HAS_GRADE));
     }
 
     /**
@@ -463,30 +463,56 @@ final class lib_test extends \advanced_testcase {
      */
     public function test_bigbluebuttonbn_reset_userdata(): void {
         global $DB;
-        $this->resetAfterTest();
-        $data = new stdClass();
-        $user = $this->getDataGenerator()->create_user();
 
-        list($bbactivitycontext, $bbactivitycm, $bbactivity) = $this->create_instance();
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $now = time();
+
+        $user = $this->getDataGenerator()->create_user();
+        [$bbactivitycontext, $bbactivitycm, $bbactivity] = $this->create_instance(null, [
+            'openingtime' => $now + HOURSECS,
+            'closingtime' => $now + DAYSECS,
+        ]);
         $this->getDataGenerator()->enrol_user($user->id, $this->course->id);
         $this->setUser($user);
 
         logger::log_meeting_joined_event(instance::get_from_instanceid($bbactivity->id), 0);
+
+        $data = new stdClass();
         $data->courseid = $this->get_course()->id;
         $data->reset_bigbluebuttonbn_tags = true;
         $data->reset_bigbluebuttonbn_logs = true;
         $data->course = $bbactivity->course;
+        $data->timeshift = DAYSECS * 2;
+
         // Add and Join.
         $this->assertCount(2, $DB->get_records('bigbluebuttonbn_logs', ['bigbluebuttonbnid' => $bbactivity->id]));
         $results = bigbluebuttonbn_reset_userdata($data);
         $this->assertCount(0, $DB->get_records('bigbluebuttonbn_logs', ['bigbluebuttonbnid' => $bbactivity->id]));
         $this->assertEquals([
-            'component' => 'BigBlueButton',
-            'item' => 'Deleted tags',
-            'error' => false
-        ],
-            $results[0]
-        );
+            [
+                'component' => 'BigBlueButton',
+                'item' => 'Date',
+                'error' => false,
+            ],
+            [
+                'component' => 'BigBlueButton',
+                'item' => 'Deleted tags',
+                'error' => false,
+            ],
+            [
+                'component' => 'BigBlueButton',
+                'item' => 'Deleted custom logs',
+                'error' => false,
+            ],
+        ], $results);
+
+        // Reload the instance data.
+        $instance = $DB->get_record('bigbluebuttonbn', ['id' => $bbactivity->id]);
+
+        $this->assertEquals($bbactivity->openingtime + (DAYSECS * 2), $instance->openingtime);
+        $this->assertEquals($bbactivity->closingtime + (DAYSECS * 2), $instance->closingtime);
     }
 
     /**
@@ -548,6 +574,61 @@ final class lib_test extends \advanced_testcase {
     }
 
     /**
+     * Reset user data and make sure grades are reset.
+     *
+     * @covers ::bigbluebuttonbn_reset_userdata
+     */
+    public function test_bigbluebuttonbn_reset_userdata_with_grades(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $user = $this->getDataGenerator()->create_user();
+        list($bbactivitycontext, $bbactivitycm, $bbactivity) = $this->create_instance($this->course,
+            ['grade' => 100]);
+        $this->getDataGenerator()->enrol_user($user->id, $this->course->id);
+        $this->setUser($user);
+
+        // Pass a user grade.
+        $grade = [];
+        $gradeitem = $DB->get_record('grade_items', [
+            'courseid' => $this->course->id,
+            'itemtype' => 'mod',
+            'itemmodule' => 'bigbluebuttonbn',
+            'iteminstance' => $bbactivity->id,
+        ]);
+        $grade[$user->id] = [
+            'userid' => $user->id,
+            'rawgrade' => 75,
+        ];
+        grade_update(
+            source: 'mod/bigbluebuttonbn',
+            courseid: $this->course->id,
+            itemtype: 'mod',
+            itemmodule: 'bigbluebuttonbn',
+            iteminstance: $bbactivity->id,
+            itemnumber: 0,
+            grades: $grade
+        );
+        $params = [
+            'userid' => $user->id,
+            'itemid' => $gradeitem->id,
+            'rawgrade' => 75,
+        ];
+        $gradegrades = $DB->get_records('grade_grades', $params);
+        $this->assertCount(1, $gradegrades);
+
+        // Reset user data.
+        $data = new stdClass();
+        $data->courseid = $this->course->id;
+        $data->course = $bbactivity->course;
+        $data->reset_gradebook_grades = 1;
+        bigbluebuttonbn_reset_userdata($data);
+
+        // Check grades have been reset.
+        $gradegrades = $DB->get_records('grade_grades', $params);
+        $this->assertCount(0, $gradegrades);
+    }
+
+    /**
      * Check course module
      *
      * @covers ::bigbluebuttonbn_get_coursemodule_info
@@ -568,11 +649,27 @@ final class lib_test extends \advanced_testcase {
         $this->resetAfterTest();
         list($bbactivitycontext, $bbactivitycm, $bbactivity) = $this->create_instance();
         $result = bigbluebuttonbn_check_updates_since($bbactivitycm, 0);
-        $this->assertEquals(
-            '{"configuration":{"updated":false},"contentfiles":{"updated":false},"introfiles":' .
-            '{"updated":false},"completion":{"updated":false}}',
-            json_encode($result)
-        );
+        $expected = json_encode([
+            'configuration' => [
+                'updated' => false,
+            ],
+            'contentfiles' => [
+                'updated' => false,
+            ],
+            'introfiles' => [
+                'updated' => false,
+            ],
+            'completion' => [
+                'updated' => false,
+            ],
+            'gradeitems' => [
+                'updated' => false,
+            ],
+            'outcomes' => [
+                'updated' => false,
+            ],
+        ]);
+        $this->assertEquals($expected, json_encode($result));
     }
 
     /**

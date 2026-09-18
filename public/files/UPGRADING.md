@@ -1,12 +1,28 @@
 # core_files (subsystem) Upgrade notes
 
-## 4.5.4
+## 5.1.4
+
+### Added
+
+- A new method called `removeopt()` has been created in the `curl` class to allow users to remove options previously set with `setopt()`.
+
+  For more information see [MDL-87822](https://tracker.moodle.org/browse/MDL-87822)
+- User can pass `'CURLOPT_USERPWD' => false` to the `$options` array for the `put()` method of `curl` to remove the `CURLOPT_USERPWD` option from the request.
+
+  For more information see [MDL-87822](https://tracker.moodle.org/browse/MDL-87822)
+
+## 5.0
 
 ### Added
 
 - A new function `file_clear_draft_area()` has been added to delete the files in a draft area.
 
   For more information see [MDL-72050](https://tracker.moodle.org/browse/MDL-72050)
+- Adds a new ad-hoc task `core_files\task\asynchronous_mimetype_upgrade_task` to upgrade the mimetype of files
+  asynchronously during core upgrades. The upgradelib also comes with a new utility function
+  `upgrade_create_async_mimetype_upgrade_task` for creating said ad-hoc task.
+
+  For more information see [MDL-81437](https://tracker.moodle.org/browse/MDL-81437)
 
 ## 4.5
 

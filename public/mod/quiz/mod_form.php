@@ -80,7 +80,7 @@ class mod_quiz_mod_form extends moodleform_mod {
             $mform->setType('name', PARAM_CLEANHTML);
         }
         $mform->addRule('name', null, 'required', null, 'client');
-        $mform->addRule('name', get_string('maximumchars', '', 255), 'maxlength', 255, 'client');
+        $mform->addRule('name', get_string('maximumchars', '', 1333), 'maxlength', 1333, 'client');
 
         // Introduction.
         $this->standard_intro_elements(get_string('introduction', 'quiz'));
@@ -114,6 +114,25 @@ class mod_quiz_mod_form extends moodleform_mod {
                 ['optional' => true]);
         $mform->addHelpButton('graceperiod', 'graceperiod', 'quiz');
         $mform->hideIf('graceperiod', 'overduehandling', 'neq', 'graceperiod');
+
+        // Pre-create attempts.
+        // This is only shown if "Pre-create period" as been set at site level, and the quiz open time is enabled.
+        $precreateperiod = get_config('quiz', 'precreateperiod');
+        if (!empty($precreateperiod)) {
+            $yesoption = get_string('precreateyes', 'quiz', $precreateperiod / HOURSECS);
+            $precreateoptions = [
+                1 => $yesoption,
+                0 => get_string('no'),
+            ];
+            $mform->addElement(
+                'select',
+                'precreateattempts',
+                get_string('precreateattempts', 'quiz'),
+                $precreateoptions
+            );
+            $mform->hideIf('precreateattempts', 'timeopen[enabled]');
+            $mform->addHelpButton('precreateattempts', 'precreateattempts', 'quiz');
+        }
 
         // -------------------------------------------------------------------------------
         // Grade settings.

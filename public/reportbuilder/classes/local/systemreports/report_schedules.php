@@ -26,14 +26,11 @@ use stdClass;
 use core_reportbuilder\permission;
 use core_reportbuilder\system_report;
 use core_reportbuilder\local\entities\user;
-use core_reportbuilder\local\filters\date;
-use core_reportbuilder\local\filters\text;
+use core_reportbuilder\local\filters\{boolean_select, date, text};
 use core_reportbuilder\local\helpers\format;
-use core_reportbuilder\local\models\report;
-use core_reportbuilder\local\models\schedule;
-use core_reportbuilder\local\report\action;
-use core_reportbuilder\local\report\column;
-use core_reportbuilder\local\report\filter;
+use core_reportbuilder\local\models\{report, schedule};
+use core_reportbuilder\local\report\{action, column, filter};
+use core_reportbuilder\local\schedules\base;
 use core_reportbuilder\output\schedule_name_editable;
 
 /**
@@ -64,7 +61,7 @@ class report_schedules extends system_report {
         $this->add_base_condition_simple('sc.reportid', $this->get_parameter('reportid', 0, PARAM_INT));
 
         // Select fields required for actions, permission checks, and row class callbacks.
-        $this->add_base_fields('sc.id, sc.name, sc.enabled, rb.contextid');
+        $this->add_base_fields('sc.id, sc.name, sc.enabled, sc.classname, rb.contextid');
 
         // Join user entity for "User modified" column.
         $entityuser = new user();
@@ -128,18 +125,18 @@ class report_schedules extends system_report {
 
                 $renderer = $PAGE->get_renderer('core_reportbuilder');
                 $attributes = [
-                    ['name' => 'id', 'value' => $row->id],
-                    ['name' => 'action', 'value' => 'schedule-toggle'],
-                    ['name' => 'state', 'value' => $row->enabled],
+                    ['name' => 'data-id', 'value' => $row->id],
+                    ['name' => 'data-action', 'value' => 'schedule-toggle'],
+                    ['name' => 'data-state', 'value' => $row->enabled],
                 ];
                 $label = $row->enabled ? get_string('disableschedule', 'core_reportbuilder')
                     : get_string('enableschedule', 'core_reportbuilder');
                 return $renderer->render_from_template('core/toggle', [
                     'id' => 'schedule-toggle-' . $row->id,
                     'checked' => $row->enabled,
-                    'dataattributes' => $attributes,
+                    'extraattributes' => $attributes,
                     'label' => $label,
-                    'labelclasses' => 'sr-only'
+                    'labelclasses' => 'visually-hidden',
                 ]);
             })
         );
@@ -162,18 +159,6 @@ class report_schedules extends system_report {
             })
         );
 
-        // Time scheduled column.
-        $this->add_column((new column(
-            'timescheduled',
-            new lang_string('startingfrom'),
-            $this->get_schedule_entity_name()
-        ))
-            ->set_type(column::TYPE_TIMESTAMP)
-            ->add_fields("{$tablealias}.timescheduled")
-            ->set_is_sortable(true)
-            ->add_callback([format::class, 'userdate'])
-        );
-
         // Time last sent column.
         $this->add_column((new column(
             'timelastsent',
@@ -189,6 +174,24 @@ class report_schedules extends system_report {
                 }
 
                 return format::userdate($timelastsent, $row);
+            })
+        );
+
+        // Time next send column.
+        $this->add_column((new column(
+            'timenextsend',
+            new lang_string('timenextsend', 'core_reportbuilder'),
+            $this->get_schedule_entity_name()
+        ))
+            ->set_type(column::TYPE_TIMESTAMP)
+            ->add_fields("{$tablealias}.timenextsend")
+            ->set_is_sortable(true)
+            ->add_callback(static function(int $timenextsend, stdClass $row): string {
+                if ($timenextsend < time()) {
+                    return get_string('never');
+                }
+
+                return format::userdate($timenextsend, $row);
             })
         );
 
@@ -248,16 +251,25 @@ class report_schedules extends system_report {
     protected function add_filters(): void {
         $tablealias = $this->get_main_table_alias();
 
+        // Enabled filter.
+        $this->add_filter(new filter(
+            boolean_select::class,
+            'enabled',
+            new lang_string('enabled', 'core_admin'),
+            $this->get_schedule_entity_name(),
+            "{$tablealias}.enabled",
+        ));
+
         // Name filter.
-        $this->add_filter((new filter(
+        $this->add_filter(new filter(
             text::class,
             'name',
             new lang_string('name'),
             $this->get_schedule_entity_name(),
             "{$tablealias}.name"
-        )));
+        ));
 
-        // Time created filter.
+        // Time last sent filter.
         $this->add_filter((new filter(
             date::class,
             'timelastsent',
@@ -268,12 +280,31 @@ class report_schedules extends system_report {
             ->set_limited_operators([
                 date::DATE_ANY,
                 date::DATE_EMPTY,
+                date::DATE_NOT_EMPTY,
                 date::DATE_RANGE,
-                date::DATE_PREVIOUS,
+                date::DATE_BEFORE,
+                date::DATE_LAST,
                 date::DATE_CURRENT,
             ])
         );
 
+        // Time next send filter.
+        $this->add_filter((new filter(
+            date::class,
+            'timenextsend',
+            new lang_string('timenextsend', 'core_reportbuilder'),
+            $this->get_schedule_entity_name(),
+            "{$tablealias}.timenextsend"
+        ))
+            ->set_limited_operators([
+                date::DATE_ANY,
+                date::DATE_RANGE,
+                date::DATE_PAST,
+                date::DATE_NEXT,
+                date::DATE_AFTER,
+                date::DATE_CURRENT,
+            ])
+        );
     }
 
     /**
@@ -281,31 +312,38 @@ class report_schedules extends system_report {
      */
     protected function add_actions(): void {
         // Edit action.
-        $this->add_action(new action(
+        $this->add_action((new action(
             new moodle_url('#'),
             new pix_icon('t/edit', ''),
             ['data-action' => 'schedule-edit', 'data-schedule-id' => ':id'],
             false,
             new lang_string('editscheduledetails', 'core_reportbuilder')
-        ));
+        ))
+            ->add_callback(static function (stdClass $row): bool {
+                $instance = base::instance(0, $row);
+                return $instance !== null && $instance->user_can_add();
+            }));
 
         // Send now action.
         $this->add_action((new action(
             new moodle_url('#'),
-            new pix_icon('t/email', ''),
+            new pix_icon('t/play', ''),
             ['data-action' => 'schedule-send', 'data-schedule-id' => ':id', 'data-schedule-name' => ':name'],
             false,
             new lang_string('sendschedule', 'core_reportbuilder')
         ))
             ->add_callback(function(stdClass $row): bool {
+                $instance = base::instance(0, $row);
+                if ($instance === null || !$instance->user_can_add()) {
+                    return false;
+                }
 
                 // Ensure data name attribute is properly formatted.
-                $row->name = (new schedule(0, $row))->get_formatted_name(
+                $row->name = $instance->get_persistent()->get_formatted_name(
                     context::instance_by_id($row->contextid));
 
                 return true;
-            })
-        );
+            }));
 
         // Delete action.
         $this->add_action((new action(
@@ -321,13 +359,16 @@ class report_schedules extends system_report {
             new lang_string('deleteschedule', 'core_reportbuilder')
         ))
             ->add_callback(function(stdClass $row): bool {
+                $instance = base::instance(0, $row);
+                if ($instance !== null && !$instance->user_can_add()) {
+                    return false;
+                }
 
                 // Ensure data name attribute is properly formatted.
                 $row->name = (new schedule(0, $row))->get_formatted_name(
                     context::instance_by_id($row->contextid));
 
                 return true;
-            })
-        );
+            }));
     }
 }

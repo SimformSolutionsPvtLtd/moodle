@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Strings for component 'error', language 'en', branch 'MOODLE_20_STABLE'
+ * Strings for component 'core_error', language 'en', branch 'MOODLE_20_STABLE'
  *
  * @package   core
  * @copyright 1999 onwards Martin Dougiamas  {@link http://moodle.com}
@@ -38,6 +38,8 @@ $string['blockcannotread'] = 'Could not read data for blockid= {$a}';
 $string['blockdoesnotexist'] = 'This block does not exist';
 $string['blockdoesnotexistonpage'] = 'This block (id={$a->instanceid}) does not exist on this page ({$a->url}).';
 $string['blocknameconflict'] = 'Naming conflict: block {$a->name} has the same title with an existing block: {$a->conflict}!';
+$string['calendareventskipforbrokencoursemodule'] = 'Skipping calendar update for broken {$a->modulename} instance {$a->instance} in course {$a->course}, cm {$a->cm}.';
+$string['calendareventskipformissingcourse'] = 'Skipping calendar update for non-existing course (id={$a}).';
 $string['callbackrejectcomment'] = 'Comment callback rejected this comment.';
 $string['cannotaddcoursemodule'] = 'Could not add a new course module';
 $string['cannotaddcoursemoduletosection'] = 'Could not add the new course module to that section';
@@ -66,7 +68,6 @@ $string['cannotcreateuploaddir'] = 'Cannot create upload folder. The site admini
 $string['cannotcustomisefiltersblockuser'] = 'You cannot customise filters settings in user or block contexts.';
 $string['cannotdeletebackupids'] = 'Couldn\'t delete previous backup ids';
 $string['cannotdeletecategorycourse'] = 'Course \'{$a}\' failed to be deleted.';
-$string['cannotdeletecategoryquestions'] = 'Could not delete questions from category \'{$a}\'';
 $string['cannotdeletecourse'] = 'You do not have the permission to delete this course';
 $string['cannotdeletecustomfield'] = 'Error deleting custom field data';
 $string['cannotdeletedir'] = 'Cannot delete ({$a})';
@@ -262,7 +263,6 @@ $string['erroroutput'] = 'Error output, so disabling automatic redirect.';
 $string['errorparsingxml'] = 'Error parsing XML: {$a->errorstring} at line {$a->errorline}, char {$a->errorchar}';
 $string['errorreadingfile'] = 'Error reading file "{$a}"';
 $string['errorsavingrequest'] = 'An error occurred when trying to save your request.';
-$string['errorsettinguserpref'] = 'Error setting user preference';
 $string['errorunzippingfiles'] = 'Error unzipping files';
 $string['expiredkey'] = 'Expired key';
 $string['externalauthpassworderror'] = 'Non-empty password for external authentication';
@@ -341,6 +341,8 @@ $string['invalidcoursenameshort'] = 'Invalid short course name';
 $string['invalidcountrycode'] = 'Invalid country code: {$a}';
 $string['invaliddata'] = 'Data submitted is invalid';
 $string['invaliddatarootpermissions'] = 'Invalid permissions detected when trying to create a directory. Turn debugging on for further details.';
+$string['invaliddatetimebetween'] = '{$a->after} must be before {$a->before}.';
+$string['invaliddatetimemode'] = 'Invalid mode for time modified filter: {$a}';
 $string['invaliddevicetype'] = 'Invalid device type';
 $string['invalidelementid'] = 'Incorrect element ID!';
 $string['invalidentry'] = 'This is not valid entry!';
@@ -402,7 +404,7 @@ $string['listcantmoveup'] = 'Failed to move item up, as it is the first of its p
 $string['listnochildren'] = 'No children of item found';
 $string['listnoitem'] = 'Item not found';
 $string['listnopeers'] = 'No peers of item found';
-$string['listupdatefail'] = 'DB operation failed when editing list hierarchy';
+$string['listupdatefail'] = 'Database operation failed when editing list hierarchy.';
 $string['logfilenotavailable'] = 'Logs not available';
 $string['loginasnoenrol'] = 'You cannot use enrol or unenrol when using \'Log in as\'.';
 $string['loginasonecourse'] = 'You cannot enter this course. You must finish the \'Log in as\' session before entering any other course.';
@@ -484,7 +486,6 @@ $string['nosite'] = 'Could not find a top-level course!';
 $string['nositeid'] = 'No site ID';
 $string['nostartdatenoenddate'] = 'A course end date can only be set if a start date is also set.';
 $string['nostatstodisplay'] = 'Sorry, there is no available data to display';
-$string['notallowedtoupdateprefremotely'] = 'You are not allowed to update this user preference remotely';
 $string['notavailable'] = 'That is not currently available';
 $string['notfound'] = 'Not found';
 $string['notlocalisederrormessage'] = '{$a}';
@@ -526,12 +527,13 @@ $string['remotedownloadnotallowed'] = 'Download of components to your server isn
 $string['reportnotavailable'] = 'This type of report is only available for the site course';
 $string['requirecorrectaccess'] = 'Invalid url or port.';
 $string['requireloginerror'] = 'Course or activity not accessible.';
-$string['restorechecksumfailed'] = 'Some problem happened with the restore information stored in your session. Please check your PHP memory/DB package size limits. Restore stopped.';
+$string['restorechecksumfailed'] = 'There was a problem with the restore information stored in your session. Please check your PHP memory/database package size limits. Restore stopped.';
 $string['restore_path_element_missingmethod'] = 'Restore method {$a} is missing. It must be defined by a developer.';
 $string['restore_path_element_noobject'] = 'Restore object {$a} is not an object.';
 $string['restrictedcontextexception'] = 'Sorry, execution of external function violates context restriction.';
 $string['restricteduser'] = 'Sorry, but your current account "{$a}" is restricted from doing that';
 $string['reverseproxyabused'] = 'Reverse proxy enabled so the server cannot be accessed directly.<br />Please contact the server administrator.';
+$string['rootdirpublic'] = 'The Moodle root directory must not be publicly accessible. Please reconfigure your web server to use the `/public` directory instead.';
 $string['rpcerror'] = 'Ooops! Your MNET communication has failed! Here\'s that error message to pass on to your administrator: {$a}';
 $string['secretalreadyused'] = 'Change password confirmation link was already used, password was not changed';
 $string['sectioncantbefound'] = '<p><strong>This content can\'t be found.</strong></p><p>It may have been deleted, or the URL may be incorrect.</p>';
@@ -649,20 +651,18 @@ $string['wrongusernamepassword'] = 'Wrong user/password';
 $string['wrongzipfilename'] = 'Wrong ZIP file name';
 $string['wscouldnotcreateecoursenopermission'] = 'WS - Could not create course - No permission';
 $string['wwwrootmismatch'] = 'Incorrect access detected, this server may be accessed only through "{$a}" address, sorry.<br />Please notify server administrator.';
+$string['wwwrootpublic'] = 'Incorrect $CFG->wwwroot in config.php. It should not end in /public.';
 $string['wwwrootslash'] = 'Detected incorrect $CFG->wwwroot in config.php, it must not contain trailing slash.<br />Please notify server administrator.';
 $string['xmldberror'] = 'XMLDB error!';
 $string['alreadyloggedin'] = 'You are already logged in as {$a}, you need to log out before logging in as different user.';
 $string['youcannotdeletecategory'] = 'You cannot delete category \'{$a}\' because you can neither delete the contents, nor move them elsewhere.';
 $string['protected_cc_not_supported'] = 'Protected cartridges not supported.';
 
-// Deprecated since Moodle 4.3.
-$string['prefixtoolong'] = '<p>Error: database table prefix is too long ({$a->dbfamily})</p>
-<p>The site administrator must fix this problem. Maximum length for table prefixes in {$a->dbfamily} is {$a->maxlength} characters.</p>';
-
-// Deprecated since Moodle 4.4.
-$string['cannotmarktopic'] = 'Could not mark that section for this course';
-$string['unknownhelp'] = 'Unknown help section {$a}';
-
 // Deprecated since Moodle 4.5.
 $string['cannotsetpassword'] = 'Could not set user password!';
 $string['myisamproblem'] = 'Database tables are using MyISAM database engine, it is recommended to use ACID compliant engine with full transaction support such as InnoDB.';
+
+// Deprecated since Moodle 5.0.
+$string['cannotdeletecategoryquestions'] = 'Could not delete questions from category \'{$a}\'';
+$string['errorsettinguserpref'] = 'Error setting user preference';
+$string['notallowedtoupdateprefremotely'] = 'You are not allowed to update this user preference remotely';

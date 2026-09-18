@@ -137,7 +137,7 @@ class grade_report_overview extends grade_report {
             if ($frontend) {
                 grade_regrade_final_grades_if_required($course);
             } else {
-                grade_regrade_final_grades($course->id);
+                grade_regrade_final_grades($course->id, async: true);
             }
         }
     }
@@ -170,7 +170,7 @@ class grade_report_overview extends grade_report {
 
         $this->table->set_attribute('cellspacing', '0');
         $this->table->set_attribute('id', 'overview-grade');
-        $this->table->set_attribute('class', 'boxaligncenter generaltable');
+        $this->table->set_attribute('class', 'table generaltable');
 
         $this->table->setup();
     }

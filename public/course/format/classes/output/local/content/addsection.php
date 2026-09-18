@@ -29,6 +29,7 @@ use core_courseformat\base as course_format;
 use core_courseformat\output\local\courseformat_named_templatable;
 use moodle_url;
 use renderable;
+use section_info;
 use stdClass;
 
 /**
@@ -45,13 +46,18 @@ class addsection implements named_templatable, renderable {
     /** @var course_format the course format class */
     protected $format;
 
+    /** @var section_info|null the target section information */
+    protected section_info|null $targetsection;
+
     /**
      * Constructor.
      *
      * @param course_format $format the course format
+     * @param section_info|null $targetsection the target section information
      */
-    public function __construct(course_format $format) {
+    public function __construct(course_format $format, ?section_info $targetsection = null) {
         $this->format = $format;
+        $this->targetsection = $targetsection;
     }
 
     /**
@@ -72,16 +78,16 @@ class addsection implements named_templatable, renderable {
         $options = $format->get_format_options();
 
         $lastsection = $format->get_last_section_number();
-        $maxsections = $format->get_max_sections();
 
         // Component based formats handle add section button in the frontend.
-        $show = ($lastsection < $maxsections) || $format->supports_components();
+        $show = $format->supports_components();
 
+        // Todo: remove the legacy $supportsnumsections in Moodle 6.0 (MDL-86395).
         $supportsnumsections = array_key_exists('numsections', $options);
         if ($supportsnumsections) {
-            $data = $this->get_num_sections_data($output, $lastsection, $maxsections);
+            $data = $this->get_num_sections_data($output, $lastsection);
         } else if (course_get_format($course)->uses_sections() && $show) {
-            $data = $this->get_add_section_data($output, $lastsection, $maxsections);
+            $data = $this->get_add_section_data($output, $lastsection);
         }
 
         if (count((array)$data)) {
@@ -97,24 +103,30 @@ class addsection implements named_templatable, renderable {
      * Current course format has 'numsections' option, which is very confusing and we suggest course format
      * developers to get rid of it (see MDL-57769 on how to do it).
      *
+     * @deprecated Since Moodle 5.1.
+     * @todo Remove in Moodle 6.0 (MDL-86395).
      * @param \renderer_base $output typically, the renderer that's calling this function
      * @param int $lastsection the last section number
-     * @param int $maxsections the maximum number of sections
+     * @param int $maxsections unused (max sections is not needed anymore)
      * @return stdClass data context for a mustache template
      */
-    protected function get_num_sections_data(\renderer_base $output, int $lastsection, int $maxsections): stdClass {
+    #[\core\attribute\deprecated(
+        reason: 'Buttons to increase and decrease sections are deprecated and will be removed in Moodle 6.0',
+        since: '5.1',
+        mdl: 'MDL-85284',
+    )]
+    protected function get_num_sections_data(\renderer_base $output, int $lastsection, int $maxsections = 0): stdClass {
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
         $format = $this->format;
         $course = $format->get_course();
         $data = new stdClass();
 
-        if ($lastsection < $maxsections) {
-            $data->increase = (object) [
-                'url' => new moodle_url(
-                    '/course/changenumsections.php',
-                    ['courseid' => $course->id, 'increase' => true, 'sesskey' => sesskey()]
-                ),
-            ];
-        }
+        $data->increase = (object) [
+            'url' => new moodle_url(
+                '/course/changenumsections.php',
+                ['courseid' => $course->id, 'increase' => true, 'sesskey' => sesskey()]
+            ),
+        ];
 
         if ($course->numsections > 0) {
             $data->decrease = (object) [
@@ -130,34 +142,32 @@ class addsection implements named_templatable, renderable {
     /**
      * Get the add section button data.
      *
-     * Current course format does not have 'numsections' option but it has multiple sections suppport.
+     * Current course format does not have 'numsections' option but it has multiple sections support.
      * Display the "Add section" link that will insert a section in the end.
      * Note to course format developers: inserting sections in the other positions should check both
      * capabilities 'moodle/course:update' and 'moodle/course:movesections'.
      *
      * @param \renderer_base $output typically, the renderer that's calling this function
      * @param int $lastsection the last section number
-     * @param int $maxsections the maximum number of sections
+     * @param int $maxsections unused (max sections is not needed anymore)
      * @return stdClass data context for a mustache template
      */
-    protected function get_add_section_data(\renderer_base $output, int $lastsection, int $maxsections): stdClass {
+    protected function get_add_section_data(\renderer_base $output, int $lastsection, int $maxsections = 0): stdClass {
         $format = $this->format;
         $course = $format->get_course();
         $data = new stdClass();
 
         $addstring = $format->get_format_string('addsection');
 
-        $params = ['courseid' => $course->id, 'insertsection' => 0, 'sesskey' => sesskey()];
-
-        $singlesection = $this->format->get_sectionnum();
-        if ($singlesection) {
-            $params['sectionreturn'] = $singlesection;
-        }
         $data->addsections = (object) [
-            'url' => new moodle_url('/course/changenumsections.php', $params),
+            'url' => $this->format->get_update_url(
+                action: 'section_add',
+                targetsectionid: $this->targetsection ? $this->targetsection->id : null,
+                returnurl: $format->get_view_url($format->get_sectionnum(), ['navigation' => true]),
+            ),
             'title' => $addstring,
-            'newsection' => $maxsections - $lastsection,
-            'canaddsection' => $lastsection < $maxsections,
+            'newsection' => $lastsection + 1,
+            'canaddsection' => true,
         ];
         return $data;
     }

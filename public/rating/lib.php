@@ -834,25 +834,33 @@ class rating_manager {
             $aggregationfield = "1.0 * {$aggregationfield}";
         }
 
-        // If userid is not 0 we only want the grade for a single user.
-        $singleuserwhere = '';
+        // If userid is not 0, fetch the grade for a single user.
+        // Use LEFT JOIN to include the user even if they have no ratings,
+        // ensuring a result is returned when ratings are deleted.
         if ($options->userid != 0) {
-            $params['userid1'] = intval($options->userid);
-            $singleuserwhere = "AND i.{$itemtableusercolumn} = :userid1";
+            $params['userid'] = intval($options->userid);
+            $sql = "SELECT u.id, u.id AS userid, {$aggregationstring}({$aggregationfield}) AS rawgrade
+                      FROM {user} u
+                 LEFT JOIN {{$itemtable}} i ON u.id = i.{$itemtableusercolumn}
+                 LEFT JOIN {rating} r ON r.itemid = i.id
+                       AND r.contextid = :contextid
+                       AND r.component = :component
+                       AND r.ratingarea = :ratingarea
+                     WHERE u.id = :userid
+                  GROUP BY u.id";
+        } else {
+            // MDL-24648 The where line used to be "WHERE (r.contextid is null or r.contextid=:contextid)".
+            // r.contextid will be null for users who haven't been rated yet.
+            // No longer including users who haven't been rated to reduce memory requirements.
+            $sql = "SELECT u.id, u.id AS userid, {$aggregationstring}({$aggregationfield}) AS rawgrade
+                      FROM {user} u
+                      JOIN {{$itemtable}} i ON u.id = i.{$itemtableusercolumn}
+                      JOIN {rating} r ON r.itemid = i.id
+                     WHERE r.contextid = :contextid
+                       AND r.component = :component
+                       AND r.ratingarea = :ratingarea
+                  GROUP BY u.id";
         }
-
-        // MDL-24648 The where line used to be "WHERE (r.contextid is null or r.contextid=:contextid)".
-        // r.contextid will be null for users who haven't been rated yet.
-        // No longer including users who haven't been rated to reduce memory requirements.
-        $sql = "SELECT u.id as id, u.id AS userid, {$aggregationstring}({$aggregationfield}) AS rawgrade
-                  FROM {user} u
-             LEFT JOIN {{$itemtable}} i ON u.id=i.{$itemtableusercolumn}
-             LEFT JOIN {rating} r ON r.itemid=i.id
-                 WHERE r.contextid = :contextid AND
-                       r.component = :component AND
-                       r.ratingarea = :ratingarea
-                       $singleuserwhere
-              GROUP BY u.id";
         $results = $DB->get_records_sql($sql, $params);
 
         if ($results) {
@@ -1133,10 +1141,10 @@ class rating_manager {
         // Future possible enhancement: add a setting to turn grade updating off for those who don't want them in gradebook.
         // Note that this would need to be done in both rate.php and rate_ajax.php.
         if ($context->contextlevel == CONTEXT_MODULE) {
-            // Tell the module that its grades have changed.
+            // Tell the module that its grades have changed (note that 'cmidnumber' is required in order to update grades).
             $modinstance = $DB->get_record($cm->modname, array('id' => $cm->instance));
             if ($modinstance) {
-                $modinstance->cmidnumber = $cm->id; // MDL-12961.
+                $modinstance->cmidnumber = $cm->idnumber;
                 $functionname = $cm->modname.'_update_grades';
                 require_once($CFG->dirroot."/mod/{$cm->modname}/lib.php");
                 if (function_exists($functionname)) {

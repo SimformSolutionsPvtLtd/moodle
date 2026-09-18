@@ -105,11 +105,11 @@ class behat_command {
      * @return string
      */
     final public static function get_behat_command($custombyterm = false, $parallerun = false, $absolutepath = false) {
-
         $separator = DIRECTORY_SEPARATOR;
         $exec = 'behat';
 
         // Cygwin uses linux-style directory separators.
+
         if ($custombyterm && testing_is_cygwin()) {
             $separator = '/';
 
@@ -135,6 +135,7 @@ class behat_command {
             $command = 'php ' . $pathprefix . 'admin' . $separator . 'tool' . $separator . 'behat' . $separator . 'cli'
                 . $separator . 'run.php';
         }
+
         return $command;
     }
 
@@ -150,7 +151,7 @@ class behat_command {
         global $CFG;
 
         $currentcwd = getcwd();
-        chdir($CFG->dirroot);
+        chdir(dirname($CFG->dirroot));
         exec(self::get_behat_command() . ' ' . $options, $output, $code);
         chdir($currentcwd);
 
@@ -167,12 +168,11 @@ class behat_command {
      *
      * @return int Error code or 0 if all ok
      */
-    public static function behat_setup_problem() {
+    public static function behat_setup_problem(): int {
         global $CFG;
 
         // Moodle setting.
         if (!self::are_behat_dependencies_installed()) {
-
             // Returning composer error code to avoid conflicts with behat and moodle error codes.
             self::output_msg(get_string('errorcomposer', 'tool_behat'));
             return TESTING_EXITCODE_COMPOSER;
@@ -237,7 +237,7 @@ class behat_command {
      * @return bool
      */
     public static function are_behat_dependencies_installed() {
-        if (!is_dir(__DIR__ . '/../../../vendor/behat')) {
+        if (!is_dir(__DIR__ . '/../../../../vendor/behat')) {
             return false;
         }
         return true;

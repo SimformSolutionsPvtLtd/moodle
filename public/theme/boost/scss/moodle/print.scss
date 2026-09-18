@@ -9,4 +9,14 @@
     .container {
         width: auto;
     }
+
+    // Remove navbar in print mode.
+    .navbar {
+        display: none;
+    }
+
+    // Remove tertiary navigation in print mode.
+    .tertiary-navigation {
+        display: none;
+    }
 }

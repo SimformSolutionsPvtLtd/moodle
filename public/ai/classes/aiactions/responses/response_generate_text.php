@@ -16,6 +16,8 @@
 
 namespace core_ai\aiactions\responses;
 
+use core_ai\helper;
+
 /**
  * Generate text action response class.
  *
@@ -49,17 +51,20 @@ class response_generate_text extends response_base {
      *
      * @param bool $success The success status of the action.
      * @param int $errorcode Error code. Must exist if success is false.
-     * @param string $errormessage Error message. Must exist if success is false
+     * @param string $error Error name. Must exist if success is false
+     * @param string $errormessage Error message.
      */
     public function __construct(
         bool $success,
         int $errorcode = 0,
+        string $error = '',
         string $errormessage = '',
     ) {
         parent::__construct(
             success: $success,
             actionname: 'generate_text',
             errorcode: $errorcode,
+            error: $error,
             errormessage: $errormessage,
         );
     }
@@ -68,10 +73,14 @@ class response_generate_text extends response_base {
     public function set_response_data(array $response): void {
         $this->id = $response['id'] ?? null;
         $this->fingerprint = $response['fingerprint'] ?? null;
-        $this->generatedcontent = $response['generatedcontent'] ?? null;
+        $generatedcontent = $response['generatedcontent'] ?? null;
+        $this->generatedcontent = $generatedcontent !== null
+            ? helper::strip_reasoning_tags($generatedcontent)
+            : null;
         $this->finishreason = $response['finishreason'] ?? null;
         $this->prompttokens = $response['prompttokens'] ?? null;
         $this->completiontokens = $response['completiontokens'] ?? null;
+        $this->model = $response['model'] ?? null;
     }
 
     #[\Override]
@@ -83,6 +92,7 @@ class response_generate_text extends response_base {
             'finishreason' => $this->finishreason,
             'prompttokens' => $this->prompttokens,
             'completiontokens' => $this->completiontokens,
+            'model' => $this->model,
         ];
     }
 }

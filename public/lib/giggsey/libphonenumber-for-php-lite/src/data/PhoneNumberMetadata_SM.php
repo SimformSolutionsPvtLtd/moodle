@@ -1,4 +1,5 @@
 <?php
+
 /**
  * libphonenumber-for-php-lite data file
  * This file has been @generated from libphonenumber data
@@ -6,181 +7,84 @@
  * @internal
  */
 
-return  [
-  'generalDesc' =>
-   [
-    'NationalNumberPattern' => '(?:0549|[5-7]\\d)\\d{6}',
-    'PossibleLength' =>
-     [
-      0 => 8,
-      1 => 10,
-    ],
-    'PossibleLengthLocalOnly' =>
-     [
-      0 => 6,
-    ],
-  ],
-  'fixedLine' =>
-   [
-    'NationalNumberPattern' => '0549(?:8[0157-9]|9\\d)\\d{4}',
-    'ExampleNumber' => '0549886377',
-    'PossibleLength' =>
-     [
-      0 => 10,
-    ],
-    'PossibleLengthLocalOnly' =>
-     [
-      0 => 6,
-    ],
-  ],
-  'mobile' =>
-   [
-    'NationalNumberPattern' => '6[16]\\d{6}',
-    'ExampleNumber' => '66661212',
-    'PossibleLength' =>
-     [
-      0 => 8,
-    ],
-  ],
-  'tollFree' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'premiumRate' =>
-   [
-    'NationalNumberPattern' => '7[178]\\d{6}',
-    'ExampleNumber' => '71123456',
-    'PossibleLength' =>
-     [
-      0 => 8,
-    ],
-  ],
-  'sharedCost' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'personalNumber' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'voip' =>
-   [
-    'NationalNumberPattern' => '5[158]\\d{6}',
-    'ExampleNumber' => '58001110',
-    'PossibleLength' =>
-     [
-      0 => 8,
-    ],
-  ],
-  'pager' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'uan' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'voicemail' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'noInternationalDialling' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'id' => 'SM',
-  'countryCode' => 378,
-  'internationalPrefix' => '00',
-  'nationalPrefixForParsing' => '([89]\\d{5})$',
-  'nationalPrefixTransformRule' => '0549$1',
-  'sameMobileAndFixedLinePattern' => false,
-  'numberFormat' =>
-   [
-    0 =>
-     [
-      'pattern' => '(\\d{6})',
-      'format' => '$1',
-      'leadingDigitsPatterns' =>
-       [
-        0 => '[89]',
-      ],
-      'nationalPrefixFormattingRule' => '',
-      'domesticCarrierCodeFormattingRule' => '',
-      'nationalPrefixOptionalWhenFormatting' => false,
-    ],
-    1 =>
-     [
-      'pattern' => '(\\d{2})(\\d{2})(\\d{2})(\\d{2})',
-      'format' => '$1 $2 $3 $4',
-      'leadingDigitsPatterns' =>
-       [
-        0 => '[5-7]',
-      ],
-      'nationalPrefixFormattingRule' => '',
-      'domesticCarrierCodeFormattingRule' => '',
-      'nationalPrefixOptionalWhenFormatting' => false,
-    ],
-    2 =>
-     [
-      'pattern' => '(\\d{4})(\\d{6})',
-      'format' => '$1 $2',
-      'leadingDigitsPatterns' =>
-       [
-        0 => '0',
-      ],
-      'nationalPrefixFormattingRule' => '',
-      'domesticCarrierCodeFormattingRule' => '',
-      'nationalPrefixOptionalWhenFormatting' => false,
-    ],
-  ],
-  'intlNumberFormat' =>
-   [
-    0 =>
-     [
-      'pattern' => '(\\d{2})(\\d{2})(\\d{2})(\\d{2})',
-      'format' => '$1 $2 $3 $4',
-      'leadingDigitsPatterns' =>
-       [
-        0 => '[5-7]',
-      ],
-      'nationalPrefixFormattingRule' => '',
-      'domesticCarrierCodeFormattingRule' => '',
-      'nationalPrefixOptionalWhenFormatting' => false,
-    ],
-    1 =>
-     [
-      'pattern' => '(\\d{4})(\\d{6})',
-      'format' => '$1 $2',
-      'leadingDigitsPatterns' =>
-       [
-        0 => '0',
-      ],
-      'nationalPrefixFormattingRule' => '',
-      'domesticCarrierCodeFormattingRule' => '',
-      'nationalPrefixOptionalWhenFormatting' => false,
-    ],
-  ],
-  'mainCountryForCode' => false,
-  'mobileNumberPortableRegion' => false,
-];
+declare(strict_types=1);
+
+namespace libphonenumber\data;
+
+use libphonenumber\NumberFormat;
+use libphonenumber\PhoneMetadata;
+use libphonenumber\PhoneNumberDesc;
+
+/**
+ * @internal
+ */
+class PhoneNumberMetadata_SM extends PhoneMetadata
+{
+    protected const ID = 'SM';
+    protected const COUNTRY_CODE = 378;
+
+    protected ?string $nationalPrefixForParsing = '([89]\d{5})$';
+    protected ?string $internationalPrefix = '00';
+    protected ?string $nationalPrefixTransformRule = '0549$1';
+
+    public function __construct()
+    {
+        $this->generalDesc = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('(?:0549|[5-7]\d)\d{6}')
+            ->setPossibleLengthLocalOnly([6])
+            ->setPossibleLength([8, 10]);
+        $this->mobile = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('6[16]\d{6}')
+            ->setExampleNumber('66661212')
+            ->setPossibleLength([8]);
+        $this->premiumRate = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('7[178]\d{6}')
+            ->setExampleNumber('71123456')
+            ->setPossibleLength([8]);
+        $this->fixedLine = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('0549(?:8[0157-9]|9\d)\d{4}')
+            ->setExampleNumber('0549886377')
+            ->setPossibleLengthLocalOnly([6])
+            ->setPossibleLength([10]);
+        $this->numberFormat = [
+            (new NumberFormat())
+                ->setPattern('(\d{6})')
+                ->setFormat('$1')
+                ->setLeadingDigitsPattern(['[89]'])
+                ->setNationalPrefixOptionalWhenFormatting(false),
+            (new NumberFormat())
+                ->setPattern('(\d{2})(\d{2})(\d{2})(\d{2})')
+                ->setFormat('$1 $2 $3 $4')
+                ->setLeadingDigitsPattern(['[5-7]'])
+                ->setNationalPrefixOptionalWhenFormatting(false),
+            (new NumberFormat())
+                ->setPattern('(\d{4})(\d{6})')
+                ->setFormat('$1 $2')
+                ->setLeadingDigitsPattern(['0'])
+                ->setNationalPrefixOptionalWhenFormatting(false),
+        ];
+        $this->tollFree = PhoneNumberDesc::empty();
+        $this->sharedCost = PhoneNumberDesc::empty();
+        $this->personalNumber = PhoneNumberDesc::empty();
+        $this->voip = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('5[158]\d{6}')
+            ->setExampleNumber('58001110')
+            ->setPossibleLength([8]);
+        $this->pager = PhoneNumberDesc::empty();
+        $this->uan = PhoneNumberDesc::empty();
+        $this->voicemail = PhoneNumberDesc::empty();
+        $this->noInternationalDialling = PhoneNumberDesc::empty();
+        $this->intlNumberFormat = [
+            (new NumberFormat())
+                ->setPattern('(\d{2})(\d{2})(\d{2})(\d{2})')
+                ->setFormat('$1 $2 $3 $4')
+                ->setLeadingDigitsPattern(['[5-7]'])
+                ->setNationalPrefixOptionalWhenFormatting(false),
+            (new NumberFormat())
+                ->setPattern('(\d{4})(\d{6})')
+                ->setFormat('$1 $2')
+                ->setLeadingDigitsPattern(['0'])
+                ->setNationalPrefixOptionalWhenFormatting(false),
+        ];
+    }
+}

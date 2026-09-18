@@ -34,11 +34,7 @@ use question_engine_data_mapper;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class cleanup_duplicate_subquestions extends \core\task\adhoc_task {
-
-    /**
-     * @var int The current progress counter.
-     */
-    protected int $counter;
+    use stored_progress_task_trait;
 
     /**
      * Find questions where there are other questions with identical text, stamp and multianswer parent
@@ -68,17 +64,6 @@ class cleanup_duplicate_subquestions extends \core\task\adhoc_task {
         ");
     }
 
-    /**
-     * Output a progress dot, with a count of the total every 70 items.
-     */
-    protected function increment_progress(): void {
-        mtrace('.', '');
-        $this->counter++;
-        if ($this->counter % 70 === 0) {
-            mtrace(" {$this->counter}");
-        }
-    }
-
     #[\Override]
     public function execute() {
         global $CFG, $DB;
@@ -95,16 +80,32 @@ class cleanup_duplicate_subquestions extends \core\task\adhoc_task {
 
         mtrace("Found {$duplicatedcount} subquestions with duplicates.");
 
+        $this->start_stored_progress();
+        $progress = $this->get_progress();
         foreach ($duplicatedsubquestions as $subquestion) {
+            $where = "parent = :parent AND stamp = :stamp";
+            $params = ['parent' => $subquestion->parent, 'stamp' => $subquestion->stamp];
             // Find instances of the subquestion that do not appear in the sequence of the parent.
-            [$insql, $inparams] = $DB->get_in_or_equal(explode(',', $subquestion->sequence), equal: false);
-            $params = array_merge([$subquestion->parent, $subquestion->stamp], $inparams);
-            $duplicates = $DB->get_records_select('question', "parent = ? AND stamp = ? AND id {$insql}", $params);
+            // Make sure to filter out empty elements in the sequence.
+            // If the parent's sequence ends up empty for whatever reason, there are no "original" subquestions anymore and
+            // all that match the stamp and parent are fair game for deletion.
+            $sequence = array_filter(explode(',', $subquestion->sequence));
+            if (!empty($sequence)) {
+                [$insql, $inparams] = $DB->get_in_or_equal(
+                    items: $sequence,
+                    type: SQL_PARAMS_NAMED,
+                    prefix: 'id',
+                    equal: false,
+                );
+                $where .= " AND id $insql";
+                $params = array_merge($params, $inparams);
+            }
+            $duplicates = $DB->get_records_select('question', $where, $params);
             $duplicatecount = count($duplicates);
             // Delete each duplicate, with a progress bar.
             mtrace("");
-            mtrace("Deleting {$duplicatecount} duplicates of {$subquestion->stamp}:");
-            $this->counter = 0;
+            mtrace("Deleting {$duplicatecount} duplicates:");
+            $progress->start_progress($subquestion->stamp, $duplicatecount);
             foreach ($duplicates as $duplicate) {
                 // Based on question_delete_question(), without checking for parent usage or deleting children.
                 // If the question is being used, just mark it as hidden. Otherwise, delete the question, version and question bank
@@ -130,7 +131,7 @@ class cleanup_duplicate_subquestions extends \core\task\adhoc_task {
                         question_version_status::QUESTION_STATUS_HIDDEN,
                         ['questionid' => $duplicate->id]
                     );
-                    $this->increment_progress();
+                    $progress->increment_progress();
                     continue;
                 }
 
@@ -168,8 +169,9 @@ class cleanup_duplicate_subquestions extends \core\task\adhoc_task {
                 $event->add_record_snapshot('question', $duplicate);
                 $event->trigger();
 
-                $this->increment_progress();
+                $progress->increment_progress();
             }
+            $progress->end_progress();
         }
     }
 }

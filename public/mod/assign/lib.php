@@ -25,8 +25,6 @@
  */
 defined('MOODLE_INTERNAL') || die();
 
-require_once(__DIR__ . '/deprecatedlib.php');
-
 /**
  * Adds an assignment instance
  *
@@ -371,37 +369,23 @@ function assign_update_events($assign, $override = null) {
  * @return mixed True if module supports feature, false if not, null if doesn't know or string for the module purpose.
  */
 function assign_supports($feature) {
-    switch($feature) {
-        case FEATURE_GROUPS:
-            return true;
-        case FEATURE_GROUPINGS:
-            return true;
-        case FEATURE_MOD_INTRO:
-            return true;
-        case FEATURE_COMPLETION_TRACKS_VIEWS:
-            return true;
-        case FEATURE_COMPLETION_HAS_RULES:
-            return true;
-        case FEATURE_GRADE_HAS_GRADE:
-            return true;
-        case FEATURE_GRADE_OUTCOMES:
-            return true;
-        case FEATURE_BACKUP_MOODLE2:
-            return true;
-        case FEATURE_SHOW_DESCRIPTION:
-            return true;
-        case FEATURE_ADVANCED_GRADING:
-            return true;
-        case FEATURE_PLAGIARISM:
-            return true;
-        case FEATURE_COMMENT:
-            return true;
-        case FEATURE_MOD_PURPOSE:
-            return MOD_PURPOSE_ASSESSMENT;
-
-        default:
-            return null;
-    }
+    return match ($feature) {
+        FEATURE_GROUPS => true,
+        FEATURE_GROUPINGS => true,
+        FEATURE_MOD_INTRO => true,
+        FEATURE_COMPLETION_TRACKS_VIEWS => true,
+        FEATURE_COMPLETION_HAS_RULES => true,
+        FEATURE_GRADE_HAS_GRADE => true,
+        FEATURE_GRADE_HAS_PENALTY => true,
+        FEATURE_GRADE_OUTCOMES => true,
+        FEATURE_BACKUP_MOODLE2 => true,
+        FEATURE_SHOW_DESCRIPTION => true,
+        FEATURE_ADVANCED_GRADING => true,
+        FEATURE_PLAGIARISM => true,
+        FEATURE_COMMENT => true,
+        FEATURE_MOD_PURPOSE => MOD_PURPOSE_ASSESSMENT,
+        default => null,
+    };
 }
 
 /**
@@ -471,6 +455,12 @@ function assign_extend_settings_navigation(settings_navigation $settings, naviga
             key: 'mod_assign_submissions'
         );
     }
+
+    // Allow changing grade penalty settings at course module level, on assignment module.
+    // Other modules can choose to allow this change or not.
+    if (\mod_assign\penalty\helper::is_penalty_enabled($cm->instance)) {
+        \core_grades\penalty_manager::extend_navigation_module($settings, $navref);
+    }
 }
 
 /**
@@ -497,7 +487,8 @@ function assign_get_coursemodule_info($coursemodule) {
     $result = new cached_cm_info();
     $result->name = $assignment->name;
     if ($coursemodule->showdescription) {
-        if ($assignment->alwaysshowdescription || time() > $assignment->allowsubmissionsfromdate) {
+        $now = \core\di::get(\core\clock::class)->time();
+        if ($assignment->alwaysshowdescription || $now > $assignment->allowsubmissionsfromdate) {
             // Convert intro to html. Do not filter cached version, filters run at display time.
             $result->content = format_module_intro('assign', $assignment, $coursemodule->id, false);
         }
@@ -1063,7 +1054,7 @@ function assign_grade_item_update($assign, $grades=null) {
         $grades = null;
     }
 
-    return grade_update('mod/assign',
+    $result = grade_update('mod/assign',
                         $assign->courseid,
                         'mod',
                         'assign',
@@ -1071,6 +1062,31 @@ function assign_grade_item_update($assign, $grades=null) {
                         0,
                         $grades,
                         $params);
+
+    // Get lists of users whose grades are updated.
+    $userids = [];
+    if (is_array($grades)) {
+        // The $grades is array/object of grade(s).
+        // We are checking if it is single user (array with simple values such as userid and rawgrade).
+        // Or it is array of grade objects, for multiple users.
+        if (isset($grades['userid']) && isset($grades['rawgrade'])) {
+            // Single user grade update.
+            $userids = [$grades['userid']];
+        } else {
+            // Multiple user grade update.
+            foreach ($grades as $grade) {
+                if (is_object($grade) && isset($grade->userid) && isset($grade->rawgrade)) {
+                    $userids[] = $grade->userid;
+                }
+            }
+        }
+    }
+    // Apply penalty to each user.
+    foreach ($userids as $userid) {
+        \mod_assign\penalty\helper::apply_penalty_to_user($assign->id, $userid);
+    }
+
+    return $result;
 }
 
 /**
@@ -1372,6 +1388,7 @@ function assign_pluginfile($course,
                 $forcedownload,
                 array $options=array()) {
     global $CFG;
+    require_once("{$CFG->dirroot}/mod/assign/locallib.php");
 
     if ($context->contextlevel != CONTEXT_MODULE) {
         return false;
@@ -1382,13 +1399,13 @@ function assign_pluginfile($course,
         return false;
     }
 
-    require_once($CFG->dirroot . '/mod/assign/locallib.php');
     $assign = new assign($context, $cm, $course);
 
     if ($filearea !== ASSIGN_INTROATTACHMENT_FILEAREA && $filearea !== ASSIGN_ACTIVITYATTACHMENT_FILEAREA) {
         return false;
     }
-    if (!$assign->show_intro()) {
+
+    if ($filearea === ASSIGN_ACTIVITYATTACHMENT_FILEAREA && !$assign->show_intro()) {
         return false;
     }
 
@@ -1593,7 +1610,8 @@ function mod_assign_core_calendar_provide_event_action(calendar_event $event,
             'id' => $cm->id,
             'action' => 'grader'
         ]);
-        $actionable = $assign->can_grade($userid) && (time() >= $assign->get_instance()->allowsubmissionsfromdate);
+        $now = \core\di::get(\core\clock::class)->time();
+        $actionable = $assign->can_grade($userid) && ($now >= $assign->get_instance()->allowsubmissionsfromdate);
         $itemcount = $actionable ? $assign->count_submissions_need_grading() : 0;
     } else {
         $usersubmission = $assign->get_user_submission($userid, false);
@@ -1759,7 +1777,7 @@ function mod_assign_core_calendar_event_timestart_updated(\calendar_event $event
     }
 
     if ($modified) {
-        $instance->timemodified = time();
+        $instance->timemodified = \core\di::get(\core\clock::class)->time();
         // Persist the assign instance changes.
         $DB->update_record('assign', $instance);
         $assign->update_calendar($coursemodule->id);
@@ -1844,4 +1862,14 @@ function mod_assign_core_calendar_get_event_action_string(string $eventtype): st
     }
 
     return get_string($identifier, 'assign', $modulename);
+}
+
+/**
+ * Allow the support for SMS in assignment.
+ *
+ * @return bool
+ */
+function mod_assign_supports_sms_notifications(): bool {
+    // At the moment, assignment supports sms notifications.
+    return true;
 }

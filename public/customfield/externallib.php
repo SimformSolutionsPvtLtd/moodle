@@ -122,6 +122,7 @@ class core_customfield_external extends external_api {
                             'nameeditable' => new external_value(PARAM_RAW, 'inplace editable name'),
                             'movetitle' => new external_value(PARAM_TEXT, 'accessible name for the category move handle'),
                             'addfieldmenu' => new external_value(PARAM_RAW, 'addfieldmenu'),
+                            'canedit' => new external_value(PARAM_BOOL, 'can edit'),
                             'fields' => new external_multiple_structure(
                                 new external_single_structure(
                                     array(
@@ -133,9 +134,12 @@ class core_customfield_external extends external_api {
                                     )
                                 )
                             , '', VALUE_OPTIONAL),
+                            'toggle' => new external_value(PARAM_RAW, 'toggle', VALUE_OPTIONAL),
                         )
                     )
                 ),
+                'canmovefields' => new external_value(PARAM_BOOL, 'Whether fields can be moved', VALUE_DEFAULT, false),
+                'canmovecategories' => new external_value(PARAM_BOOL, 'Whether categories can be moved', VALUE_DEFAULT, false),
             )
         );
     }

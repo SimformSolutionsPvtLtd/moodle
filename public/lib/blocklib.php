@@ -1344,8 +1344,9 @@ class block_manager {
 
         $controls = array();
         $actionurl = $this->page->url->out(false, array('sesskey'=> sesskey()));
-        $blocktitle = $block->title;
-        if (empty($blocktitle)) {
+
+        $blocktitle = (string) $block->title;
+        if ($blocktitle === '') {
             $blocktitle = $block->arialabel;
         }
 
@@ -2757,16 +2758,25 @@ function blocks_add_default_course_blocks($course) {
 
     }
 
+    $showinsubcontexts = false;
     if ($course->id == SITEID) {
         $pagetypepattern = 'site-index';
     } else {
-        $pagetypepattern = 'course-view-*';
+        $format = course_get_format($course);
+        if ($format->has_view_page()) {
+            $pagetypepattern = 'course-view-*';
+        } else {
+            $pagetypepattern = '*';
+            $showinsubcontexts = true;
+        }
     }
     $page = new moodle_page();
     $page->set_course($course);
     $page->blocks->add_blocks(
         $page->blocks->filter_nonexistent_blocks($blocknames),
         $pagetypepattern,
+        null,
+        $showinsubcontexts,
     );
 }
 

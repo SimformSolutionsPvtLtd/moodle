@@ -77,12 +77,31 @@ class renderer extends plugin_renderer_base {
      *
      * @param \moodle_url $url The base url.
      * @param \stdClass $course Current course.
+     * @param int $activegroup Currently active group, defaults to 0. Has no effect if course is in separate groups mode.
      * @return string HTML
      */
-    public function render_groups_select(\moodle_url $url, \stdClass $course): string {
+    public function render_groups_select(\moodle_url $url, \stdClass $course, int $activegroup = 0): string {
+        global $USER;
         $groupurl = fullclone($url);
         $groupurl->remove_params(['page', 'group']);
-        $groupoutput = groups_print_course_menu($course, $groupurl, true);
+        $groupoutput = '';
+        if ($course->groupmode == SEPARATEGROUPS) {
+            $groupoutput = groups_print_course_menu($course, $groupurl, true);
+        } else {
+            if (has_capability('moodle/site:accessallgroups', \context_course::instance($course->id))) {
+                $groups = groups_get_all_groups($course->id);
+            } else {
+                $groups = groups_get_all_groups($course->id, $USER->id);
+            }
+
+            if (count($groups) == 0) {
+                return '';
+            }
+            $groupsmenu = [get_string('allparticipants')] + groups_list_to_menu($groups);
+            $select = new single_select($groupurl, 'group', $groupsmenu, $activegroup, null, 'selectgroup');
+            $select->label = get_string('groups');
+            $groupoutput = $this->output->render($select);
+        }
 
         if (empty($groupoutput)) {
             return $groupoutput;
@@ -120,8 +139,11 @@ class renderer extends plugin_renderer_base {
      * @param \moodle_url $url The base url.
      * @return string HTML
      * @throws \coding_exception
+     * @deprecated since 5.1 MDL-83838 -  Please do not use this function any more.
+     * #[\core\attribute\deprecated(null, reason: 'It is no longer used', since: '5.1', mdl: 'MDL-83838')]
      */
     public function render_download_buttons(\moodle_url $url): string {
+        \core\deprecation::emit_deprecation_if_present([$this, __FUNCTION__]);
         $downloadurl = fullclone($url);
         $downloadurl->remove_params(['page']);
         $downloadurl->param('format', 'csv');

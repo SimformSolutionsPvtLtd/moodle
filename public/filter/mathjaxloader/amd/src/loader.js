@@ -25,59 +25,71 @@ import {
 } from 'core_filters/events';
 
 /**
- * The users current language - this can't be set until MathJax is loaded - so we need to store it.
- * @property {string} lang
- * @default ''
- * @private
+ * URL to MathJax.
+ * @type {string|null}
  */
-let lang = '';
+let mathJaxUrl = null;
 
 /**
- * Used to prevent configuring MathJax twice.
- * @property {boolean} configured
- * @default false
- * @private
+ * Promise that is resolved when MathJax was loaded.
+ * @type {Promise|null}
  */
-let configured = false;
+let mathJaxLoaded = null;
 
 /**
  * Called by the filter when it is active on any page.
- * This does not load MathJAX yet - it addes the configuration to the head incase it gets loaded later.
+ * This does not load MathJAX yet - it adds the configuration in case it gets loaded later.
  * It also subscribes to the filter-content-updated event so MathJax can respond to content loaded by Ajax.
  *
- * @param {Object} params List of configuration params containing mathjaxconfig (text) and lang
+ * @param {Object} params List of configuration params containing mathjaxurl, mathjaxconfig (text) and lang
  */
 export const configure = (params) => {
-    // Add a js configuration object to the head.
-    // See "https://docs.mathjax.org/en/v2.7-latest/advanced/dynamic.html"
-    const script = document.createElement("script");
-    script.type = "text/x-mathjax-config";
-    script[(window.opera ? "innerHTML" : "text")] = params.mathjaxconfig;
-    document.getElementsByTagName("head")[0].appendChild(script);
+    let config = {};
+    try {
+        if (params.mathjaxconfig !== '') {
+            config = JSON.parse(params.mathjaxconfig);
+        }
+    }
+    catch (e) {
+        window.console.error('Invalid JSON in mathjaxconfig.', e);
+    }
+    if (typeof config != 'object') {
+        config = {};
+    }
+    if (typeof config.loader !== 'object') {
+        config.loader = {};
+    }
+    if (!Array.isArray(config.loader.load)) {
+        config.loader.load = [];
+    }
+    if (typeof config.startup !== 'object') {
+        config.startup = {};
+    }
 
-    // Save the lang config until MathJax is actually loaded.
-    lang = params.lang;
+    // Always ensure that ui/safe is in the list. Otherwise, there is a risk of XSS.
+    // https://docs.mathjax.org/en/v3.2-latest/options/safe.html.
+    if (!config.loader.load.includes('ui/safe')) {
+        config.loader.load.push('ui/safe');
+    }
+
+    // This filter controls what elements to typeset.
+    config.startup.typeset = false;
+
+    // Let's still set the locale even if the localization is not yet ported to version 3.2.2
+    // https://docs.mathjax.org/en/v3.2-latest/upgrading/v2.html#not-yet-ported-to-version-3.
+    config.locale = params.lang;
+
+    mathJaxUrl = params.mathjaxurl;
+
+    // Only set window.MathJax if MathJax has not started loading yet.
+    // configure() may be called more than once when AJAX fragments are loaded (e.g., block edit forms).
+    if (!mathJaxLoaded) {
+        window.MathJax = config;
+    }
 
     // Listen for events triggered when new text is added to a page that needs
     // processing by a filter.
     document.addEventListener(eventTypes.filterContentUpdated, contentUpdated);
-};
-
-/**
- * Set the correct language for the MathJax menus. Only do this once.
- *
- * @private
- */
-const setLocale = () => {
-    if (!configured) {
-        if (typeof window.MathJax !== "undefined") {
-            window.MathJax.Hub.Queue(function() {
-                window.MathJax.Localization.setLocale(lang);
-            });
-            window.MathJax.Hub.Configured();
-            configured = true;
-        }
-    }
 };
 
 /**
@@ -93,33 +105,27 @@ const typesetNode = (node) => {
         return;
     }
 
-    // MathJax 2.X does not notify when complete. The best we can do, according to their docs, is to queue a callback.
-    // See https://docs.mathjax.org/en/v2.7-latest/advanced/typeset.html
-    // Note that the MathJax.Hub.Queue() method will return immediately, regardless of whether the typesetting has taken place
-    // or not, so you can not assume that the mathematics is visible after you make this call.
-    // That means that things like the size of the container for the mathematics may not yet reflect the size of the
-    // typeset mathematics. If you need to perform actions that depend on the mathematics being typeset, you should push those
-    // actions onto the MathJax.Hub.queue as well.
-    window.MathJax.Hub.Queue(["Typeset", window.MathJax.Hub, node]);
-    window.MathJax.Hub.Queue([(node) => {
-        // The notifyFilterContentRenderingComplete event takes an Array of NodeElements or a NodeList.
-        // We cannot create a NodeList so we use an HTMLElement[].
-        notifyFilterContentRenderingComplete([node]);
-    }, node]);
+    loadMathJax().then(() => {
+        // Chain the calls to typesetPromise as it is recommended.
+        // https://docs.mathjax.org/en/v3.2-latest/web/typeset.html#handling-asynchronous-typesetting.
+        window.MathJax.startup.promise = window.MathJax.startup.promise
+            .then(() => window.MathJax.typesetPromise([node]))
+            .then(() => {
+                notifyFilterContentRenderingComplete([node]);
+            })
+            .catch(e => {
+                window.console.log(e);
+            });
+    });
 };
 
 /**
  * Called by the filter when an equation is found while rendering the page.
  */
 export const typeset = () => {
-    if (!configured) {
-        setLocale();
-        const elements = document.getElementsByClassName('filter_mathjaxloader_equation');
-        for (const element of elements) {
-            if (typeof window.MathJax !== "undefined") {
-                typesetNode(element);
-            }
-        }
+    const elements = document.getElementsByClassName('filter_mathjaxloader_equation');
+    for (const element of elements) {
+        typesetNode(element);
     }
 };
 
@@ -129,10 +135,6 @@ export const typeset = () => {
  * @param {CustomEvent} event - Custom event with "nodes" indicating the root of the updated nodes.
  */
 export const contentUpdated = (event) => {
-    if (typeof window.MathJax === "undefined") {
-        return;
-    }
-
     let listOfElementContainMathJax = [];
     let hasMathJax = false;
     // The list of HTMLElements in an Array.
@@ -147,17 +149,35 @@ export const contentUpdated = (event) => {
         }
         listOfElementContainMathJax.push(mathjaxElements);
     });
+
     if (!hasMathJax) {
         return;
     }
-    const processDelay = window.MathJax.Hub.processSectionDelay;
-    // Set the process section delay to 0 when updating the formula.
-    window.MathJax.Hub.processSectionDelay = 0;
-    // When content is updated never position to hash, it may cause unexpected document scrolling.
-    window.MathJax.Hub.Config({positionToHash: false});
-    setLocale();
+
     listOfElementContainMathJax.forEach((mathjaxElements) => {
         mathjaxElements.forEach((node) => typesetNode(node));
     });
-    window.MathJax.Hub.processSectionDelay = processDelay;
+};
+
+/**
+ * Load the MathJax script.
+ *
+ * @return Promise that is resolved when MathJax was loaded.
+ */
+export const loadMathJax = () => {
+    if (!mathJaxLoaded) {
+        if (!mathJaxUrl) {
+            return Promise.reject(new Error('URL to MathJax not set.'));
+        }
+
+        mathJaxLoaded = new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.type = 'text/javascript';
+            script.onload = resolve;
+            script.onerror = reject;
+            script.src = mathJaxUrl;
+            document.getElementsByTagName('head')[0].appendChild(script);
+        });
+    }
+    return mathJaxLoaded;
 };

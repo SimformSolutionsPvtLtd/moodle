@@ -21,7 +21,7 @@
  * needed during the very first steps of installation. This file was
  * generated automatically by export-installer.php (which is part of AMOS
  * {@link https://moodledev.io/general/projects/api/amos}) using the
- * list of strings defined in install/stringnames.txt file.
+ * list of strings defined in public/install/stringnames.txt file.
  *
  * @package   installer
  * @license   https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -36,7 +36,7 @@ $string['chooselanguagesub'] = 'Velg et språk for installasjonen. Dette språke
 $string['clialreadyconfigured'] = 'Konfigurasjonsfilen config.php finnes allerede. Vennligst bruk admin/cli/install_database.php hvis du vil installere Moodle på denne portalen.';
 $string['clialreadyinstalled'] = 'Filen config.php eksisterer allerede. Vennligst bruk admin/cli/install_database.php hvis du vil oppgradere Moodle på denne portalen.';
 $string['cliinstallheader'] = 'Moodle {$a} kommandolinje installasjonsprogram';
-$string['clitablesexist'] = 'Databasetabeller finnes allerede, CLI installasjon kan ikke fortsette.';
+$string['clitablesexist'] = 'Databasetabellene finnes allerede; installasjonen av kommandolinjegrensesnittet (CLI) kan ikke fortsette.';
 $string['databasehost'] = 'Databasevert';
 $string['databasename'] = 'Databasenavn';
 $string['databasetypehead'] = 'Velg databasedriver';
@@ -49,17 +49,6 @@ $string['environmentsub2'] = 'Hver Moodle-utgivelse har minimumskrav til PHP ver
 $string['errorsinenvironment'] = 'Miljøkontroll feilet!';
 $string['installation'] = 'Installasjon';
 $string['langdownloaderror'] = 'Beklageligvis kunne ikke språkpakken "{$a}" lastes ned. Installasjonsprosessen vil fortsette på Engelsk.';
-$string['memorylimithelp'] = '<p>PHP minnegrensen for serveren din er nå satt til {$a}.</p>
-<p>Dette kan skape minneproblemer for Moodle senere, spesielt hvis du har mange moduler tillatt og/eller mange brukere.</p>
-<p>Vi anbefaler at du konfigurer PHP med en høyere grense enn mulig, for eksepmel 40M. Det er flere måter å gjøre dette på.:</p>
-<ol>
-<li>Hvis du har muligheten, rekompiler PHP med<i>--enable-memory-limit</i>.
-Dette vil tillate Moodle å sette minnegrensen selv.</li>
-<li>Hvis du har tilgang til php.ini fila di, kan du endre <b>memory_limit</b> innstillinga der til omtrent 40M. Hvis du ikke har tilgang kan du be administrator gjøre dette for deg.</li>
-<li>På noen PHP-servere kan du lage en .htaccess fil i Moodlemappen som inneholder denne linjen:
-<p><blockquote>php_value memory_limit 40M</blockquote></p>
-    <p>Uansett, på noen servere kan dette forhindre <b>alle</b> PHP sider fra å virke (du vil se feilmeldinger når du ser på sider) og da må du fjerne .htaccess fila.</p></li>
-</ol>';
 $string['paths'] = 'Stier';
 $string['pathserrcreatedataroot'] = 'Datakatalogen ({$a->dataroot}) kan ikke opprettes av installasjonsprogrammet.';
 $string['pathshead'] = 'Bekreft stier';
@@ -78,9 +67,8 @@ $string['pathsunsecuredataroot'] = 'Dataroot plassering er ikke sikker';
 $string['pathswrongadmindir'] = 'Adminkatalog finnes ikke';
 $string['phpextension'] = '{$a} PHP-tillegg';
 $string['phpversion'] = 'PHP versjon';
-$string['phpversionhelp'] = '<p>Moodle trenger en PHP versjon minst 5.6.5 eller 7.1.0 (7.0.x har noen begrensninger).</p>
-<Du kjører nå versjon {$a}</p>
-<p>Du må oppgradere PHP eller flytte til en server med en nyere versjon av PHP!</p>';
+$string['webserverconfigproblemdescription'] = 'Webserveren din er ikke konfigurert til å forhindre tilgang til filer utenfor /public-katalogen. For detaljer om hvordan du konfigurerer webserveren riktig, se dokumentasjonen <a href="https://docs.moodle.org/en/Upgrading#Code_directories_restructure">Oppgradering - Omstrukturering av kodekataloger</a>. Når du er konfigurert på nytt, <a href="{$a}">gå tilbake til webroten</a>.';
+$string['webservernotconfigured'] = 'Webserver ikke konfigurert';
 $string['welcomep10'] = '{$a->installername} ({$a->installerversion})';
 $string['welcomep20'] = 'Du ser denne siden fordi du nå har fullført installeringen og kjøringen av pakken <strong>{$a->packname} {$a->packversion}</strong> på datamaskinen din. Gratulerer!';
 $string['welcomep30'] = 'Denne versjonen av <strong>{$a->installername}</strong> inneholder programmer for å lage et miljø som <strong>Moodle</strong> jobber i, nemlig:';

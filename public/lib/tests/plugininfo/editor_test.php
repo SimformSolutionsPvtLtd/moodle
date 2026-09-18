@@ -167,14 +167,14 @@ final class editor_test extends advanced_testcase {
      * @param string $texteditors
      * @param string $pluginname
      * @param int $direction
-     * @param array $neworder
+     * @param array $expected
      * @param string $newtexteditors
      */
     public function test_change_plugin_order(
         string $texteditors,
         string $pluginname,
         int $direction,
-        array $neworder,
+        array $expected,
         string $newtexteditors,
     ): void {
         global $CFG;
@@ -184,7 +184,7 @@ final class editor_test extends advanced_testcase {
         editor::change_plugin_order($pluginname, $direction);
 
         $this->assertSame(
-            $neworder,
+            $expected,
             array_keys(editor::get_sorted_plugins()),
         );
         $this->assertSame($newtexteditors, $CFG->texteditors);
@@ -232,7 +232,7 @@ final class editor_test extends advanced_testcase {
                 'texteditors' => 'textarea,tiny',
                 'pluginname' => 'atto',
                 'direction' => base::MOVE_DOWN,
-                // Atto is not enabled. No change expected.
+                // Atto is not available. No change expected.
                 'expected' => $getorder([
                     'textarea',
                     'tiny',
@@ -264,18 +264,7 @@ final class editor_test extends advanced_testcase {
                 'texteditors' => 'textarea,tiny',
                 'pluginname' => 'atto',
                 'direction' => base::MOVE_UP,
-                // Atto is not enabled. No change expected.
-                'expected' => $getorder([
-                    'textarea',
-                    'tiny',
-                ]),
-                'newtexteditors' => 'textarea,tiny',
-            ],
-            [
-                'texteditors' => 'textarea,tiny',
-                'pluginname' => 'atto',
-                'direction' => base::MOVE_UP,
-                // Atto is not enabled. No change expected.
+                // Atto is not available. No change expected.
                 'expected' => $getorder([
                     'textarea',
                     'tiny',

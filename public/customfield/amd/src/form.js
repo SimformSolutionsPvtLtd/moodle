@@ -29,6 +29,7 @@ import {
 } from 'core/str';
 import {add as addToast} from 'core/toast';
 import ModalForm from 'core_form/modalform';
+import {add as addToast} from 'core/toast';
 import Notification from 'core/notification';
 import Pending from 'core/pending';
 import SortableList from 'core/sortable_list';
@@ -183,8 +184,7 @@ const editField = (element, component, area, itemid) => {
  */
 const getCategoryNameFor = nodeElement => nodeElement
     .closest('[data-category-id]')
-    .find('[data-inplaceeditable][data-itemtype=category][data-component=core_customfield]')
-    .attr('data-value');
+    .attr('data-category-name');
 
 const setupSortableLists = rootNode => {
     // Sort category.

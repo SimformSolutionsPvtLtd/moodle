@@ -26,7 +26,6 @@ import Notification from 'core/notification';
 import Selectors from 'core/datafilter/selectors';
 import Templates from 'core/templates';
 import Fragment from 'core/fragment';
-import {get_strings as getStrings} from 'core/str';
 import {getString} from 'core/str';
 import {addIconToContainerRemoveOnCompletion} from 'core/loadingicon';
 
@@ -37,7 +36,8 @@ import {addIconToContainerRemoveOnCompletion} from 'core/loadingicon';
  * @param {String} defaultcourseid Course ID for the default course to pass back to the view.
  * @param {String} defaultcategoryid Question bank category ID for the default course to pass back to the view.
  * @param {Number} perpage The number of questions to display per page.
- * @param {Number} contextId Context ID of the question bank view.
+ * @param {Number} bankContextId Context ID of the question bank being filtered.
+ * @param {Number} quizCmId Course module ID of the quiz as the viewing context.
  * @param {string} component Frankenstyle name of the component for the fragment API callback (e.g. core_question)
  * @param {string} callback Name of the callback for the fragment API (e.g question_data)
  * @param {string} view The class name of the question bank view class used for this page.
@@ -50,7 +50,8 @@ export const init = async(
     defaultcourseid,
     defaultcategoryid,
     perpage,
-    contextId,
+    bankContextId,
+    quizCmId,
     component,
     callback,
     view,
@@ -69,20 +70,10 @@ export const init = async(
         MENU_ACTIONS: '.menu-action',
         EDIT_SWITCH: '.editmode-switch-form input[name=setmode]',
         EDIT_SWITCH_URL: '.editmode-switch-form input[name=pageurl]',
-        CATEGORY_VALIDATION_INPUT: 'div[data-filter-type="category"] div.form-autocomplete-input input',
-        QUESTION_BANK_WINDOW: '.questionbankwindow',
         SHOW_ALL_LINK: '[data-filteraction="showall"]',
     };
 
     const filterSet = document.querySelector(`#${filterRegionId}`);
-
-    const [
-        showAllText,
-        showPerPageText,
-    ] = await Promise.all([
-        getString('showall', 'core', ''),
-        getString('showperpage', 'core', extraparams.defaultqperpage),
-    ]);
 
     const viewData = {
         extraparams: JSON.stringify(extraparams),
@@ -104,6 +95,14 @@ export const init = async(
         sortData = JSON.parse(defaultSort);
     }
 
+    const [
+        showAllText,
+        showPerPageText,
+    ] = await Promise.all([
+        getString('showall', 'core', ''),
+        getString('showperpage', 'core', extraparams.defaultqperpage),
+    ]);
+
     /**
      * Retrieve table data.
      *
@@ -111,27 +110,6 @@ export const init = async(
      * @param {Promise} pendingPromise pending promise
      */
     const applyFilter = (filterdata, pendingPromise) => {
-
-        // MDL-84578 - This is a simple fix for older stable branches, which does not require
-        // backporting loads of functionality to validate filters properly.
-        let categoryid = parseInt(filterdata.category.values[0]);
-        let categorynode = document.querySelector(SELECTORS.CATEGORY_VALIDATION_INPUT);
-        categorynode.setCustomValidity('');
-        if (isNaN(categoryid) || categoryid <= 0) {
-            getStrings([
-                {
-                    key: 'error:category',
-                    component: 'qbank_managecategories',
-                },
-            ]).then((strings) => {
-                categorynode.setCustomValidity(strings[0]);
-                categorynode.reportValidity();
-                return strings;
-            }).catch(Notification.exception);
-            pendingPromise.resolve();
-            return;
-        }
-
         // Reload the questions based on the specified filters. If no filters are provided,
         // use the default category filter condition.
         if (filterdata) {
@@ -144,21 +122,22 @@ export const init = async(
                 if (!isNaN(viewData.jointype)) {
                     filterdata.jointype = viewData.jointype;
                 }
-                updateUrlParams(filterdata);
             }
         }
         // Load questions for first page.
         viewData.filter = JSON.stringify(filterdata);
         viewData.sortdata = JSON.stringify(sortData);
+        viewData.quizcmid = quizCmId;
 
         const questionscontainer = document.querySelector(SELECTORS.QUESTION_CONTAINER_ID);
         // Clear the contents of the element, then append the loading icon.
         questionscontainer.innerHTML = '';
         addIconToContainerRemoveOnCompletion(questionscontainer, pendingPromise);
 
-        Fragment.loadFragment(component, callback, contextId, viewData)
+        Fragment.loadFragment(component, callback, bankContextId, viewData)
             // Render questions for first page and pagination.
             .then((questionhtml, jsfooter) => {
+                updateUrlParams(filterdata);
                 if (questionhtml === undefined) {
                     questionhtml = '';
                 }
@@ -220,7 +199,7 @@ export const init = async(
     };
 
     // Add listeners for the sorting, paging and clear actions.
-    document.querySelector(SELECTORS.QUESTION_BANK_WINDOW).addEventListener('click', e => {
+    document.querySelector('.questionbankwindow').addEventListener('click', e => {
         const sortableLink = e.target.closest(SELECTORS.SORT_LINK);
         const paginationLink = e.target.closest(SELECTORS.PAGINATION_LINK);
         const clearLink = e.target.closest(Selectors.filterset.actions.resetFilters);
@@ -236,7 +215,7 @@ export const init = async(
                 }
             }
             viewData.qpage = 0;
-            coreFilter.updateTableFromFilter();
+            coreFilter.updateTableFromFilter(false);
         }
         if (paginationLink) {
             e.preventDefault();
@@ -244,7 +223,7 @@ export const init = async(
             const qpage = paginationURL.searchParams.get('qpage');
             if (paginationURL.search !== null) {
                 viewData.qpage = qpage;
-                coreFilter.updateTableFromFilter();
+                coreFilter.updateTableFromFilter(false);
             }
         }
         if (clearLink) {

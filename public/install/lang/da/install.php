@@ -21,7 +21,7 @@
  * needed during the very first steps of installation. This file was
  * generated automatically by export-installer.php (which is part of AMOS
  * {@link https://moodledev.io/general/projects/api/amos}) using the
- * list of strings defined in install/stringnames.txt file.
+ * list of strings defined in public/install/stringnames.txt file.
  *
  * @package   installer
  * @license   https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -36,7 +36,7 @@ $string['chooselanguagesub'] = 'Vælg et sprog til brug under installationen. De
 $string['clialreadyconfigured'] = 'Konfigurationsfilen config.php eksisterer allerede. Benyt venigst admin/cli/install_database.php til at installere Moodle for dette site.';
 $string['clialreadyinstalled'] = 'Filen config.php eksisterer allerede, brug admin/cli/install_database.php hvis du ønsker at opgradere dette websted.';
 $string['cliinstallheader'] = 'Moodle {$a} kommandolinje-installationsprogram';
-$string['clitablesexist'] = 'Databasetabeller er allerede oprettet, CLI-installationen kan ikke fortsætte.';
+$string['clitablesexist'] = 'Databasetabeller findes allerede; Command Line Interface (CLI)-installationen kan ikke fortsætte';
 $string['databasehost'] = 'Databasevært';
 $string['databasename'] = 'Databasenavn';
 $string['databasetypehead'] = 'Vælg databasedriver';
@@ -50,17 +50,6 @@ Installationsprogrammet udfører et tjek før hver installation og opgradering. 
 $string['errorsinenvironment'] = 'Systemtjekket mislykkedes!';
 $string['installation'] = 'Installation';
 $string['langdownloaderror'] = 'Sproget "{$a}" blev desværre ikke downloadet. Installationen vil fortsætte på engelsk.';
-$string['memorylimithelp'] = '<p>Den mængde hukommelse PHP kan bruge, er sat til {$a}.</p>
-
-<p>Det kan forårsage at der opstår problemer senere, især hvis du har mange moduler aktiveret eller mange brugere.</p>
-
-<p>Vi anbefaler at du konfigurerer PHP med mere hukommelse, f.eks. 40M. Der er flere måder hvorpå du kan ændre det.</p>
-<ol>
-<li>Hvis du har mulighed for det, kan du rekompilere PHP med <i>--enable-memory-limit</i>. Det vil tillade at Moodle selv kan definere hvor meget hukommelse der er brug for.</li>
-<li>Hvis du har adgang til php.ini filen kan du ændre <b>memory_limit</b>-indstillingen til noget i retning af 40M. Hvis du ikke har direkte adgang til den kan du bede systemadministratoren om at gøre det for dig.</li>
-<li>På nogle servere kan du oprette en \'.htaccess\'-fil og gemme den i moodle-mappen med linjen: <blockquote><div>php_value memory_limit 40M</div></blockquote>
-
-<p>Det kan dog på nogle servere forhindre <b>alle</b> PHP-siderne i at virke (du vil se fejl når du ser på siderne). I så fald kan du blive nødt til at fjerne \'.htaccess\'filen igen.</p></li> </ol>';
 $string['paths'] = 'Stier';
 $string['pathserrcreatedataroot'] = 'Datamappen ({$a->dataroot}) kan ikke oprettes af installationsprogrammet.';
 $string['pathshead'] = 'Bekræft stier';
@@ -80,9 +69,8 @@ $string['pathsunsecuredataroot'] = 'Datamappen er ikke sikret';
 $string['pathswrongadmindir'] = 'Adminmappe eksisterer ikke';
 $string['phpextension'] = '{$a} PHP-extension';
 $string['phpversion'] = 'PHP-version';
-$string['phpversionhelp'] = '<p>Moodle kræver mindst PHP version 5.6.5. eller 7.1 (7.0.x har nogle maskinbegrænsninger).</p>
-<p>Webserveren bruger i øjeblikket version {$a}</p>
-<p>Du bliver nødt til at opgradere PHP eller flytte systemet over på en anden webserver der har en nyere version af PHP!</p>';
+$string['webserverconfigproblemdescription'] = 'Din webserver er ikke konfigureret til at forhindre adgang til filer uden for /public-mappen. Se dokumentationen <a href="https://docs.moodle.org/en/Upgrading#Code_directories_restructure">Opgradering – Omstrukturering af kodemapper</a> for detaljer om, hvordan du konfigurerer din webserver korrekt. Når konfigurationen er opdateret, <a href="{$a}">besøg webroden igen</a>';
+$string['webservernotconfigured'] = 'Web server not configured';
 $string['welcomep10'] = '{$a->installername} ({$a->installerversion})';
 $string['welcomep20'] = 'Du ser denne side fordi du har installeret og åbnet pakken <strong>{$a->packname} {$a->packversion}</strong> på din computer.
 Tillykke med det!';

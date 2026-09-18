@@ -11,9 +11,9 @@ Feature: Basic recycle bin functionality
       | student1 | Student | 1 | student@asd.com |
       | student2 | Student | 2 | student2@asd.com |
     And the following "courses" exist:
-      | fullname | shortname | initsections |
-      | Course 1 | C1        | 1            |
-      | Course 2 | C2        | 0            |
+      | fullname                                                                                        | shortname | initsections |
+      | Course 1                                                                                        | C1        | 1            |
+      | <span class="multilang" lang="en">Course</span><span class="multilang" lang="es">Curso</span> 2 | C2        | 0            |
     And the following "activities" exist:
       | activity | course | section | name          | intro  |
       | assign   | C1     | 1       | Test assign 1 | Test 1 |
@@ -39,16 +39,27 @@ Feature: Basic recycle bin functionality
       | student2 | G1 |
       | student2 | G2 |
     And the following config values are set as admin:
-      | coursebinenable | 1 | tool_recyclebin |
-      | categorybinenable | 1 | tool_recyclebin |
-      | coursebinexpiry | 604800 | tool_recyclebin |
+      | coursebinenable   | 1       | tool_recyclebin |
+      | categorybinenable | 1       | tool_recyclebin |
+      | coursebinexpiry   | 604800  | tool_recyclebin |
       | categorybinexpiry | 1209600 | tool_recyclebin |
-      | autohide | 0 | tool_recyclebin |
+      | autohide          | 0       | tool_recyclebin |
+    And the following "core_badges > Badges" exist:
+      | name              | course | description       | image                        | status | type |
+      | My course 1 badge | C1     | Badge description | badges/tests/behat/badge.png | active | 2    |
+      | My course 2 badge | C2     | Badge description | badges/tests/behat/badge.png | active | 2    |
+    And the following "core_badges > Criterias" exist:
+      | badge             | role           |
+      | My course 1 badge | editingteacher |
+      | My course 2 badge | editingteacher |
+    And the "multilang" filter is "on"
+    And the "multilang" filter applies to "content and headings"
 
   Scenario: Restore a deleted assignment
     Given I log in as "teacher1"
     And I am on "Course 1" course homepage with editing mode on
     And I delete "Test assign 1" activity
+    And I run all adhoc tasks
     When I navigate to "Recycle bin" in current page administration
     Then I should see "Test assign 1"
     And I should see "Contents will be permanently deleted after 7 days"
@@ -57,6 +68,14 @@ Feature: Basic recycle bin functionality
     And I wait to be redirected
     And I am on "Course 1" course homepage
     And I should see "Test assign 1" in the "Section 1" "section"
+    # Check badges were not duplicated.
+    And I navigate to "Badges" in current page administration
+    And the following should exist in the "reportbuilder-table" table:
+      | Name              | Badge status |
+      | My course 1 badge | Available    |
+    And the following should not exist in the "reportbuilder-table" table:
+      | Name              | Badge status  |
+      | My course 1 badge | Not available |
 
   @javascript
   Scenario: Restore a deleted course
@@ -72,16 +91,22 @@ Feature: Basic recycle bin functionality
     And I should not see "Course 2"
     When I navigate to "Recycle bin" in current page administration
     Then I should see "Course 2"
+    But I should not see "Curso 2"
     And I should see "Contents will be permanently deleted after 14 days"
     And I click on "Restore" "link" in the "region-main" "region"
     And I should see "'Course 2' has been restored"
     And I wait to be redirected
     And I go to the courses management page
     And I should see "Course 2" in the "#course-listing" "css_element"
-    And I am on the "Course 2" "groups overview" page
+    And I am on the "C2" "groups overview" page
     And "Student 1" "text" should exist in the "Group A" "table_row"
     And "Student 2" "text" should exist in the "Group A" "table_row"
     And "Student 2" "text" should exist in the "Group B" "table_row"
+    # Check badges are restored.
+    And I navigate to "Badges" in current page administration
+    And the following should exist in the "reportbuilder-table" table:
+      | Name              | Badge status  |
+      | My course 2 badge | Not available |
 
   @javascript
   Scenario: Deleting a single item from the recycle bin

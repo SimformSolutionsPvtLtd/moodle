@@ -761,6 +761,35 @@ function format_string($string, $striplinks = true, $options = null) {
 }
 
 /**
+ * Encode all dangerous characters and named html entities as
+ * numeric html entities.
+ *
+ * The result of this function can be used safely in both {{ }} and {{{ }}} tags in Mustache templates
+ * because it is not modified by s() function and it is equivalent to htmlentities() escaping.
+ *
+ * @param string|null $string
+ * @return string|null html string without any tags or dangerous characters
+ */
+function clean_string(?string $string): ?string {
+    if ($string === null || $string === '') {
+        return $string;
+    }
+
+    $replace = [
+        '"' => '&#34;',
+        '\'' => '&#39;',
+        '<' => '&#60;',
+        '>' => '&#62;',
+    ];
+    $string = strtr($string, $replace);
+    $string = preg_replace('/&(?![a-zA-Z0-9#]{1,8};)/', '&#38;', $string);
+
+    $string = core_text::entities_named_to_numeric($string);
+
+    return $string;
+}
+
+/**
  * Given a string, performs a negative lookahead looking for any ampersand character
  * that is not followed by a proper HTML entity. If any is found, it is replaced
  * by &amp;. The string is then returned.
@@ -1079,6 +1108,7 @@ function purify_html($text, $options = array()) {
 
         $config->set('HTML.DefinitionID', 'moodlehtml');
         $config->set('HTML.DefinitionRev', 7);
+        $config->set('CSS.Proprietary', true);
         $config->set('Cache.SerializerPath', $cachedir);
         $config->set('Cache.SerializerPermissions', $CFG->directorypermissions);
         $config->set('Core.NormalizeNewlines', false);
@@ -1237,15 +1267,9 @@ function text_to_html($text, $smileyignored = null, $para = true, $newlines = tr
  * @return string Converted text
  */
 function markdown_to_html($text) {
-    global $CFG;
-
     if ($text === '' or $text === null) {
         return $text;
     }
-
-    require_once($CFG->libdir .'/markdown/MarkdownInterface.php');
-    require_once($CFG->libdir .'/markdown/Markdown.php');
-    require_once($CFG->libdir .'/markdown/MarkdownExtra.php');
 
     return \Michelf\MarkdownExtra::defaultTransform($text);
 }
@@ -1829,7 +1853,7 @@ function print_group_picture($group, $courseid, $large = false, $return = false,
 
     $context = context_course::instance($courseid);
 
-    $groupname = s($group->name);
+    $groupname = format_string($group->name, true, ['context' => $context, 'escape' => false]);
     $pictureimage = html_writer::img($pictureurl, $groupname, ['title' => $groupname]);
 
     $output = '';

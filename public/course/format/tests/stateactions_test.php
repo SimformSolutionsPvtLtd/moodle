@@ -110,7 +110,9 @@ final class stateactions_test extends \advanced_testcase {
     private function translate_references(array $references, array $values): array {
         $result = [];
         foreach ($values as $value) {
-            $result[] = $references[$value];
+            if (array_key_exists($value, $references)) {
+                $result[] = $references[$value];
+            }
         }
         return $result;
     }
@@ -209,19 +211,41 @@ final class stateactions_test extends \advanced_testcase {
     ): void {
         $this->resetAfterTest();
 
-        // Create a course with 3 sections, 1 of them hidden.
-        $course = $this->create_course($format, 3, [2]);
+        if ($format === 'singleactivity') {
+            // Single activity format does not have sections.
+            $course = $this->create_course($format, 0, []);
+        } else {
+            // Create a course with 3 sections, 1 of them hidden.
+            $course = $this->create_course($format, 3, [2]);
+        }
 
         $references = $this->course_references($course);
 
         // Create and enrol user using given role.
         $this->set_test_user_by_role($course, $role);
 
-        // Add some activities to the course. One visible and one hidden in both sections 1 and 2.
-        $references["cm0"] = $this->create_activity($course->id, 'assign', 1, true);
-        $references["cm1"] = $this->create_activity($course->id, 'book', 1, false);
-        $references["cm2"] = $this->create_activity($course->id, 'glossary', 2, true);
-        $references["cm3"] = $this->create_activity($course->id, 'page', 2, false);
+        // Some formats, like social, can create some initial activity.
+        $modninfo = course_modinfo::instance($course);
+        $cms = $modninfo->get_cms();
+        $count = 0;
+        foreach ($cms as $cm) {
+            $references["initialcm{$count}"] = $cm->id;
+            $count++;
+        }
+
+        if ($format === 'singleactivity') {
+            // Add some activities to the course. One visible and one hidden in section 0.
+            $references['cm0'] = $this->create_activity($course->id, 'forum', 0, true);
+            $references['cm1'] = $this->create_activity($course->id, 'book', 0, false);
+        } else {
+            // Add some activities to the course. One visible and one hidden in sections 0, 1 and 2.
+            $references['cm0'] = $this->create_activity($course->id, 'forum', 0, true);
+            $references['cm1'] = $this->create_activity($course->id, 'book', 0, false);
+            $references['cm2'] = $this->create_activity($course->id, 'assign', 1, true);
+            $references['cm3'] = $this->create_activity($course->id, 'book', 1, false);
+            $references['cm4'] = $this->create_activity($course->id, 'glossary', 2, true);
+            $references['cm5'] = $this->create_activity($course->id, 'page', 2, false);
+        }
 
         if ($expectedexception) {
             $this->expectException(moodle_exception::class);
@@ -271,6 +295,7 @@ final class stateactions_test extends \advanced_testcase {
             static::course_state_provider('weeks'),
             static::course_state_provider('topics'),
             static::course_state_provider('social'),
+            static::course_state_provider('singleactivity'),
             static::section_state_provider('weeks', 'admin'),
             static::section_state_provider('weeks', 'editingteacher'),
             static::section_state_provider('weeks', 'student'),
@@ -280,6 +305,9 @@ final class stateactions_test extends \advanced_testcase {
             static::section_state_provider('social', 'admin'),
             static::section_state_provider('social', 'editingteacher'),
             static::section_state_provider('social', 'student'),
+            static::section_state_provider('singleactivity', 'admin'),
+            static::section_state_provider('singleactivity', 'editingteacher'),
+            static::section_state_provider('singleactivity', 'student'),
             static::cm_state_provider('weeks', 'admin'),
             static::cm_state_provider('weeks', 'editingteacher'),
             static::cm_state_provider('weeks', 'student'),
@@ -289,6 +317,9 @@ final class stateactions_test extends \advanced_testcase {
             static::cm_state_provider('social', 'admin'),
             static::cm_state_provider('social', 'editingteacher'),
             static::cm_state_provider('social', 'student'),
+            static::cm_state_provider('singleactivity', 'admin'),
+            static::cm_state_provider('singleactivity', 'editingteacher'),
+            static::cm_state_provider('singleactivity', 'student'),
         );
     }
 
@@ -299,7 +330,25 @@ final class stateactions_test extends \advanced_testcase {
      * @return array the testing scenarios
      */
     public static function course_state_provider(string $format): array {
-        $expectedexception = ($format === 'social');
+        $expectedexception = false;
+
+        $studentcms = ['cm0', 'cm2'];
+        // All sections and cms that the user can access to.
+        if ($format === 'singleactivity') {
+            // Single activity format does not have sections.
+            $cms = ['cm0', 'cm1'];
+            $usersections = ['section0'];
+            $studentcms = ['cm0'];
+        } else if ($format === 'social') {
+            // Social format only uses section 0 (for all users).
+            $cms = ['initialcm0', 'cm0', 'cm1', 'cm2', 'cm3', 'cm4', 'cm5'];
+            $studentcms = ['initialcm0', 'cm0', 'cm2'];
+            $usersections = ['section0'];
+        } else {
+            $cms = ['cm0', 'cm1', 'cm2', 'cm3', 'cm4', 'cm5'];
+            $usersections = ['section0', 'section1', 'section2', 'section3'];
+        }
+
         return [
             // Tests for course_state.
             "admin $format course_state" => [
@@ -311,8 +360,8 @@ final class stateactions_test extends \advanced_testcase {
                 ],
                 'expectedresults' => [
                     'course' => ['course'],
-                    'section' => ['section0', 'section1', 'section2', 'section3'],
-                    'cm' => ['cm0', 'cm1', 'cm2', 'cm3'],
+                    'section' => array_intersect($usersections, ['section0', 'section1', 'section2', 'section3']),
+                    'cm' => $cms,
                 ],
                 'expectedexception' => $expectedexception,
             ],
@@ -325,8 +374,8 @@ final class stateactions_test extends \advanced_testcase {
                 ],
                 'expectedresults' => [
                     'course' => ['course'],
-                    'section' => ['section0', 'section1', 'section2', 'section3'],
-                    'cm' => ['cm0', 'cm1', 'cm2', 'cm3'],
+                    'section' => array_intersect($usersections, ['section0', 'section1', 'section2', 'section3']),
+                    'cm' => $cms,
                 ],
                 'expectedexception' => $expectedexception,
             ],
@@ -339,8 +388,8 @@ final class stateactions_test extends \advanced_testcase {
                 ],
                 'expectedresults' => [
                     'course' => ['course'],
-                    'section' => ['section0', 'section1', 'section3'],
-                    'cm' => ['cm0'],
+                    'section' => array_intersect($usersections, ['section0', 'section1', 'section3']),
+                    'cm' => $studentcms,
                 ],
                 'expectedexception' => $expectedexception,
             ],
@@ -355,16 +404,23 @@ final class stateactions_test extends \advanced_testcase {
      * @return array the testing scenarios
      */
     public static function section_state_provider(string $format, string $role): array {
-        // Social format will raise an exception and debug messages because it does not
-        // use sections and it does not provide a renderer.
-        $expectedexception = ($format === 'social');
+        $expectedexception = ($format === 'singleactivity');
 
         // All sections and cms that the user can access to.
         $usersections = ['section0', 'section1', 'section2', 'section3'];
-        $usercms = ['cm0', 'cm1', 'cm2', 'cm3'];
+        $usercms = ['cm0', 'cm1', 'cm2', 'cm3', 'cm4', 'cm5'];
         if ($role == 'student') {
             $usersections = ['section0', 'section1', 'section3'];
-            $usercms = ['cm0'];
+            $usercms = ['cm0', 'cm2'];
+        }
+        if ($format === 'social') {
+            // Social format only uses section 0 (for all users).
+            $usersections = ['section0'];
+            $usercms = ['initialcm0', ...$usercms];
+        } else if ($format === 'singleactivity') {
+            // Single activity format does not have sections.
+            $usersections = ['section0'];
+            $usercms = ($role == 'student') ? ['cm0'] : ['cm0', 'cm1'];
         }
 
         return [
@@ -388,9 +444,9 @@ final class stateactions_test extends \advanced_testcase {
                 'expectedresults' => [
                     'course' => [],
                     'section' => array_intersect(['section0'], $usersections),
-                    'cm' => [],
+                    'cm' => array_intersect(['initialcm0', 'cm0', 'cm1'], $usercms),
                 ],
-                'expectedexception' => $expectedexception,
+                'expectedexception' => false,
             ],
             "$role $format section_state visible section" => [
                 'format' => $format,
@@ -402,7 +458,7 @@ final class stateactions_test extends \advanced_testcase {
                 'expectedresults' => [
                     'course' => [],
                     'section' => array_intersect(['section1'], $usersections),
-                    'cm' => array_intersect(['cm0', 'cm1'], $usercms),
+                    'cm' => array_intersect(['cm2', 'cm3'], $usercms),
                 ],
                 'expectedexception' => $expectedexception,
             ],
@@ -416,7 +472,7 @@ final class stateactions_test extends \advanced_testcase {
                 'expectedresults' => [
                     'course' => [],
                     'section' => array_intersect(['section2'], $usersections),
-                    'cm' => array_intersect(['cm2', 'cm3'], $usercms),
+                    'cm' => array_intersect(['cm4', 'cm5'], $usercms),
                 ],
                 'expectedexception' => $expectedexception,
             ],
@@ -430,7 +486,7 @@ final class stateactions_test extends \advanced_testcase {
                 'expectedresults' => [
                     'course' => [],
                     'section' => array_intersect(['section1', 'section3'], $usersections),
-                    'cm' => array_intersect(['cm0', 'cm1'], $usercms),
+                    'cm' => array_intersect(['cm2', 'cm3'], $usercms),
                 ],
                 'expectedexception' => $expectedexception,
             ],
@@ -454,7 +510,7 @@ final class stateactions_test extends \advanced_testcase {
                 'expectedresults' => [
                     'course' => [],
                     'section' => array_intersect(['section1', 'section3'], $usersections),
-                    'cm' => array_intersect(['cm0', 'cm1'], $usercms),
+                    'cm' => array_intersect(['cm2', 'cm3'], $usercms),
                 ],
                 'expectedexception' => $expectedexception,
             ],
@@ -463,12 +519,12 @@ final class stateactions_test extends \advanced_testcase {
                 'role' => $role,
                 'method' => 'section_state',
                 'params' => [
-                    'ids' => ['section3'], 'targetsectionid' => null, 'targetcmid' => 'cm1'
+                    'ids' => ['section3'], 'targetsectionid' => null, 'targetcmid' => 'cm3',
                 ],
                 'expectedresults' => [
                     'course' => [],
                     'section' => array_intersect(['section3'], $usersections),
-                    'cm' => array_intersect(['cm1'], $usercms),
+                    'cm' => array_intersect(['cm3'], $usercms),
                 ],
                 'expectedexception' => $expectedexception,
             ],
@@ -483,12 +539,22 @@ final class stateactions_test extends \advanced_testcase {
      * @return array the testing scenarios
      */
     public static function cm_state_provider(string $format, string $role): array {
+        $expectedexception = ($format === 'singleactivity');
+
         // All sections and cms that the user can access to.
         $usersections = ['section0', 'section1', 'section2', 'section3'];
-        $usercms = ['cm0', 'cm1', 'cm2', 'cm3'];
+        $usercms = ['cm0', 'cm1', 'cm2', 'cm3', 'cm4', 'cm5'];
         if ($role == 'student') {
             $usersections = ['section0', 'section1', 'section3'];
-            $usercms = ['cm0'];
+            $usercms = ['cm0', 'cm2'];
+        }
+        if ($format === 'social') {
+            $usercms = ['initialcm0', ...$usercms];
+            $usersections = ['section0']; // Social format only uses section 0 (for all users).
+        } else if ($format === 'singleactivity') {
+            // Single activity format does not have sections.
+            $usersections = ['section0'];
+            $usercms = ($role == 'student') ? ['cm0'] : ['cm0', 'cm1'];
         }
 
         return [
@@ -511,7 +577,7 @@ final class stateactions_test extends \advanced_testcase {
                 ],
                 'expectedresults' => [
                     'course' => [],
-                    'section' => array_intersect(['section1'], $usersections),
+                    'section' => array_intersect(['section0'], $usersections),
                     'cm' => array_intersect(['cm0'], $usercms),
                 ],
                 'expectedexception' => false,
@@ -525,7 +591,7 @@ final class stateactions_test extends \advanced_testcase {
                 ],
                 'expectedresults' => [
                     'course' => [],
-                    'section' => array_intersect(['section1'], $usersections),
+                    'section' => array_intersect(['section0'], $usersections),
                     'cm' => array_intersect(['cm1'], $usercms),
                 ],
                 'expectedexception' => false,
@@ -535,42 +601,42 @@ final class stateactions_test extends \advanced_testcase {
                 'role' => $role,
                 'method' => 'cm_state',
                 'params' => [
-                    'ids' => ['cm0', 'cm2'], 'targetsectionid' => null, 'targetcmid' => null
+                    'ids' => ['cm2', 'cm4'], 'targetsectionid' => null, 'targetcmid' => null,
                 ],
                 'expectedresults' => [
                     'course' => [],
                     'section' => array_intersect(['section1', 'section2'], $usersections),
-                    'cm' => array_intersect(['cm0', 'cm2'], $usercms),
+                    'cm' => array_intersect(['cm2', 'cm4'], $usercms),
                 ],
-                'expectedexception' => false,
+                'expectedexception' => $expectedexception,
             ],
             "$role $format cm_state using targetsection" => [
                 'format' => $format,
                 'role' => $role,
                 'method' => 'cm_state',
                 'params' => [
-                    'ids' => ['cm0'], 'targetsectionid' => 'section2', 'targetcmid' => null
+                    'ids' => ['cm2'], 'targetsectionid' => 'section2', 'targetcmid' => null,
                 ],
                 'expectedresults' => [
                     'course' => [],
                     'section' => array_intersect(['section1', 'section2'], $usersections),
-                    'cm' => array_intersect(['cm0'], $usercms),
+                    'cm' => array_intersect(['cm2'], $usercms),
                 ],
-                'expectedexception' => ($format === 'social'),
+                'expectedexception' => $expectedexception,
             ],
             "$role $format cm_state using targetcm" => [
                 'format' => $format,
                 'role' => $role,
                 'method' => 'cm_state',
                 'params' => [
-                    'ids' => ['cm0'], 'targetsectionid' => null, 'targetcmid' => 'cm3'
+                    'ids' => ['cm2'], 'targetsectionid' => null, 'targetcmid' => 'cm5',
                 ],
                 'expectedresults' => [
                     'course' => [],
                     'section' => array_intersect(['section1', 'section2'], $usersections),
-                    'cm' => array_intersect(['cm0', 'cm3'], $usercms),
+                    'cm' => array_intersect(['cm2', 'cm5'], $usercms),
                 ],
-                'expectedexception' => false,
+                'expectedexception' => $expectedexception,
             ],
             "$role $format cm_state using an invalid cm" => [
                 'format' => $format,
@@ -1403,8 +1469,6 @@ final class stateactions_test extends \advanced_testcase {
         $this->resetAfterTest();
         $course = $this->create_course('topics', 4, []);
 
-        $manager = \core_plugin_manager::resolve_plugininfo_class('mod');
-        $manager::enable_plugin('subsection', 1);
         $subsection1 = $this->getDataGenerator()->create_module(
             'subsection', ['course' => $course, 'section' => 1, 'name' => 'subsection1']
         );
@@ -1465,7 +1529,7 @@ final class stateactions_test extends \advanced_testcase {
         $modinfo = get_fast_modinfo($course); // Get refreshed version.
 
         $allsections = $modinfo->get_listed_section_info_all();
-        $cmidstoref = array_flip($references);
+        $cmidstoref = array_flip(array_filter($references, fn($key) => str_starts_with($key, 'cm'), ARRAY_FILTER_USE_KEY));
         foreach ($allsections as $sectioninfo) {
             $sectionkey = 'section' . $sectioninfo->sectionnum;
             $coursetree[$sectionkey] = [];
@@ -1532,7 +1596,7 @@ final class stateactions_test extends \advanced_testcase {
                 'cmtomove' => ['subsection1'], // When moving a subsection we actually move the delegated module.
                 'targetsection' => 'subsection2',
                 'expectedcoursetree' => [],
-                'exception' => 'error/subsectionmoveerror',
+                'expectedexception' => 'error/subsectionmoveerror',
             ],
             'Move module into subsection' => [
                 'cmtomove' => ['cm1'],
@@ -1590,9 +1654,6 @@ final class stateactions_test extends \advanced_testcase {
 
         $this->resetAfterTest();
         $this->setAdminUser();
-
-        $manager = \core_plugin_manager::resolve_plugininfo_class('mod');
-        $manager::enable_plugin('subsection', 1);
 
         $course = $this->getDataGenerator()->create_course();
         $subsection = $this->getDataGenerator()->create_module('subsection', ['course' => $course]);
@@ -1673,9 +1734,6 @@ final class stateactions_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
-        $manager = \core_plugin_manager::resolve_plugininfo_class('mod');
-        $manager::enable_plugin('subsection', 1);
-
         $course = $this->getDataGenerator()->create_course();
         $subsection = $this->getDataGenerator()->create_module('subsection', ['course' => $course]);
         $otheractvity = $this->getDataGenerator()->create_module('forum', ['course' => $course]);
@@ -1732,6 +1790,7 @@ final class stateactions_test extends \advanced_testcase {
         $this->assertEquals($modname, $cmupdate->module);
         $this->assertEquals($targetsection->id, $cmupdate->sectionid);
         $this->assertEquals(get_string('quickcreatename', 'mod_' . $modname), $cmupdate->name);
+        $this->assertDebuggingCalled();
     }
 
     /**
@@ -1743,8 +1802,6 @@ final class stateactions_test extends \advanced_testcase {
         $this->resetAfterTest();
 
         $modname = 'subsection';
-        $manager = \core_plugin_manager::resolve_plugininfo_class('mod');
-        $manager::enable_plugin($modname, 1);
 
         // Create a course with 1 section and 1 student.
         $course = $this->getDataGenerator()->create_course(['numsections' => 1]);
@@ -1765,8 +1822,15 @@ final class stateactions_test extends \advanced_testcase {
         $actions = new stateactions();
         $updates = new stateupdates($courseformat);
 
-        $this->expectException(moodle_exception::class);
-        $actions->create_module($updates, $course, $modname, $targetsection->sectionnum);
+        // Capturing exceptions on deprecated methods is tricky because expectException is executed
+        // before assertDebuggingCalled. We need to use try catch in a creative way.
+        try {
+            $actions->create_module($updates, $course, $modname, $targetsection->sectionnum);
+        } catch (moodle_exception $exception) {
+            $this->assertDebuggingCalled();
+            $this->expectException(moodle_exception::class);
+            throw $exception;
+        }
     }
 
     /**
@@ -1817,6 +1881,7 @@ final class stateactions_test extends \advanced_testcase {
             implode(',', [$forum->cmid, $cmupdate->id, $page->cmid]),
             $modinfo->get_section_info(1)->sequence
         );
+        $this->assertDebuggingCalled();
     }
 
     /**
@@ -1828,8 +1893,6 @@ final class stateactions_test extends \advanced_testcase {
         $this->resetAfterTest();
 
         $modname = 'subsection';
-        $manager = \core_plugin_manager::resolve_plugininfo_class('mod');
-        $manager::enable_plugin($modname, 1);
 
         // Create a course with 1 section and 1 student.
         $course = $this->getDataGenerator()->create_course(['numsections' => 1]);
@@ -1864,8 +1927,6 @@ final class stateactions_test extends \advanced_testcase {
         $this->resetAfterTest();
 
         $modname = 'subsection';
-        $manager = \core_plugin_manager::resolve_plugininfo_class('mod');
-        $manager::enable_plugin($modname, 1);
 
         // Create a course with 1 section and 1 student.
         $course = $this->getDataGenerator()->create_course(['numsections' => 1]);
@@ -1899,8 +1960,6 @@ final class stateactions_test extends \advanced_testcase {
         $this->resetAfterTest();
 
         $modname = 'subsection';
-        $manager = \core_plugin_manager::resolve_plugininfo_class('mod');
-        $manager::enable_plugin($modname, 1);
 
         // Create a course with 1 section, 2 modules (forum and page) and 1 student.
         $course = $this->getDataGenerator()->create_course(['numsections' => 1]);
@@ -1938,5 +1997,211 @@ final class stateactions_test extends \advanced_testcase {
             implode(',', [$forum->cmid, $cmupdate->id, $page->cmid]),
             $modinfo->get_section_info(1)->sequence
         );
+    }
+
+    /**
+     * Test for section_duplicate public method.
+     *
+     * @covers ::section_duplicate
+     */
+    public function test_section_duplicate(): void {
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course(['numsections' => 2, 'initsections' => 1]);
+        $forum = $this->getDataGenerator()->create_module('forum', ['course' => $course], ['section' => 1]);
+        $page = $this->getDataGenerator()->create_module('page', ['course' => $course], ['section' => 1]);
+
+        $this->setAdminUser();
+
+        $courseformat = course_get_format($course->id);
+        $modinfo = course_modinfo::instance($course);
+        $sectiontoduplicate = $modinfo->get_section_info(1);
+        $nextsection = $modinfo->get_section_info(2);
+
+        $sections = $modinfo->get_section_info_all();
+        $this->assertCount(3, $sections);
+        $cms = $modinfo->get_cms();
+        $this->assertCount(2, $cms);
+
+        $actions = new stateactions();
+        $updates = new stateupdates($courseformat);
+        $actions->section_duplicate($updates, $course, [$sectiontoduplicate->id]);
+
+        $results = $this->summarize_updates($updates);
+        $this->assertCount(4, $results['put']['section']);
+        $this->assertCount(4, $results['put']['cm']);
+
+        // Validate structure.
+        $modinfo = course_modinfo::instance($course);
+
+        $sections = $modinfo->get_section_info_all();
+        $this->assertCount(4, $sections);
+        $cms = $modinfo->get_cms();
+        $this->assertCount(4, $cms);
+
+        $originalsection = $modinfo->get_section_info(1);
+        $this->assertEquals($sectiontoduplicate->id, $originalsection->id);
+        $cms = $originalsection->get_sequence_cm_infos();
+        $this->assertEquals($forum->cmid, $cms[0]->id);
+        $this->assertEquals($page->cmid, $cms[1]->id);
+
+        $duplicatedsection = $modinfo->get_section_info(2);
+        $cms = $duplicatedsection->get_sequence_cm_infos();
+        $this->assertEquals($forum->name, $cms[0]->get_name());
+        $this->assertEquals($page->name, $cms[1]->get_name());
+
+        $newnextsection = $modinfo->get_section_info(3);
+        $this->assertEquals($nextsection->id, $newnextsection->id);
+    }
+
+    /**
+     * Test duplicating multiple sections.
+     *
+     * @covers ::section_duplicate
+     */
+    public function test_section_duplicate_multiple(): void {
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course(['numsections' => 3, 'initsections' => 1]);
+        $mod11 = $this->getDataGenerator()->create_module('forum', ['course' => $course], ['section' => 1]);
+        $mod12 = $this->getDataGenerator()->create_module('page', ['course' => $course], ['section' => 1]);
+        $mod21 = $this->getDataGenerator()->create_module('forum', ['course' => $course], ['section' => 2]);
+        $mod22 = $this->getDataGenerator()->create_module('page', ['course' => $course], ['section' => 2]);
+
+        $this->setAdminUser();
+
+        $courseformat = course_get_format($course->id);
+        $modinfo = course_modinfo::instance($course);
+        $sectiontoduplicate1 = $modinfo->get_section_info(1);
+        $sectiontoduplicate2 = $modinfo->get_section_info(2);
+        $nextsection = $modinfo->get_section_info(3);
+
+        $sections = $modinfo->get_section_info_all();
+        $this->assertCount(4, $sections);
+        $cms = $modinfo->get_cms();
+        $this->assertCount(4, $cms);
+
+        $actions = new stateactions();
+        $updates = new stateupdates($courseformat);
+        $actions->section_duplicate($updates, $course, [$sectiontoduplicate2->id, $sectiontoduplicate1->id]);
+
+        $results = $this->summarize_updates($updates);
+        $this->assertCount(6, $results['put']['section']);
+        $this->assertCount(8, $results['put']['cm']);
+
+        // Validate structure.
+        $modinfo = course_modinfo::instance($course);
+
+        $sections = $modinfo->get_section_info_all();
+        $this->assertCount(6, $sections);
+        $cms = $modinfo->get_cms();
+        $this->assertCount(8, $cms);
+
+        $originalsection = $modinfo->get_section_info(1);
+        $this->assertEquals($sectiontoduplicate1->id, $originalsection->id);
+        $cms = $originalsection->get_sequence_cm_infos();
+        $this->assertEquals($mod11->cmid, $cms[0]->id);
+        $this->assertEquals($mod12->cmid, $cms[1]->id);
+
+        $duplicatedsection = $modinfo->get_section_info(2);
+        $cms = $duplicatedsection->get_sequence_cm_infos();
+        $this->assertEquals($mod11->name, $cms[0]->get_name());
+        $this->assertEquals($mod12->name, $cms[1]->get_name());
+
+        $originalsection = $modinfo->get_section_info(3);
+        $this->assertEquals($sectiontoduplicate2->id, $originalsection->id);
+        $cms = $originalsection->get_sequence_cm_infos();
+        $this->assertEquals($mod21->cmid, $cms[0]->id);
+        $this->assertEquals($mod22->cmid, $cms[1]->id);
+
+        $duplicatedsection = $modinfo->get_section_info(4);
+        $cms = $duplicatedsection->get_sequence_cm_infos();
+        $this->assertEquals($mod21->name, $cms[0]->get_name());
+        $this->assertEquals($mod22->name, $cms[1]->get_name());
+
+        $newnextsection = $modinfo->get_section_info(5);
+        $this->assertEquals($nextsection->id, $newnextsection->id);
+    }
+
+    /**
+     * Test for section_duplicate public method with no capabilities.
+     *
+     * @covers ::section_duplicate
+     */
+    public function test_section_duplicate_no_capabilities(): void {
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course(['numsections' => 2, 'initsections' => 1]);
+        $this->getDataGenerator()->create_module('forum', ['course' => $course], ['section' => 1]);
+        $this->getDataGenerator()->create_module('page', ['course' => $course], ['section' => 1]);
+
+        $user = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($user->id, $course->id, 'student');
+        $this->setUser($user);
+
+        $courseformat = course_get_format($course->id);
+        $modinfo = course_modinfo::instance($course);
+        $sectiontoduplicate = $modinfo->get_section_info(1);
+
+        $actions = new stateactions();
+        $updates = new stateupdates($courseformat);
+
+        $this->expectException(moodle_exception::class);
+        $actions->section_duplicate($updates, $course, [$sectiontoduplicate->id]);
+    }
+
+    /**
+     * Test for section_duplicate on a delegated section (subsection).
+     *
+     * @covers ::section_duplicate
+     */
+    public function test_section_duplicate_delegated_section(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course(['numsections' => 2]);
+        $subsection = $this->getDataGenerator()->create_module('subsection', ['course' => $course->id, 'section' => 1]);
+        $forum = $this->getDataGenerator()->create_module('forum', ['course' => $course], ['section' => 3]);
+
+        $this->setAdminUser();
+
+        $courseformat = course_get_format($course->id);
+        $modinfo = course_modinfo::instance($course);
+        $sectiontoduplicate = $modinfo->get_section_info(3);
+
+        $sections = $modinfo->get_section_info_all();
+        $this->assertCount(4, $sections);
+        $cms = $modinfo->get_cms();
+        $this->assertCount(2, $cms); // Subsection is both a section and a cm.
+
+        $actions = new stateactions();
+        $updates = new stateupdates($courseformat);
+        $actions->section_duplicate($updates, $course, [$sectiontoduplicate->id]);
+
+        $results = $this->summarize_updates($updates);
+        $this->assertCount(5, $results['put']['section']);
+        $this->assertCount(3, $results['put']['cm']);
+
+        // Validate structure.
+        $modinfo = course_modinfo::instance($course);
+
+        $sections = $modinfo->get_section_info_all();
+        $this->assertCount(5, $sections);
+        $cms = $modinfo->get_cms();
+        $this->assertCount(3, $cms);
+
+        $originalsection = $modinfo->get_section_info(3);
+        $this->assertEquals($sectiontoduplicate->id, $originalsection->id);
+        $cms = $originalsection->get_sequence_cm_infos();
+        $this->assertEquals($forum->cmid, $cms[0]->id);
+
+        $duplicatedsection = $modinfo->get_section_info(4);
+        $cms = $duplicatedsection->get_sequence_cm_infos();
+        $this->assertEquals($forum->name, $cms[0]->get_name());
+
+        // Duplicating subsections is not supported yet. Any duplicated subsection
+        // will be promoted to a section.
+        $this->assertFalse($duplicatedsection->is_delegated());
     }
 }

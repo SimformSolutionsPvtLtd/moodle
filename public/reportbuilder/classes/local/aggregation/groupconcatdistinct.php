@@ -24,6 +24,9 @@ use core_reportbuilder\local\helpers\database;
 /**
  * Column group concatenation distinct aggregation type
  *
+ * The value used for the separator between aggregated items can be specified by passing the 'separator' option
+ * via {@see column::set_aggregation} or {@see column::set_aggregation_options} methods
+ *
  * @package     core_reportbuilder
  * @copyright   2021 Paul Holden <paulh@moodle.com>
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -40,7 +43,7 @@ class groupconcatdistinct extends groupconcat {
     }
 
     /**
-     * This aggregation can be performed on all non-timestamp columns in MySQL, Postgres and Oracle only
+     * This aggregation can be performed on all non-timestamp columns in supported DBs
      *
      * @param int $columntype
      * @return bool
@@ -51,7 +54,6 @@ class groupconcatdistinct extends groupconcat {
         $dbsupportedtype = in_array($DB->get_dbfamily(), [
             'mysql',
             'postgres',
-            'oracle',
         ]);
 
         return $dbsupportedtype && parent::compatible($columntype);

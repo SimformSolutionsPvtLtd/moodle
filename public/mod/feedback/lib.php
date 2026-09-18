@@ -57,20 +57,19 @@ require_once(__DIR__ . '/deprecatedlib.php');
  * @return mixed True if module supports feature, false if not, null if doesn't know or string for the module purpose.
  */
 function feedback_supports($feature) {
-    switch($feature) {
-        case FEATURE_GROUPS:                  return true;
-        case FEATURE_GROUPINGS:               return true;
-        case FEATURE_MOD_INTRO:               return true;
-        case FEATURE_COMPLETION_TRACKS_VIEWS: return true;
-        case FEATURE_COMPLETION_HAS_RULES:    return true;
-        case FEATURE_GRADE_HAS_GRADE:         return false;
-        case FEATURE_GRADE_OUTCOMES:          return false;
-        case FEATURE_BACKUP_MOODLE2:          return true;
-        case FEATURE_SHOW_DESCRIPTION:        return true;
-        case FEATURE_MOD_PURPOSE:             return MOD_PURPOSE_COMMUNICATION;
-
-        default: return null;
-    }
+    return match ($feature) {
+        FEATURE_GROUPS => true,
+        FEATURE_GROUPINGS => true,
+        FEATURE_MOD_INTRO => true,
+        FEATURE_COMPLETION_TRACKS_VIEWS => true,
+        FEATURE_COMPLETION_HAS_RULES => true,
+        FEATURE_GRADE_HAS_GRADE => false,
+        FEATURE_GRADE_OUTCOMES => false,
+        FEATURE_BACKUP_MOODLE2 => true,
+        FEATURE_SHOW_DESCRIPTION => true,
+        FEATURE_MOD_PURPOSE => MOD_PURPOSE_COMMUNICATION,
+        default => null,
+    };
 }
 
 /**
@@ -566,14 +565,6 @@ function feedback_cron () {
 }
 
 /**
- * @deprecated since Moodle 3.8
- */
-function feedback_scale_used() {
-    throw new coding_exception('feedback_scale_used() can not be used anymore. Plugins can implement ' .
-        '<modname>_scale_used_anywhere, all implementations of <modname>_scale_used are now ignored');
-}
-
-/**
  * Checks if scale is being used by any instance of feedback
  *
  * This is used to find out if scale used anywhere
@@ -920,13 +911,6 @@ function feedback_delete_course_module($id) {
 ////////////////////////////////////////////////
 //functions to handle capabilities
 ////////////////////////////////////////////////
-
-/**
- * @deprecated since 3.1
- */
-function feedback_get_context() {
-    throw new coding_exception('feedback_get_context() can not be used anymore.');
-}
 
 /**
  * count users which have not completed the feedback
@@ -1565,13 +1549,6 @@ function feedback_get_depend_candidates_for_item($feedback, $item) {
 }
 
 /**
- * @deprecated since 3.1
- */
-function feedback_create_item() {
-    throw new coding_exception('feedback_create_item() can not be used anymore.');
-}
-
-/**
  * save the changes of a given item.
  *
  * @global object
@@ -1835,30 +1812,6 @@ function feedback_move_item($moveitem, $pos) {
 }
 
 /**
- * @deprecated since Moodle 3.1
- */
-function feedback_print_item_preview() {
-    throw new coding_exception('feedback_print_item_preview() can not be used anymore. '
-            . 'Items must implement complete_form_element().');
-}
-
-/**
- * @deprecated since Moodle 3.1
- */
-function feedback_print_item_complete() {
-    throw new coding_exception('feedback_print_item_complete() can not be used anymore. '
-        . 'Items must implement complete_form_element().');
-}
-
-/**
- * @deprecated since Moodle 3.1
- */
-function feedback_print_item_show_value() {
-    throw new coding_exception('feedback_print_item_show_value() can not be used anymore. '
-        . 'Items must implement complete_form_element().');
-}
-
-/**
  * if the user completes a feedback and there is a pagebreak so the values are saved temporary.
  * the values are not saved permanently until the user click on save button
  *
@@ -1962,14 +1915,6 @@ function feedback_save_tmp_values($feedbackcompletedtmp, ?stdClass $feedbackcomp
 
 }
 
-/**
- * @deprecated since Moodle 3.1
- */
-function feedback_delete_completedtmp() {
-    throw new coding_exception('feedback_delete_completedtmp() can not be used anymore.');
-
-}
-
 ////////////////////////////////////////////////
 ////////////////////////////////////////////////
 ////////////////////////////////////////////////
@@ -2042,41 +1987,12 @@ function feedback_get_last_break_position($feedbackid) {
     return $allbreaks[count($allbreaks) - 1];
 }
 
-/**
- * @deprecated since Moodle 3.1
- */
-function feedback_get_page_to_continue() {
-    throw new coding_exception('feedback_get_page_to_continue() can not be used anymore.');
-}
-
 ////////////////////////////////////////////////
 ////////////////////////////////////////////////
 ////////////////////////////////////////////////
 //functions to handle the values
 ////////////////////////////////////////////////
 
-/**
- * @deprecated since Moodle 3.1
- */
-function feedback_clean_input_value() {
-    throw new coding_exception('feedback_clean_input_value() can not be used anymore. '
-        . 'Items must implement complete_form_element().');
-
-}
-
-/**
- * @deprecated since Moodle 3.1
- */
-function feedback_save_values() {
-    throw new coding_exception('feedback_save_values() can not be used anymore.');
-}
-
-/**
- * @deprecated since Moodle 3.1
- */
-function feedback_save_guest_values() {
-    throw new coding_exception('feedback_save_guest_values() can not be used anymore.');
-}
 
 /**
  * get the value from the given item related to the given completed.
@@ -2118,28 +2034,6 @@ function feedback_compare_item_value($completedid, $item, $dependvalue, $tmp = f
 
     $itemobj = feedback_get_item_class($item->typ);
     return $itemobj->compare_value($item, $dbvalue, $dependvalue); //true or false
-}
-
-/**
- * @deprecated since Moodle 3.1
- */
-function feedback_check_values() {
-    throw new coding_exception('feedback_check_values() can not be used anymore. '
-        . 'Items must implement complete_form_element().');
-}
-
-/**
- * @deprecated since Moodle 3.1
- */
-function feedback_create_values() {
-    throw new coding_exception('feedback_create_values() can not be used anymore.');
-}
-
-/**
- * @deprecated since Moodle 3.1
- */
-function feedback_update_values() {
-    throw new coding_exception('feedback_update_values() can not be used anymore.');
 }
 
 /**
@@ -2237,11 +2131,41 @@ function feedback_is_already_submitted($feedbackid, $courseid = false) {
 }
 
 /**
- * @deprecated since Moodle 3.1. Use feedback_get_current_completed_tmp() or feedback_get_last_completed.
+ * Get the completeds depending on the given groups.
+ * This method doesn't check if the user has the capability to view the defined groups,
+ * so this should be checked before calling this function.
+ *
+ * @param stdClass $feedback The feedback object.
+ * @param array $groups Identifiers of the groups to filter by.
+ * @return array Array of completed records.
  */
-function feedback_get_current_completed() {
-    throw new coding_exception('feedback_get_current_completed() can not be used anymore. Please ' .
-            'use either feedback_get_current_completed_tmp() or feedback_get_last_completed()');
+function feedback_get_completeds(stdClass $feedback, array $groups = []) {
+    $db = \core\di::get(\moodle_database::class);
+
+    if (empty($groups)) {
+        // If no groups are specified, return all completeds for the feedback.
+        return $db->get_records('feedback_completed', ['feedback' => $feedback->id]);
+    }
+
+    [$sql, $params] = $db->get_in_or_equal(array_keys($groups), SQL_PARAMS_NAMED);
+    $query = 'SELECT fbc.*
+                FROM {feedback_completed} fbc, {groups_members} gm
+               WHERE fbc.feedback = :feedbackid
+                     AND (gm.groupid ' . $sql . ' OR gm.groupid = 0)
+                     AND fbc.userid = gm.userid';
+    $params['feedbackid'] = $feedback->id;
+    return $db->get_records_sql($query, $params);
+}
+
+/**
+ * Get the count of completeds depending on the given group identifiers.
+ *
+ * @param stdClass $feedback The feedback object.
+ * @param array $groups Identifiers of the groups to filter by.
+ * @return int Count of completeds.
+ */
+function feedback_get_completeds_count(stdClass $feedback, array $groups = []): int {
+    return count(feedback_get_completeds($feedback, $groups));
 }
 
 /**
@@ -2255,39 +2179,26 @@ function feedback_get_current_completed() {
  * @return mixed array of found completeds otherwise false
  */
 function feedback_get_completeds_group($feedback, $groupid = false, $courseid = false) {
-    global $CFG, $DB;
+    global $DB;
 
-    if (intval($groupid) > 0) {
-        $query = "SELECT fbc.*
-                    FROM {feedback_completed} fbc, {groups_members} gm
-                   WHERE fbc.feedback = ?
-                         AND gm.groupid = ?
-                         AND fbc.userid = gm.userid";
-        if ($values = $DB->get_records_sql($query, array($feedback->id, $groupid))) {
-            return $values;
-        } else {
+    if (intval($groupid) > 0 || !$courseid) {
+        $values = feedback_get_completeds($feedback, [$groupid]);
+        if (empty($values)) {
             return false;
         }
+        return $values;
+    }
+
+    $query = "SELECT DISTINCT fbc.*
+                FROM {feedback_completed} fbc, {feedback_value} fbv
+                WHERE fbc.id = fbv.completed
+                    AND fbc.feedback = ?
+                    AND fbv.course_id = ?
+                ORDER BY random_response";
+    if ($values = $DB->get_records_sql($query, [$feedback->id, $courseid])) {
+        return $values;
     } else {
-        if ($courseid) {
-            $query = "SELECT DISTINCT fbc.*
-                        FROM {feedback_completed} fbc, {feedback_value} fbv
-                        WHERE fbc.id = fbv.completed
-                            AND fbc.feedback = ?
-                            AND fbv.course_id = ?
-                        ORDER BY random_response";
-            if ($values = $DB->get_records_sql($query, array($feedback->id, $courseid))) {
-                return $values;
-            } else {
-                return false;
-            }
-        } else {
-            if ($values = $DB->get_records('feedback_completed', array('feedback'=>$feedback->id))) {
-                return $values;
-            } else {
-                return false;
-            }
-        }
+        return false;
     }
 }
 
@@ -2412,20 +2323,6 @@ function feedback_delete_completed($completed, $feedback = null, $cm = null, $co
 ////////////////////////////////////////////////
 
 /**
- * @deprecated since 3.1
- */
-function feedback_is_course_in_sitecourse_map() {
-    throw new coding_exception('feedback_is_course_in_sitecourse_map() can not be used anymore.');
-}
-
-/**
- * @deprecated since 3.1
- */
-function feedback_is_feedback_in_sitecourse_map() {
-    throw new coding_exception('feedback_is_feedback_in_sitecourse_map() can not be used anymore.');
-}
-
-/**
  * gets the feedbacks from table feedback_sitecourse_map.
  * this is used to show the global feedbacks on the feedback block
  * all feedbacks with the following criteria will be selected:<br />
@@ -2527,25 +2424,12 @@ function feedback_update_sitecourse_map($feedback, $courses) {
     // TODO MDL-53574 add events.
 }
 
-/**
- * @deprecated since 3.1
- */
-function feedback_clean_up_sitecourse_map() {
-    throw new coding_exception('feedback_clean_up_sitecourse_map() can not be used anymore.');
-}
-
 ////////////////////////////////////////////////
 ////////////////////////////////////////////////
 ////////////////////////////////////////////////
 //not relatable functions
 ////////////////////////////////////////////////
 
-/**
- * @deprecated since 3.1
- */
-function feedback_print_numeric_option_list() {
-    throw new coding_exception('feedback_print_numeric_option_list() can not be used anymore.');
-}
 
 /**
  * sends an email to the teachers of the course where the given feedback is placed.
@@ -2618,7 +2502,7 @@ function feedback_send_email($cm, $feedback, $course, $user, $completed = null) 
                 }
             }
 
-            $a = array('username' => $info->username, 'feedbackname' => $feedback->name);
+            $a = ['username' => $info->username, 'feedbackname' => $info->feedback];
 
             $postsubject = get_string('feedbackcompleted', 'feedback', $a);
             $posttext = feedback_send_email_text($info, $course);
@@ -2712,7 +2596,7 @@ function feedback_send_email_anonym($cm, $feedback, $course) {
             $info->feedback = format_string($feedback->name, true);
             $info->url = $CFG->wwwroot.'/mod/feedback/show_entries.php?id=' . $cm->id;
 
-            $a = array('username' => $info->username, 'feedbackname' => $feedback->name);
+            $a = ['username' => $info->username, 'feedbackname' => $info->feedback];
 
             $postsubject = get_string('feedbackcompleted', 'feedback', $a);
             $posttext = feedback_send_email_text($info, $course);
@@ -2825,7 +2709,7 @@ function feedback_extend_settings_navigation(settings_navigation $settings, navi
             navigation_node::TYPE_CUSTOM, null, 'questionnode');
 
         $feedbacknode->add(get_string('templates', 'feedback'),
-            new moodle_url('/mod/feedback/manage_templates.php', ['id' => $settings->get_page()->cm->id, 'mode' => 'manage']),
+            new moodle_url('/mod/feedback/manage_templates.php', ['id' => $settings->get_page()->cm->id]),
             navigation_node::TYPE_CUSTOM, null, 'templatenode');
     }
 

@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+use core_courseformat\output\section_renderer;
+
 /**
  * Renderer for use with the course section and all the goodness that falls
  * within it.
@@ -71,13 +73,6 @@ class core_course_renderer extends plugin_renderer_base {
     }
 
     /**
-     * @deprecated since 3.2
-     */
-    protected function add_modchoosertoggle() {
-        throw new coding_exception('core_course_renderer::add_modchoosertoggle() can not be used anymore.');
-    }
-
-    /**
      * Renders course info box.
      *
      * @param stdClass $course
@@ -91,6 +86,44 @@ class core_course_renderer extends plugin_renderer_base {
         $content .= $this->coursecat_coursebox($chelper, $course);
         $content .= $this->output->box_end();
         return $content;
+    }
+
+    /**
+     * Renders course info box.
+     *
+     * @param stdClass $course course object
+     * @param string[] $widgets array of enrolment widgets
+     * @param \core\url|null $returnurl return url
+     * @return string
+     */
+    public function enrolment_options(stdClass $course, array $widgets, ?\core\url $returnurl = null): string {
+        if (!$widgets) {
+            if (isguestuser()) {
+                $message = get_string('noguestaccess', 'enrol');
+                $continuebutton = $this->output->continue_button(get_login_url());
+            } else if ($returnurl) {
+                $message = get_string('notenrollable', 'enrol');
+                $continuebutton = $this->output->continue_button($returnurl);
+            } else {
+                $url = get_local_referer(false);
+                if (empty($url)) {
+                    $url = new moodle_url('/index.php');
+                }
+                $message = get_string('notenrollable', 'enrol');
+                $continuebutton = $this->output->continue_button($url);
+            }
+        }
+
+        $courseinfobox = $this->course_info_box($course);
+
+        $templatecontext = [
+            'heading' => get_string('enrolmentoptions', 'enrol'),
+            'courseinfobox' => $courseinfobox,
+            'widgets' => array_values($widgets),
+            'message' => $message ?? '',
+            'continuebutton' => $continuebutton ?? '',
+        ];
+        return $this->render_from_template('core_enrol/enrolment_options', $templatecontext);
     }
 
     /**
@@ -131,29 +164,28 @@ class core_course_renderer extends plugin_renderer_base {
     }
 
     /**
-     * @deprecated since 3.9
-     */
-    public function course_modchooser() {
-        throw new coding_exception('course_modchooser() can not be used anymore, please use course_activitychooser() instead.');
-    }
-
-    /**
      * Build the HTML for the module chooser javascript popup.
      *
+     * @deprecated since Moodle 5.1.
+     * @todo final deprecation in 6.0 (MDL-85655)
      * @param int $courseid The course id to fetch modules for.
      * @return string
      */
+    #[\core\attribute\deprecated(
+        reason: 'Now activity chooser init is called from section_renderer::add_cm_controls',
+        since: '5.1',
+        mdl: 'MDL-86337',
+    )]
     public function course_activitychooser($courseid) {
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
 
-        if (!$this->page->requires->should_create_one_time_item_now('core_course_modchooser')) {
+        if (!$this->page->requires->should_create_one_time_item_now('core_courseformat_modchooser')) {
             return '';
         }
 
         // Build an object of config settings that we can then hook into in the Activity Chooser.
-        $chooserconfig = (object) [
-            'tabmode' => get_config('core', 'activitychoosertabmode'),
-        ];
-        $this->page->requires->js_call_amd('core_course/activitychooser', 'init', [$courseid, $chooserconfig]);
+        $chooserconfig = (object) [];
+        $this->page->requires->js_call_amd('core_courseformat/activitychooser', 'init', [$courseid, $chooserconfig]);
 
         return '';
     }
@@ -195,21 +227,12 @@ class core_course_renderer extends plugin_renderer_base {
     }
 
     /**
-     * @deprecated since 4.0 - please do not use this function any more.
-     */
-    public function course_section_cm_edit_actions($actions, ?cm_info $mod = null, $displayoptions = array()) {
-
-        throw new coding_exception(
-            'course_section_cm_edit_actions can not be used any more. Please, use ' .
-            'core_courseformat\\output\\local\\content\\cm\\controlmenu instead.'
-        );
-    }
-
-    /**
      * Renders HTML for the menus to add activities and resources to the current course
      *
      * Renders the ajax control (the link which when clicked produces the activity chooser modal). No noscript fallback.
      *
+     * @deprecated since 5.1, use add_cm_controls() instead.
+     * @todo final depprecated in 6.0 (MDL-86310)
      * @param stdClass $course
      * @param int $section relative section number (field course_sections.section)
      * @param int $sectionreturn The section to link back to
@@ -217,27 +240,53 @@ class core_course_renderer extends plugin_renderer_base {
      *     option 'inblock' => true, suggesting to display controls vertically
      * @return string
      */
-    function course_section_add_cm_control($course, $section, $sectionreturn = null, $displayoptions = array()) {
-        // Check to see if user can add menus.
-        if (!has_capability('moodle/course:manageactivities', context_course::instance($course->id))
-                || !$this->page->user_is_editing()) {
-            return '';
+    #[\core\attribute\deprecated(
+        replacement: 'section_add_cm_controls',
+        since: '5.1',
+        mdl: 'MDL-80295',
+    )]
+    public function course_section_add_cm_control($course, $section, $sectionreturn = null, $displayoptions = []) {
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
+
+        $format = core_courseformat\base::instance($course);
+
+        if ($sectionreturn === null) {
+            $format->set_sectionnum($sectionreturn);
         }
 
-        $sectioninfo = get_fast_modinfo($course)->get_section_info($section);
-
-        $activitychooserbutton = new \core_course\output\activitychooserbutton($sectioninfo, null, $sectionreturn);
-
-        // Load the JS for the modal.
-        $this->course_activitychooser($course->id);
-
-        return $this->render_from_template(
-            'core_courseformat/local/content/divider',
-            [
-                'content' => $this->render($activitychooserbutton),
-                'extraclasses' => 'always-visible my-3',
-            ]
+        return $this->section_add_cm_controls(
+            format: $format,
+            section: get_fast_modinfo($course)->get_section_info($section),
         );
+    }
+
+    /**
+     * Renders the controls to add activities and resources to the current course.
+     *
+     * The section_renderer is the real responsible for rendering the add cm controls.
+     * However, not all formats uses sections and could provide alternative renderers.
+     * Having this wrapper at a course system level makes it easier to render the
+     * element without checking if the format is compatible or not. Especially when
+     * the render happens in places not controlled by the format plugin,
+     * like subsections or blocks.
+     *
+     * @param core_courseformat\base $format The course format.
+     * @param section_info $section The section to add controls to.
+     * @param cm_info|null $mod The module before which the controls should be added.
+     * @return string HTML for the controls.
+     */
+    public function section_add_cm_controls(
+        core_courseformat\base $format,
+        section_info $section,
+        ?cm_info $mod = null,
+    ): string {
+        $renderer = $format->get_renderer($this->page);
+        // The probability of having a format that still not use section_renderer
+        // is very low, but not zero.
+        if (!$renderer instanceof section_renderer) {
+            return '';
+        }
+        return $renderer->add_cm_controls($format, $section, $mod);
     }
 
     /**
@@ -260,108 +309,6 @@ class core_course_renderer extends plugin_renderer_base {
     }
 
     /**
-     * @deprecated since Moodle 3.11
-     */
-    public function course_section_cm_completion() {
-        throw new coding_exception(__FUNCTION__ . ' is deprecated. Use the activity_completion output component instead.');
-    }
-
-    /**
-     * @deprecated since 4.0 - please do not use this function any more.
-     */
-    public function is_cm_conditionally_hidden(cm_info $mod) {
-
-        throw new coding_exception(
-            'is_cm_conditionally_hidden can not be used any more. Please, use ' .
-            '\core_availability\info_module::is_available_for_all instead'
-        );
-    }
-
-    /**
-     * @deprecated since 4.0 - please do not use this function any more.
-     */
-    public function course_section_cm_name(cm_info $mod, $displayoptions = array()) {
-
-        throw new coding_exception(
-            'course_section_cm_name can not be used any more. Please, use ' .
-            'core_courseformat\\output\\local\\content\\cm\\cmname class instead.'
-        );
-    }
-
-    /**
-     * @deprecated since 4.0 - please do not use this function any more.
-     */
-    protected function course_section_cm_classes(cm_info $mod) {
-
-        throw new coding_exception(
-            'course_section_cm_classes can not be used any more. Now it is part of core_courseformat\\output\\local\\content\\cm'
-        );
-    }
-
-    /**
-     * @deprecated since 4.0 - please do not use this function any more.
-     */
-    public function course_section_cm_name_title(cm_info $mod, $displayoptions = array()) {
-
-        throw new coding_exception(
-            'course_section_cm_name_title can not be used any more. Please, use ' .
-            'core_courseformat\\output\\local\\cm\\title class instead'
-        );
-    }
-
-    /**
-     * @deprecated since 4.0 - please do not use this function any more.
-     */
-    public function course_section_cm_text(cm_info $mod, $displayoptions = array()) {
-
-        throw new coding_exception(
-            'course_section_cm_text can not be used any more. Now it is part of core_courseformat\\output\\local\\content\\cm'
-        );
-    }
-
-    /**
-     * @deprecated since 4.0 - please do not use this function any more.
-     */
-    public function availability_info($text, $additionalclasses = '') {
-
-        throw new coding_exception(
-            'availability_info can not be used any more. Please, use ' .
-            'core_courseformat\\output\\local\\content\\section\\availability instead'
-        );
-    }
-
-    /**
-     * @deprecated since 4.0 - please do not use this function any more.
-     */
-    public function course_section_cm_availability(cm_info $mod, $displayoptions = array()) {
-
-        throw new coding_exception(
-            'course_section_cm_availability can not be used any more. Please, use ' .
-            'core_courseformat\\output\\local\\content\\cm\\availability instead'
-        );
-    }
-
-    /**
-     * @deprecated since 4.0 - use core_course output components or course_format::course_section_updated_cm_item instead.
-     */
-    public function course_section_cm_list_item($course, &$completioninfo, cm_info $mod, $sectionreturn, $displayoptions = []) {
-
-        throw new coding_exception(
-            'course_section_cm_list_item can not be used any more. Please, use renderer course_section_updated_cm_item instead'
-        );
-    }
-
-    /**
-     * @deprecated since 4.0 - use core_course output components instead.
-     */
-    public function course_section_cm($course, &$completioninfo, cm_info $mod, $sectionreturn, $displayoptions = []) {
-
-        throw new coding_exception(
-            'course_section_cm can not be used any more. Please, use core_courseformat\\output\\content\\cm output class instead'
-        );
-    }
-
-    /**
      * Message displayed to the user when they try to access unavailable activity following URL
      *
      * This method is a very simplified version of {@link course_section_cm()} to be part of the error
@@ -376,7 +323,7 @@ class core_course_renderer extends plugin_renderer_base {
         if ($cm->uservisible) {
             return null;
         }
-        if (!$cm->availableinfo) {
+        if (!$cm->visible || !$cm->availableinfo) {
             return get_string('activityiscurrentlyhidden');
         }
 
@@ -387,17 +334,6 @@ class core_course_renderer extends plugin_renderer_base {
         $formattedinfo = \core_availability\info::format_info($cm->availableinfo, $cm->get_course());
         return html_writer::div($name, 'activityinstance-error') .
         html_writer::div($formattedinfo, 'availabilityinfo-error');
-    }
-
-    /**
-     * @deprecated since 4.0 - use core_course output components instead.
-     */
-    public function course_section_cm_list($course, $section, $sectionreturn = null, $displayoptions = []) {
-
-        throw new coding_exception(
-            'course_section_cm_list can not be used any more. Please, use ' .
-            'core_courseformat\\output\\local\\content\\section\\cmlist class instead'
-        );
     }
 
     /**
@@ -580,7 +516,7 @@ class core_course_renderer extends plugin_renderer_base {
                 $rolenames = array_map(function ($role) {
                     return $role->displayname;
                 }, $coursecontact['roles']);
-                $name = html_writer::tag('span', implode(", ", $rolenames).': ', ['class' => 'font-weight-bold']);
+                $name = html_writer::tag('span', implode(", ", $rolenames).': ', ['class' => 'fw-bold']);
                 $name .= html_writer::link(
                    \core_user::get_profile_url($coursecontact['user'], context_system::instance()),
                    $coursecontact['username']
@@ -636,7 +572,7 @@ class core_course_renderer extends plugin_renderer_base {
         if ($chelper->get_show_courses() == self::COURSECAT_SHOW_COURSES_EXPANDED_WITH_CAT) {
             if ($cat = core_course_category::get($course->category, IGNORE_MISSING)) {
                 $content .= html_writer::start_tag('div', ['class' => 'coursecat']);
-                $content .= html_writer::tag('span', get_string('category').': ', ['class' => 'font-weight-bold']);
+                $content .= html_writer::tag('span', get_string('category').': ', ['class' => 'fw-bold']);
                 $content .= html_writer::link(new moodle_url('/course/index.php', ['categoryid' => $cat->id]),
                         $cat->get_formatted_name(), ['class' => $cat->visible ? '' : 'dimmed']);
                 $content .= html_writer::end_tag('div');
@@ -1512,19 +1448,11 @@ class core_course_renderer extends plugin_renderer_base {
     }
 
     /**
-     * Renders the activity information.
-     *
-     * Defer to template.
-     *
      * @deprecated since Moodle 4.3 MDL-78744
-     * @todo MDL-78926 This method will be deleted in Moodle 4.7
-     * @param \core_course\output\activity_information $page
-     * @return string html for the page
      */
-    public function render_activity_information(\core_course\output\activity_information $page) {
-        debugging('render_activity_information method is deprecated.', DEBUG_DEVELOPER);
-        $data = $page->export_for_template($this->output);
-        return $this->output->render_from_template('core_course/activity_info', $data);
+    #[\core\attribute\deprecated(null, since: '4.3', mdl: 'MDL-78744', final: true)]
+    public function render_activity_information() {
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
     }
 
     /**
@@ -1634,7 +1562,7 @@ class core_course_renderer extends plugin_renderer_base {
                 $subtext = get_string('subscribe', 'forum');
             }
             $suburl = new moodle_url('/mod/forum/subscribe.php', array('id' => $forum->id, 'sesskey' => sesskey()));
-            $output .= html_writer::tag('div', html_writer::link($suburl, $subtext), array('class' => 'subscribelink'));
+            $output .= html_writer::tag('div', html_writer::link($suburl, $subtext), ['class' => 'subscribelink text-end']);
         }
 
         $coursemodule = get_coursemodule_from_instance('forum', $forum->id);

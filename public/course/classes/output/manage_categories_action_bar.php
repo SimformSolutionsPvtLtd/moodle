@@ -88,7 +88,7 @@ class manage_categories_action_bar implements \renderable {
 
         if ($content) {
             $urlselect = new \url_select($content, $activeurl, null);
-            $urlselect->set_label(get_string('viewing'), ['class' => 'sr-only']);
+            $urlselect->set_label(get_string('viewing'), ['class' => 'visually-hidden']);
             return $urlselect->export_for_template($output);
         }
 
@@ -117,7 +117,7 @@ class manage_categories_action_bar implements \renderable {
             }
 
             $select = new \url_select($options, $currenturl);
-            $select->set_label(get_string('category'), ['class' => 'sr-only']);
+            $select->set_label(get_string('category'), ['class' => 'visually-hidden']);
             $select->class .= ' text-truncate w-100';
             return $select->export_for_template($output);
         }
@@ -154,11 +154,17 @@ class manage_categories_action_bar implements \renderable {
      *              - renderedcontent Rendered content to be displayed in line with the tertiary nav
      */
     public function export_for_template(\renderer_base $output): array {
-        return [
+        $data = [
             'urlselect' => $this->get_dropdown($output),
             'categoryselect' => $this->get_category_select($output),
             'search' => $this->get_search_form(),
             'heading' => $this->heading,
         ];
+
+        if ($this->searchvalue !== '') {
+            $backbutton = new \single_button(new moodle_url('/course/management.php'), get_string('back'), 'get');
+            $data['backbutton'] = $backbutton->export_for_template($output);
+        }
+        return $data;
     }
 }

@@ -15,12 +15,12 @@ Feature: Edit quiz marks with no attempts
       | user     | course | role           |
       | teacher1 | C1     | editingteacher |
     And the following "activities" exist:
-      | activity   | name   | course | idnumber | grade | decimalpoints | questiondecimalpoints |
-      | quiz       | Quiz 1 | C1     | quiz1    | 20    | 2             | -1                    |
+      | activity   | name    | course | idnumber | grade | decimalpoints | questiondecimalpoints |
+      | quiz       | Quiz 1  | C1     | quiz1    | 20    | 2             | -1                    |
 
     And the following "question categories" exist:
-      | contextlevel | reference | name           |
-      | Course       | C1        | Test questions |
+      | contextlevel    | reference | name           |
+      | Activity module | quiz1     | Test questions |
     And the following "questions" exist:
       | questioncategory | qtype     | name            | questiontext |
       | Test questions   | truefalse | First question  | Answer me    |
@@ -44,6 +44,24 @@ Feature: Edit quiz marks with no attempts
     Then I should see "7.00"
     And I should see "3.00"
     And I should see "Total of marks: 10.00"
+    And "li input[name=maxmark]" "css_element" should not exist
+
+  @javascript
+  Scenario: Set the max mark for a question taking locale into account
+    Given the following "language customisations" exist:
+      | component       | stringid | value |
+      | core_langconfig | decsep   | ,     |
+    And I reload the page
+    When I set the max mark for question "First question" to "7,5"
+    Then I should see "7,50"
+    And I should see "3,00"
+    And I should see "Total of marks: 10,50"
+
+    And I follow "Edit maximum mark"
+    And I press the escape key
+    And I should see "7,50"
+    And I should see "3,00"
+    And I should see "Total of marks: 10,50"
     And "li input[name=maxmark]" "css_element" should not exist
 
   @javascript

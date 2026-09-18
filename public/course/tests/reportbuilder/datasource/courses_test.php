@@ -82,6 +82,7 @@ final class courses_test extends core_reportbuilder_testcase {
             'category' => $category->id,
             'fullname' => 'Cats',
             'summary' => 'Course description',
+            'lang' => 'en',
             'theme' => 'boost',
             'tags' => ['Horses'],
         ]);
@@ -104,6 +105,7 @@ final class courses_test extends core_reportbuilder_testcase {
         $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'course:coursefullnamewithlink']);
         $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'course:courseshortnamewithlink']);
         $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'course:courseidnumberewithlink']);
+        $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'course:url']);
         $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'course:summary']);
         $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'course:format']);
         $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'course:startdate']);
@@ -132,6 +134,7 @@ final class courses_test extends core_reportbuilder_testcase {
             $coursenamewithlink,
             $courseshortnamewithlink,
             $courseidnumberwithlink,
+            $courseurl,
             $coursesummary,
             $courseformat,
             $coursestartdate,
@@ -151,9 +154,11 @@ final class courses_test extends core_reportbuilder_testcase {
         ] = array_values($content[0]);
 
         // Course.
-        $this->assertStringContainsString($course->fullname, $coursenamewithlink);
-        $this->assertStringContainsString($course->shortname, $courseshortnamewithlink);
-        $this->assertStringContainsString($course->idnumber, $courseidnumberwithlink);
+        $expectedcourseurl = (string) course_get_url($course);
+        $this->assertEquals("<a href=\"{$expectedcourseurl}\">{$course->fullname}</a>", $coursenamewithlink);
+        $this->assertEquals("<a href=\"{$expectedcourseurl}\">{$course->shortname}</a>", $courseshortnamewithlink);
+        $this->assertEquals("<a href=\"{$expectedcourseurl}\">{$course->idnumber}</a>", $courseidnumberwithlink);
+        $this->assertEquals($expectedcourseurl, $courseurl);
         $this->assertEquals(format_text($course->summary, $course->summaryformat), $coursesummary);
         $this->assertEquals('Custom sections', $courseformat);
         $this->assertEquals(userdate($course->startdate), $coursestartdate);
@@ -161,8 +166,8 @@ final class courses_test extends core_reportbuilder_testcase {
         $this->assertEquals('Yes', $coursevisible);
         $this->assertEquals('No groups', $coursegroupmode);
         $this->assertEquals('No', $coursegroupmodeforce);
-        $this->assertEmpty($courselang);
-        $this->assertEmpty($coursecalendar);
+        $this->assertEquals('English ‎(en)‎', $courselang);
+        $this->assertEquals('Do not force', $coursecalendar);
         $this->assertEquals('Boost', $coursetheme);
         $this->assertEquals('No', $coursecompletion);
         $this->assertEmpty($coursedownload);
@@ -273,7 +278,7 @@ final class courses_test extends core_reportbuilder_testcase {
             ], true],
             'Filter course format (no match)' => ['course:format', [
                 'course:format_operator' => select::EQUAL_TO,
-                'course:format_value' => 'weekly',
+                'course:format_value' => 'weeks',
             ], false],
             'Filter course startdate' => ['course:startdate', [
                 'course:startdate_operator' => date::DATE_RANGE,
@@ -315,7 +320,7 @@ final class courses_test extends core_reportbuilder_testcase {
             ], true],
             'Filter course lang (no match)' => ['course:lang', [
                 'course:lang_operator' => select::EQUAL_TO,
-                'course:lang_value' => 'de',
+                'course:lang_value' => '',
             ], false],
             'Filter course calendartype' => ['course:calendartype', [
                 'course:calendartype_operator' => select::EQUAL_TO,
@@ -323,7 +328,7 @@ final class courses_test extends core_reportbuilder_testcase {
             ], true],
             'Filter course calendartype (no match)' => ['course:calendartype', [
                 'course:calendartype_operator' => select::EQUAL_TO,
-                'course:calendartype_value' => 'hijri',
+                'course:calendartype_value' => '',
             ], false],
             'Filter course theme' => ['course:theme', [
                 'course:theme_operator' => select::EQUAL_TO,

@@ -72,12 +72,12 @@
 >
     <div class="courseindex-item d-flex
             {{^visible}}dimmed{{/visible}}
-            {{#hasrestrictions}}restrictions{{/hasrestrictions}}
+            {{#hasrestrictions}}restrictions dimmed{{/hasrestrictions}}
             courseindex-section-title"
         id="courseindexsection{{number}}"
         data-for="section_item"
     >
-        <a data-toggle="collapse"
+        <a data-bs-toggle="collapse"
             href="#courseindexcollapse{{number}}"
             class="courseindex-chevron icons-collapse-expand {{#indexcollapsed}}collapsed{{/indexcollapsed}}"
             aria-expanded="{{^indexcollapsed}}true{{/indexcollapsed}}{{#indexcollapsed}}false{{/indexcollapsed}}"
@@ -88,23 +88,37 @@
                 title="{{#str}} expand, core {{/str}}">
                 <span class="dir-rtl-hide">{{#pix}} t/collapsedchevron, core {{/pix}}</span>
                 <span class="dir-ltr-hide">{{#pix}} t/collapsedchevron_rtl, core {{/pix}}</span>
-                <span class="sr-only">{{#str}} expand, core {{/str}}</span>
+                <span class="visually-hidden">{{#str}} expand, core {{/str}}</span>
             </span>
             <span class="expanded-icon icon-no-margin me-1"
                 title="{{#str}} collapse, core {{/str}}">
                 {{#pix}} t/expandedchevron, core {{/pix}}
-                <span class="sr-only">{{#str}} collapse, core {{/str}}</span>
+                <span class="visually-hidden">{{#str}} collapse, core {{/str}}</span>
             </span>
         </a>
-        <a href="{{{sectionurl}}}"
-            id="courseindexsection{{number}}-title"
-            class="courseindex-link text-truncate"
-            data-action="togglecourseindexsection"
-            data-for="section_title"
-            tabindex="-1"
-        >
-            {{{title}}}
-        </a>
+        {{! We display a link when there is a sectionurl, otherwise a span. The data-for attribute is required by JS. }}
+        {{#sectionurl}}
+            <a href="{{{sectionurl}}}"
+                id="courseindexsection{{number}}-title"
+                class="courseindex-link text-truncate"
+                data-action="togglecourseindexsection"
+                data-for="section_title"
+                tabindex="-1"
+            >
+                {{{title}}}
+            </a>
+        {{/sectionurl}}
+        {{^sectionurl}}
+            <span
+                id="courseindexsection{{number}}-title"
+                class="text-truncate"
+                data-action="togglecourseindexsection"
+                data-for="section_title"
+                tabindex="-1"
+            >
+                {{{title}}}
+            </span>
+        {{/sectionurl}}
         <span class="current-badge badge bg-primary text-white ms-2 px-2 rounded-pill">
             {{highlighted}}
         </span>
@@ -125,6 +139,6 @@
 </div>
 {{#js}}
 require(['core_courseformat/local/courseindex/section'], function(component) {
-    component.init('course-index-section-{{id}}');
+    component.init('#course-index-section-{{id}}');
 });
 {{/js}}

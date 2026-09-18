@@ -26,8 +26,11 @@ use phpunit_util;
  * @copyright  2012 Petr Skoda {@link http://skodak.org}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(\basic_testcase::class)]
+#[\PHPUnit\Framework\Attributes\CoversClass(\phpunit_util::class)]
 final class basic_test extends \basic_testcase {
-    protected $testassertexecuted = false;
+    /** @var bool */
+    protected bool $testassertexecuted = false;
 
     protected function setUp(): void {
         parent::setUp();
@@ -40,7 +43,6 @@ final class basic_test extends \basic_testcase {
 
     /**
      * Tests that bootstrapping has occurred correctly
-     * @return void
      */
     public function test_bootstrap(): void {
         global $CFG;
@@ -53,14 +55,13 @@ final class basic_test extends \basic_testcase {
 
     /**
      * This is just a verification if I understand the PHPUnit assert docs right --skodak
-     * @return void
      */
     public function test_assert_behaviour(): void {
         // Arrays.
-        $a = array('a', 'b', 'c');
-        $b = array('a', 'c', 'b');
-        $c = array('a', 'b', 'c');
-        $d = array('a', 'b', 'C');
+        $a = ['a', 'b', 'c'];
+        $b = ['a', 'c', 'b'];
+        $c = ['a', 'b', 'c'];
+        $d = ['a', 'b', 'C'];
         $this->assertNotEquals($a, $b);
         $this->assertNotEquals($a, $d);
         $this->assertEquals($a, $c);
@@ -90,7 +91,7 @@ final class basic_test extends \basic_testcase {
 
         $this->assertNotEquals(0, '');
         $this->assertNotEquals(null, '0');
-        $this->assertNotEquals(array(), '');
+        $this->assertNotEquals([], '');
 
         // Other comparison.
         $this->assertEquals(null, null);
@@ -104,7 +105,7 @@ final class basic_test extends \basic_testcase {
         $this->assertEmpty('0');
         $this->assertEmpty(false);
         $this->assertEmpty(null);
-        $this->assertEmpty(array());
+        $this->assertEmpty([]);
 
         $this->assertNotEmpty(1);
         $this->assertNotEmpty(0.1);
@@ -112,7 +113,7 @@ final class basic_test extends \basic_testcase {
         $this->assertNotEmpty(' ');
         $this->assertNotEmpty('0 ');
         $this->assertNotEmpty(true);
-        $this->assertNotEmpty(array(null));
+        $this->assertNotEmpty([null]);
         $this->assertNotEmpty(new \stdClass());
     }
 
@@ -126,7 +127,6 @@ a
 b
 STRING;
         $this->assertSame("a\nb", $string, 'Make sure all project files are checked out with unix line endings.');
-
     }
 
     /**
@@ -153,8 +153,8 @@ STRING;
      * @param string $expected
      * @param string $actual
      * @param bool $expectationvalid
-     * @dataProvider equals_ignoring_whitespace_provider
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('equals_ignoring_whitespace_provider')]
     public function test_assertEqualsIgnoringWhitespace( // phpcs:ignore
         string $expected,
         string $actual,
@@ -227,48 +227,26 @@ STRING;
 
     /**
      * Test that a database modification is detected.
-     *
-     * @runInSeparateProcess
-     * @covers \phpunit_util
      */
+    #[\PHPUnit\Framework\Attributes\RunInSeparateProcess]
     public function test_db_modification(): void {
         global $DB;
         $DB->set_field('user', 'confirmed', 1, ['id' => -1]);
 
-        // Let's convert the user warnings into an assert-able exception.
-        set_error_handler(
-            static function ($errno, $errstr) {
-                restore_error_handler();
-                throw new \Exception($errstr, $errno);
-            },
-            E_USER_WARNING // Or any other specific E_ that we want to assert.
-        );
-
-        $this->expectException(\Exception::class);
+        $this->expectException(\core_phpunit\exception\test_exception::class);
         $this->expectExceptionMessage('Warning: unexpected database modification');
         phpunit_util::reset_all_data(true);
     }
 
     /**
      * Test that a $CFG modification is detected.
-     *
-     * @runInSeparateProcess
-     * @covers \phpunit_util
      */
+    #[\PHPUnit\Framework\Attributes\RunInSeparateProcess]
     public function test_cfg_modification(): void {
         global $CFG;
         $CFG->xx = 'yy';
         unset($CFG->admin);
         $CFG->rolesactive = 0;
-
-        // Let's convert the user warnings into an assert-able exception.
-        set_error_handler(
-            static function ($errno, $errstr) {
-                restore_error_handler();
-                throw new \Exception($errstr, $errno);
-            },
-            E_USER_WARNING // Or any other specific E_ that we want to assert.
-        );
 
         $this->expectException(\Exception::class);
         $this->expectExceptionMessageMatches('/rolesactive.*xx value.*removal.*admin/ms'); // 3 messages matched.
@@ -277,22 +255,11 @@ STRING;
 
     /**
      * Test that a $USER modification is detected.
-     *
-     * @runInSeparateProcess
-     * @covers \phpunit_util
      */
+    #[\PHPUnit\Framework\Attributes\RunInSeparateProcess]
     public function test_user_modification(): void {
         global $USER;
         $USER->id = 10;
-
-        // Let's convert the user warnings into an assert-able exception.
-        set_error_handler(
-            static function ($errno, $errstr) {
-                restore_error_handler();
-                throw new \Exception($errstr, $errno);
-            },
-            E_USER_WARNING // Or any other specific E_ that we want to assert.
-        );
 
         $this->expectException(\Exception::class);
         $this->expectExceptionMessage('Warning: unexpected change of $USER');
@@ -301,22 +268,11 @@ STRING;
 
     /**
      * Test that a $COURSE modification is detected.
-     *
-     * @runInSeparateProcess
-     * @covers \phpunit_util
      */
+    #[\PHPUnit\Framework\Attributes\RunInSeparateProcess]
     public function test_course_modification(): void {
         global $COURSE;
         $COURSE->id = 10;
-
-        // Let's convert the user warnings into an assert-able exception.
-        set_error_handler(
-            static function ($errno, $errstr) {
-                restore_error_handler();
-                throw new \Exception($errstr, $errno);
-            },
-            E_USER_WARNING // Or any other specific E_ that we want to assert.
-        );
 
         $this->expectException(\Exception::class);
         $this->expectExceptionMessage('Warning: unexpected change of $COURSE');
@@ -325,10 +281,8 @@ STRING;
 
     /**
      * Test that all modifications are detected together.
-     *
-     * @runInSeparateProcess
-     * @covers \phpunit_util
      */
+    #[\PHPUnit\Framework\Attributes\RunInSeparateProcess]
     public function test_all_modifications(): void {
         global $DB, $CFG, $USER, $COURSE;
         $DB->set_field('user', 'confirmed', 1, ['id' => -1]);
@@ -338,15 +292,6 @@ STRING;
         $USER->id = 10;
         $COURSE->id = 10;
 
-        // Let's convert the user warnings into an assert-able exception.
-        set_error_handler(
-            static function ($errno, $errstr) {
-                restore_error_handler();
-                throw new \Exception($errstr, $errno);
-            },
-            E_USER_WARNING // Or any other specific E_ that we want to assert.
-        );
-
         $this->expectException(\Exception::class);
         $this->expectExceptionMessageMatches('/resetting.*rolesactive.*new.*removal.*USER.*COURSE/ms'); // 6 messages matched.
         phpunit_util::reset_all_data(true);
@@ -354,10 +299,8 @@ STRING;
 
     /**
      * Test that an open transaction are managed ok by the reset code (silently rolled back).
-     *
-     * @runInSeparateProcess
-     * @covers \phpunit_util
      */
+    #[\PHPUnit\Framework\Attributes\RunInSeparateProcess]
     public function test_transaction_problem(): void {
         global $DB, $COURSE;
         $originalname = $DB->get_field('course', 'fullname', ['id' => $COURSE->id]); // Normally "PHPUnit test site".
@@ -390,9 +333,8 @@ STRING;
 
     /**
      * Test that the after-test teardown correctly resets the navigation node URL.
-     *
-     * @depends test_set_navigation_url
      */
+    #[\PHPUnit\Framework\Attributes\Depends('test_set_navigation_url')]
     public function test_navigation_url_reset(): void {
         $this->assertNull(
             (new \ReflectionClass(\navigation_node::class))->getStaticPropertyValue('fullmeurl', null),

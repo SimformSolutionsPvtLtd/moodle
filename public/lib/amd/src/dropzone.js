@@ -104,7 +104,7 @@ const DropZone = class {
             this.callback(e.dataTransfer.files);
         });
         this.dropZoneElement.addEventListener('click', (e) => {
-            const targetDropZoneElement = e.target.closest('.dropzone-sr-only-focusable') ||
+            const targetDropZoneElement = e.target.closest('.dropzone-visually-hidden-focusable') ||
                 this.getDropZoneContainerFromEvent(e);
             if (!targetDropZoneElement) {
                 return;

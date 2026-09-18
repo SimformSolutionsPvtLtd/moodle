@@ -17,6 +17,7 @@
 namespace core\hook;
 
 use core\di;
+use core\tests\fake_plugins_test_trait;
 
 /**
  * Hooks tests.
@@ -28,6 +29,9 @@ use core\di;
  * @covers \core\hook\manager
  */
 final class manager_test extends \advanced_testcase {
+
+    use fake_plugins_test_trait;
+
     /**
      * Test public factory method to get hook manager.
      */
@@ -479,6 +483,184 @@ final class manager_test extends \advanced_testcase {
         // Confirm the deprecated class callback is not called, as expected.
         $this->assertNull(component_class_callback('fake_hooktest\callbacks', 'old_class_callback', [], null, true));
         $this->assertDebuggingNotCalled();
+    }
+
+    /**
+     * Test verifying that callbacks for deprecated plugins are not returned and hook dispatching won't call into these plugins.
+     *
+     * @runInSeparateProcess
+     * @return void
+     */
+    public function test_get_callbacks_for_hook_deprecated_plugintype(): void {
+        $this->resetAfterTest();
+
+        // Inject the fixture 'fake' plugin type into component sources, which includes a single 'fake_fullfeatured' plugin.
+        // This 'fake_fullfeatured' plugin is an available plugin at this stage (not yet deprecated).
+        $this->add_full_mocked_plugintype(
+            plugintype: 'fake',
+            path: 'public/lib/tests/fixtures/fakeplugins/fake',
+        );
+
+        // Force reset the static instance cache \core\hook\manager::$instance so that a fresh instance is instantiated, ensuring
+        // the component lists are re-run and the hook manager can see the injected mock plugin and it's callbacks.
+        // Note: we can't use \core\hook\manager::phpunit_get_instance() because that doesn't load in component callbacks from disk.
+        $hookmanrc = new \ReflectionClass(\core\hook\manager::class);
+        $hookmanrc->setStaticPropertyValue('instance', null);
+        $manager = \core\hook\manager::get_instance();
+
+        // Get all registered callbacks for the hook listened to by the mock plugin (after_course_created).
+        $listeners = $manager->get_callbacks_for_hook(\core_course\hook\after_course_created::class);
+        $componentswithcallbacks = array_column($listeners, 'component');
+
+        // Verify the available mock plugin is returned as a listener.
+        $this->assertContains('fake_fullfeatured', $componentswithcallbacks);
+
+        // Deprecate the 'fake' plugin type.
+        $this->deprecate_full_mocked_plugintype('fake');
+
+        // Force a fresh plugin manager instance, again to ensure the up-to-date component lists are used.
+        $hookmanrc->setStaticPropertyValue('instance', null);
+        $manager = \core\hook\manager::get_instance();
+
+        // And verify the plugin is now not returned as a listener, since it's deprecated.
+        $listeners = $manager->get_callbacks_for_hook(\core_course\hook\after_course_created::class);
+        $componentswithcallbacks = array_column($listeners, 'component');
+        $this->assertNotContains('fake_fullfeatured', $componentswithcallbacks);
+    }
+
+    /**
+     * Data provider for test_get_cache.
+     *
+     * @return array
+     */
+    public static function get_cache_provider(): array {
+        $data = ['callbacks' => ['foo' => []], 'deprecations' => [], 'overrideshash' => 'abc'];
+        $localdata = array_merge($data, ['overrideshash' => 'local']);
+        $shareddata = array_merge($data, ['overrideshash' => 'shared']);
+        return [
+            'no files exist returns null' => [
+                'localdata'         => null,
+                'shareddata'        => null,
+                'expectedresult'    => null,
+                'expectlocalexists' => false,
+            ],
+            'local cache is read' => [
+                'localdata'         => $data,
+                'shareddata'        => null,
+                'expectedresult'    => $data,
+                'expectlocalexists' => true,
+            ],
+            'shared cache is cloned to local when local is missing' => [
+                'localdata'         => null,
+                'shareddata'        => $shareddata,
+                'expectedresult'    => $shareddata,
+                'expectlocalexists' => true,
+            ],
+            'local cache wins when both exist' => [
+                'localdata'         => $localdata,
+                'shareddata'        => $shareddata,
+                'expectedresult'    => $localdata,
+                'expectlocalexists' => true,
+            ],
+        ];
+    }
+
+    /**
+     * Test get_cache behaviour across scenarios.
+     *
+     * @dataProvider get_cache_provider
+     * @param array|null $localdata content to pre-write to the local cache file, or null for no file
+     * @param array|null $shareddata content to pre-write to the shared cache file, or null for no file
+     * @param array|null $expectedresult expected return value of get_cache()
+     * @param bool $expectlocalexists whether the local cache file should exist after the call
+     */
+    public function test_get_cache(
+        ?array $localdata,
+        ?array $shareddata,
+        ?array $expectedresult,
+        bool $expectlocalexists,
+    ): void {
+        $this->resetAfterTest();
+        $manager = $this->create_manager_for_cache_tests();
+
+        $localpath = $this->call_protected_method($manager, 'get_local_cache_path');
+        $sharedpath = $this->call_protected_method($manager, 'get_shared_cache_path');
+
+        @unlink($localpath);
+        @unlink($sharedpath);
+
+        if ($localdata !== null) {
+            file_put_contents($localpath, json_encode($localdata));
+        }
+        if ($shareddata !== null) {
+            file_put_contents($sharedpath, json_encode($shareddata));
+        }
+
+        $result = $this->call_protected_method($manager, 'get_cache');
+
+        $this->assertEquals($expectedresult, $result);
+        $this->assertEquals($expectlocalexists, file_exists($localpath));
+
+        @unlink($localpath);
+        @unlink($sharedpath);
+    }
+
+    /**
+     * Test that set_cache writes to both shared and local files and can be read back.
+     */
+    public function test_set_cache(): void {
+        $this->resetAfterTest();
+        $manager = $this->create_manager_for_cache_tests();
+
+        $localpath = $this->call_protected_method($manager, 'get_local_cache_path');
+        $sharedpath = $this->call_protected_method($manager, 'get_shared_cache_path');
+
+        $callbacks = ['some\\hook' => [
+            ['callback' => 'some\\class::method', 'component' => 'core', 'disabled' => false, 'priority' => 100],
+        ]];
+        $deprecations = ['old_cb' => ['some\\hook']];
+        $hash = sha1('test');
+
+        $this->call_protected_method($manager, 'set_cache', [$callbacks, $deprecations, $hash]);
+
+        $expected = ['callbacks' => $callbacks, 'deprecations' => $deprecations, 'overrideshash' => $hash];
+        $this->assertFileExists($sharedpath);
+        $this->assertFileExists($localpath);
+        $this->assertEquals($expected, json_decode(file_get_contents($sharedpath), true));
+        $this->assertEquals($expected, json_decode(file_get_contents($localpath), true));
+
+        // Verify get_cache reads it back correctly.
+        $this->assertEquals($expected, $this->call_protected_method($manager, 'get_cache'));
+
+        unlink($localpath);
+        unlink($sharedpath);
+    }
+
+    /**
+     * Create a manager instance suitable for cache tests using reflection.
+     * Since manager is a final class, we bypass the private constructor.
+     *
+     * @return manager
+     */
+    private function create_manager_for_cache_tests(): manager {
+        $rc = new \ReflectionClass(manager::class);
+        $instance = $rc->newInstanceWithoutConstructor();
+        $rp = $rc->getProperty('phpunit');
+        $rp->setValue($instance, false);
+        return $instance;
+    }
+
+    /**
+     * Invoke a private method on a manager instance via reflection.
+     *
+     * @param manager $manager
+     * @param string $method
+     * @param array $args
+     * @return mixed
+     */
+    private function call_protected_method(manager $manager, string $method, array $args = []): mixed {
+        $rm = new \ReflectionMethod(manager::class, $method);
+        return $rm->invoke($manager, ...$args);
     }
 
     /**

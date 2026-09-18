@@ -1,4 +1,5 @@
 <?php
+
 /**
  * libphonenumber-for-php-lite data file
  * This file has been @generated from libphonenumber data
@@ -6,104 +7,57 @@
  * @internal
  */
 
-return  [
-  'generalDesc' =>
-   [
-    'NationalNumberPattern' => '800\\d{4}|(?:[249]\\d|64)\\d{5}',
-    'PossibleLength' =>
-     [
-      0 => 7,
-    ],
-  ],
-  'fixedLine' =>
-   [
-    'NationalNumberPattern' => '4[2-46]\\d{5}',
-    'ExampleNumber' => '4217123',
-  ],
-  'mobile' =>
-   [
-    'NationalNumberPattern' => '2[125-8]\\d{5}',
-    'ExampleNumber' => '2510123',
-  ],
-  'tollFree' =>
-   [
-    'NationalNumberPattern' => '800[08]\\d{3}',
-    'ExampleNumber' => '8000000',
-  ],
-  'premiumRate' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'sharedCost' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'personalNumber' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'voip' =>
-   [
-    'NationalNumberPattern' => '971\\d{4}|(?:64|95)\\d{5}',
-    'ExampleNumber' => '6412345',
-  ],
-  'pager' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'uan' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'voicemail' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'noInternationalDialling' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'id' => 'SC',
-  'countryCode' => 248,
-  'internationalPrefix' => '010|0[0-2]',
-  'preferredInternationalPrefix' => '00',
-  'sameMobileAndFixedLinePattern' => false,
-  'numberFormat' =>
-   [
-    0 =>
-     [
-      'pattern' => '(\\d)(\\d{3})(\\d{3})',
-      'format' => '$1 $2 $3',
-      'leadingDigitsPatterns' =>
-       [
-        0 => '[246]|9[57]',
-      ],
-      'nationalPrefixFormattingRule' => '',
-      'domesticCarrierCodeFormattingRule' => '',
-      'nationalPrefixOptionalWhenFormatting' => false,
-    ],
-  ],
-  'mainCountryForCode' => false,
-  'mobileNumberPortableRegion' => false,
-];
+declare(strict_types=1);
+
+namespace libphonenumber\data;
+
+use libphonenumber\NumberFormat;
+use libphonenumber\PhoneMetadata;
+use libphonenumber\PhoneNumberDesc;
+
+/**
+ * @internal
+ */
+class PhoneNumberMetadata_SC extends PhoneMetadata
+{
+    protected const ID = 'SC';
+    protected const COUNTRY_CODE = 248;
+
+    protected ?string $internationalPrefix = '010|0[0-2]';
+    protected ?string $preferredInternationalPrefix = '00';
+
+    public function __construct()
+    {
+        $this->generalDesc = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('(?:[2489]\d|64)\d{5}')
+            ->setPossibleLength([7]);
+        $this->mobile = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('2[125-8]\d{5}')
+            ->setExampleNumber('2510123');
+        $this->premiumRate = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('85\d{5}')
+            ->setExampleNumber('8512345');
+        $this->fixedLine = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('4[2-46]\d{5}')
+            ->setExampleNumber('4217123');
+        $this->numberFormat = [
+            (new NumberFormat())
+                ->setPattern('(\d)(\d{3})(\d{3})')
+                ->setFormat('$1 $2 $3')
+                ->setLeadingDigitsPattern(['[246]|9[57]'])
+                ->setNationalPrefixOptionalWhenFormatting(false),
+        ];
+        $this->tollFree = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('800[08]\d{3}')
+            ->setExampleNumber('8000000');
+        $this->sharedCost = PhoneNumberDesc::empty();
+        $this->personalNumber = PhoneNumberDesc::empty();
+        $this->voip = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('971\d{4}|(?:64|95)\d{5}')
+            ->setExampleNumber('6412345');
+        $this->pager = PhoneNumberDesc::empty();
+        $this->uan = PhoneNumberDesc::empty();
+        $this->voicemail = PhoneNumberDesc::empty();
+        $this->noInternationalDialling = PhoneNumberDesc::empty();
+    }
+}

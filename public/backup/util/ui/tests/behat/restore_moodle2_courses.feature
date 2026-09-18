@@ -106,12 +106,12 @@ Feature: Restore Moodle 2 course backups
     And I expand all fieldsets
     And the field "id_format" matches value "Weekly sections"
     And I set the following fields to these values:
-      | id_format | Social |
+      | id_format | Single activity |
     And I press "Save and display"
-    And I should see "An open forum for chatting about anything you want to"
+    And I should see "New Forum"
     And I navigate to "Settings" in current page administration
     And I expand all fieldsets
-    And the field "id_format" matches value "Social"
+    And the field "id_format" matches value "Single activity"
     And I press "Cancel"
 
   @javascript
@@ -128,7 +128,8 @@ Feature: Restore Moodle 2 course backups
     And the field "Course layout" matches value "Show one section per page"
     And the field "Course short name" matches value "C1_1"
     And I press "Cancel"
-    And section "3" should be visible
+    And section "2" should be visible
+    And section "3" should be hidden
     And section "7" should be hidden
     And section "15" should be visible
     And I should see "Section 15"
@@ -150,7 +151,8 @@ Feature: Restore Moodle 2 course backups
     And the field "Course short name" matches value "C2"
     And the field "Course layout" matches value "Show all sections on one page"
     And I press "Cancel"
-    And section "3" should be visible
+    And section "2" should be visible
+    And section "3" should be hidden
     And section "7" should be hidden
     And section "15" should be visible
     And I should see "Section 15"
@@ -275,7 +277,6 @@ Feature: Restore Moodle 2 course backups
       | Initial      | Include files                    | 0                   |
       | Initial      | Include filters                  | 0                   |
       | Initial      | Include calendar events          | 0                   |
-      | Initial      | Include question bank            | 0                   |
       | Initial      | Include groups and groupings     | 0                   |
       | Initial      | Include competencies             | 0                   |
       | Initial      | Include custom fields            | 0                   |
@@ -290,11 +291,11 @@ Feature: Restore Moodle 2 course backups
     And I should see "Unpublished course badge"
     And I should see "Unpublished without criteria course badge"
     # If activities were included, the criteria have been restored too; otherwise no criteria have been set up for badges.
-    And I <shouldornotsee> "Criteria for this badge have not been set up yet" in the "Published course badge" "table_row"
-    And I <shouldornotsee> "Criteria for this badge have not been set up yet" in the "Unpublished course badge" "table_row"
-    And I should see "Criteria for this badge have not been set up yet" in the "Unpublished without criteria course badge" "table_row"
+    And ".no-criteria-set" "css_element" <shouldornotexist> in the "Published course badge" "table_row"
+    And ".no-criteria-set" "css_element" <shouldornotexist> in the "Unpublished course badge" "table_row"
+    And ".no-criteria-set" "css_element" should exist in the "Unpublished without criteria course badge" "table_row"
 
     Examples:
-      | includeactivities | shouldornotsee |
-      | 0                 | should see     |
-      | 1                 | should not see |
+      | includeactivities | shouldornotexist |
+      | 0                 | should exist     |
+      | 1                 | should not exist |

@@ -31,6 +31,8 @@ require_once(__DIR__ . '/fixtures/test_static_target_shortname.php');
 
 require_once(__DIR__ . '/../../course/lib.php');
 
+use core_analytics\tests\mlbackend_helper_trait;
+
 /**
  * Unit tests for evaluation, training and prediction.
  *
@@ -47,6 +49,8 @@ require_once(__DIR__ . '/../../course/lib.php');
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 final class prediction_test extends \advanced_testcase {
+
+    use mlbackend_helper_trait;
 
     /**
      * Purge all the mlbackend outputs.
@@ -546,7 +550,7 @@ final class prediction_test extends \advanced_testcase {
         }
         // Generate training courses.
         $ncourses = 5;
-        $this->generate_courses_multiclass($ncourses);
+        $this->generate_courses(ncourses: $ncourses, ismulticlass: true);
         $model = $this->add_multiclass_model();
         $model->update(true, false, $timesplittingid, get_class($predictionsprocessor));
         $results = $model->train();
@@ -783,7 +787,7 @@ final class prediction_test extends \advanced_testcase {
             'bad' => array(
                 'modelquality' => 'random',
                 'ncourses' => 50,
-                'expectedresults' => array(
+                'expected' => array(
                     '\core\analytics\time_splitting\single_range' => \core_analytics\model::LOW_SCORE,
                     '\core\analytics\time_splitting\quarters' => \core_analytics\model::LOW_SCORE,
                 )
@@ -791,7 +795,7 @@ final class prediction_test extends \advanced_testcase {
             'good' => array(
                 'modelquality' => 'perfect',
                 'ncourses' => 50,
-                'expectedresults' => array(
+                'expected' => array(
                     '\core\analytics\time_splitting\single_range' => \core_analytics\model::OK,
                     '\core\analytics\time_splitting\quarters' => \core_analytics\model::OK,
                 )
@@ -858,63 +862,6 @@ final class prediction_test extends \advanced_testcase {
     }
 
     /**
-     * Generates $ncourses courses
-     *
-     * @param  int $ncourses The number of courses to be generated.
-     * @param  array $params Course params
-     * @return null
-     */
-    protected function generate_courses($ncourses, array $params = []) {
-
-        $params = $params + [
-            'startdate' => mktime(0, 0, 0, 10, 24, 2015),
-            'enddate' => mktime(0, 0, 0, 2, 24, 2016),
-        ];
-
-        for ($i = 0; $i < $ncourses; $i++) {
-            $name = 'a' . random_string(10);
-            $courseparams = array('shortname' => $name, 'fullname' => $name) + $params;
-            $this->getDataGenerator()->create_course($courseparams);
-        }
-        for ($i = 0; $i < $ncourses; $i++) {
-            $name = 'b' . random_string(10);
-            $courseparams = array('shortname' => $name, 'fullname' => $name) + $params;
-            $this->getDataGenerator()->create_course($courseparams);
-        }
-    }
-
-    /**
-     * Generates ncourses for multi-classification
-     *
-     * @param int $ncourses The number of courses to be generated.
-     * @param array $params Course params
-     * @return null
-     */
-    protected function generate_courses_multiclass($ncourses, array $params = []) {
-
-        $params = $params + [
-                'startdate' => mktime(0, 0, 0, 10, 24, 2015),
-                'enddate' => mktime(0, 0, 0, 2, 24, 2016),
-            ];
-
-        for ($i = 0; $i < $ncourses; $i++) {
-            $name = 'a' . random_string(10);
-            $courseparams = array('shortname' => $name, 'fullname' => $name) + $params;
-            $this->getDataGenerator()->create_course($courseparams);
-        }
-        for ($i = 0; $i < $ncourses; $i++) {
-            $name = 'b' . random_string(10);
-            $courseparams = array('shortname' => $name, 'fullname' => $name) + $params;
-            $this->getDataGenerator()->create_course($courseparams);
-        }
-        for ($i = 0; $i < $ncourses; $i++) {
-            $name = 'c' . random_string(10);
-            $courseparams = array('shortname' => $name, 'fullname' => $name) + $params;
-            $this->getDataGenerator()->create_course($courseparams);
-        }
-    }
-
-    /**
      * Forces some configuration values.
      *
      * @param array $forcedconfig
@@ -969,7 +916,7 @@ final class prediction_test extends \advanced_testcase {
             foreach ($cases as $key => $case) {
 
                 if (!$predictionsprocessor instanceof \mlbackend_python\processor || empty($testpythonserver)) {
-                    $extraparams = ['predictionsprocessor' => $classfullname, 'forcedconfig' => null];
+                    $extraparams = ['predictionsprocessorclass' => $classfullname, 'forcedconfig' => null];
                     $return[$key . '-' . $classfullname] = $case + $extraparams;
                 } else {
 
@@ -979,7 +926,7 @@ final class prediction_test extends \advanced_testcase {
                         'port' => TEST_MLBACKEND_PYTHON_PORT, 'secure' => false, 'username' => TEST_MLBACKEND_PYTHON_USERNAME,
                         'password' => TEST_MLBACKEND_PYTHON_PASSWORD]];
                     $casekey = $key . '-' . $classfullname . '-server';
-                    $return[$casekey] = $case + ['predictionsprocessor' => $classfullname, 'forcedconfig' => $forcedconfig];
+                    $return[$casekey] = $case + ['predictionsprocessorclass' => $classfullname, 'forcedconfig' => $forcedconfig];
                 }
             }
         }

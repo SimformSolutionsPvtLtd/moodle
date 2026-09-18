@@ -65,6 +65,16 @@ class avg extends base {
     }
 
     /**
+     * Returns aggregated column type
+     *
+     * @param int $columntype
+     * @return int
+     */
+    public static function get_column_type(int $columntype): int {
+        return column::TYPE_FLOAT;
+    }
+
+    /**
      * Return formatted value for column when applying aggregation
      *
      * For boolean columns we return the average of the values (0..1), numeric columns execute original callbacks if present
@@ -75,12 +85,14 @@ class avg extends base {
      * @param int $columntype
      * @return mixed
      */
-    public static function format_value($value, array $values, array $callbacks, int $columntype) {
-        if (reset($values) === null) {
+    public function format_value($value, array $values, array $callbacks, int $columntype) {
+        $average = reset($values);
+        if ($average === null) {
             return null;
         }
+
         if ($columntype === column::TYPE_BOOLEAN || empty($callbacks)) {
-            return format_float((float) reset($values), 1);
+            return format_float((float) $average);
         }
 
         return parent::format_value($value, $values, $callbacks, $columntype);

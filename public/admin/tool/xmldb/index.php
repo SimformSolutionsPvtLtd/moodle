@@ -34,9 +34,6 @@ require_once('actions/XMLDBCheckAction.class.php');
 
 admin_externalpage_setup('toolxmld');
 
-// Add other used libraries
-require_once($CFG->libdir . '/xmlize.php');
-
 // Handle session data
 global $XMLDB;
 
@@ -50,6 +47,7 @@ if (!isset($SESSION->xmldb)) {
 // Some previous checks
 $site = get_site();
 
+$PAGE->set_primary_active_tab('siteadminnode');
 
 // Body of the script, based on action, we delegate the work
 $action = optional_param ('action', 'main_view', PARAM_ALPHAEXT);

@@ -78,7 +78,7 @@ class data_field_latlong extends data_field_base {
         }
         $str = '<div title="'.s($this->field->description).'">';
         $str .= '<fieldset><legend><span class="accesshide">'.s($this->field->name).'</span></legend>';
-        $str .= '<table class="d-flex flex-wrap align-items-center"><tr><td align="right">';
+        $str .= '<table class="d-flex flex-wrap align-items-center table-reboot"><tr><td align="right">';
         $classes = 'mod-data-input form-control-static';
         $str .= '<label for="field_'.$this->field->id.'_0" class="' . $classes . '">' . get_string('latitude', 'data');
         if ($this->field->required) {
@@ -129,7 +129,7 @@ class data_field_latlong extends data_field_base {
 
         $classes = array('class' => 'accesshide');
         $return = html_writer::label(get_string('latlong', 'data'), 'menuf_'.$this->field->id, false, $classes);
-        $classes = array('class' => 'custom-select');
+        $classes = ['class' => 'form-select'];
         $return .= html_writer::select($options, 'f_'.$this->field->id, $value, array('' => get_string('menuchoose', 'data')),
             $classes);
        return $return;
@@ -215,7 +215,7 @@ class data_field_latlong extends data_field_base {
             $str = '<form id="latlongfieldbrowse" class="data-field-html">';
             $str .= "$compasslat, $compasslong\n";
             $str .= "<label class='accesshide' for='jumpto'>". get_string('jumpto') ."</label>";
-            $str .= '<select id="jumpto" name="jumpto" class="custom-select">';
+            $str .= '<select id="jumpto" name="jumpto" class="form-select">';
             foreach ($servicesshown as $servicename) {
                 // Add a link to a service.
                 $str .= "\n  <option value='"

@@ -14,22 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * External course functions unit tests
- *
- * @package    core_course
- * @category   external
- * @copyright  2012 Jerome Mouneyrac
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-
-use \core_external\external_api;
-
-defined('MOODLE_INTERNAL') || die();
-
-global $CFG;
-
-require_once($CFG->dirroot . '/webservice/tests/helpers.php');
+use core_external\external_api;
 
 /**
  * External course functions unit tests
@@ -39,8 +24,7 @@ require_once($CFG->dirroot . '/webservice/tests/helpers.php');
  * @copyright  2012 Jerome Mouneyrac
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-final class externallib_test extends externallib_advanced_testcase {
-
+final class externallib_test extends \core_external\tests\externallib_testcase {
     /**
      * Tests set up
      */
@@ -1907,8 +1891,6 @@ final class externallib_test extends externallib_advanced_testcase {
         list($course, $forumcm, $datacm, $pagecm, $labelcm, $urlcm) = $this->prepare_get_course_contents_test();
 
         // Add subsection.
-        $manager = \core_plugin_manager::resolve_plugininfo_class('mod');
-        $manager::enable_plugin('subsection', 1);
         $modsubsection = $this->getDataGenerator()->create_module('subsection', ['course' => $course->id, 'section' => 2]);
 
         // This is needed until MDL-76728 is resolved.
@@ -2849,7 +2831,7 @@ final class externallib_test extends externallib_advanced_testcase {
             foreach ($course['options'] as $option) {
                 $navoptions->{$option['name']} = $option['available'];
             }
-            $this->assertCount(9, $course['options']);
+            $this->assertCount(10, $course['options']);
             if ($course['id'] == SITEID) {
                 $this->assertTrue($navoptions->blogs);
                 $this->assertFalse($navoptions->notes);
@@ -2860,6 +2842,7 @@ final class externallib_test extends externallib_advanced_testcase {
                 $this->assertFalse($navoptions->search);
                 $this->assertTrue($navoptions->competencies);
                 $this->assertFalse($navoptions->communication);
+                $this->assertFalse($navoptions->overview);
             } else {
                 $this->assertTrue($navoptions->blogs);
                 $this->assertFalse($navoptions->notes);
@@ -2870,6 +2853,7 @@ final class externallib_test extends externallib_advanced_testcase {
                 $this->assertFalse($navoptions->search);
                 $this->assertTrue($navoptions->competencies);
                 $this->assertFalse($navoptions->communication);
+                $this->assertTrue($navoptions->overview);
             }
         }
     }

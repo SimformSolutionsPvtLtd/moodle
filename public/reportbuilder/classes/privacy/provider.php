@@ -27,16 +27,11 @@ use core_privacy\local\request\contextlist;
 use core_privacy\local\request\core_userlist_provider;
 use core_privacy\local\request\transform;
 use core_privacy\local\request\userlist;
-use core_privacy\local\request\user_preference_provider;
 use core_privacy\local\request\writer;
 use core_reportbuilder\manager;
-use core_reportbuilder\local\helpers\user_filter_manager;
 use core_reportbuilder\local\helpers\schedule as schedule_helper;
-use core_reportbuilder\local\models\audience;
-use core_reportbuilder\local\models\column;
-use core_reportbuilder\local\models\filter;
-use core_reportbuilder\local\models\report;
-use core_reportbuilder\local\models\schedule;
+use core_reportbuilder\local\schedules\base;
+use core_reportbuilder\local\models\{audience, column, filter, report, schedule, user_filter};
 
 /**
  * Privacy Subsystem for core_reportbuilder
@@ -48,8 +43,7 @@ use core_reportbuilder\local\models\schedule;
 class provider implements
     \core_privacy\local\metadata\provider,
     \core_privacy\local\request\plugin\provider,
-    core_userlist_provider,
-    user_preference_provider {
+    core_userlist_provider {
 
     /**
      * Returns metadata about the component
@@ -82,6 +76,12 @@ class provider implements
             'usermodified' => 'privacy:metadata:filter:usermodified',
         ], 'privacy:metadata:filter');
 
+        $collection->add_database_table(user_filter::TABLE, [
+            'filterdata' => 'privacy:metadata:user_filter:filterdata',
+            'timecreated' => 'privacy:metadata:user_filter:timecreated',
+            'timemodified' => 'privacy:metadata:user_filter:timemodified',
+        ], 'privacy:metadata:user_filter');
+
         $collection->add_database_table(audience::TABLE, [
             'classname' => 'privacy:metadata:audience:classname',
             'configdata' => 'privacy:metadata:audience:configdata',
@@ -96,40 +96,19 @@ class provider implements
             'name' => 'privacy:metadata:schedule:name',
             'enabled' => 'privacy:metadata:schedule:enabled',
             'audiences' => 'privacy:metadata:schedule:audiences',
+            'classname' => 'privacy:metadata:schedule:classname',
+            'configdata' => 'privacy:metadata:schedule:configdata',
             'format' => 'privacy:metadata:schedule:format',
-            'subject' => 'privacy:metadata:schedule:subject',
-            'message' => 'privacy:metadata:schedule:message',
             'userviewas' => 'privacy:metadata:schedule:userviewas',
             'timescheduled' => 'privacy:metadata:schedule:timescheduled',
             'recurrence' => 'privacy:metadata:schedule:recurrence',
-            'reportempty' => 'privacy:metadata:schedule:reportempty',
             'usercreated' => 'privacy:metadata:schedule:usercreated',
             'usermodified' => 'privacy:metadata:schedule:usermodified',
             'timecreated' => 'privacy:metadata:schedule:timecreated',
             'timemodified' => 'privacy:metadata:schedule:timemodified',
         ], 'privacy:metadata:schedule');
 
-        $collection->add_user_preference('core_reportbuilder', 'privacy:metadata:preference:reportfilter');
-
         return $collection;
-    }
-
-    /**
-     * Export all user preferences for the component
-     *
-     * @param int $userid
-     */
-    public static function export_user_preferences(int $userid): void {
-        $preferencestring = get_string('privacy:metadata:preference:reportfilter', 'core_reportbuilder');
-
-        $filters = user_filter_manager::get_all_for_user($userid);
-        foreach ($filters as $key => $filter) {
-            writer::export_user_preference('core_reportbuilder',
-                $key,
-                json_encode($filter, JSON_PRETTY_PRINT),
-                $preferencestring
-            );
-        }
     }
 
     /**
@@ -156,7 +135,7 @@ class provider implements
     public static function get_contexts_for_userid(int $userid): contextlist {
         $contextlist = new contextlist();
 
-        // Locate all contexts for reports the user has created, or reports they have created audience/schedules for.
+        // Locate all contexts for reports the user has created, or reports they have created ancillary data for.
         $sql = '
             SELECT r.contextid
               FROM {' . report::TABLE . '} r
@@ -164,6 +143,10 @@ class provider implements
                AND (r.usercreated = ?
                  OR r.usermodified = ?
                  OR r.id IN (
+                    SELECT f.reportid
+                      FROM {' . user_filter::TABLE . '} f
+                     WHERE f.usercreated = ?
+                     UNION
                     SELECT a.reportid
                       FROM {' . audience::TABLE . '} a
                      WHERE a.usercreated = ? OR a.usermodified = ?
@@ -174,7 +157,7 @@ class provider implements
                     )
                    )';
 
-        return $contextlist->add_from_sql($sql, array_fill(0, 6, $userid));
+        return $contextlist->add_from_sql($sql, array_fill(0, 7, $userid));
     }
 
     /**
@@ -192,6 +175,13 @@ class provider implements
                 WHERE ' . $select;
         $userlist->add_from_sql('usercreated', $sql, $params);
         $userlist->add_from_sql('usermodified', $sql, $params);
+
+        // Users who have created user filters.
+        $sql = 'SELECT f.usercreated
+                  FROM {' . user_filter::TABLE . '} f
+                  JOIN {' . report::TABLE . '} r ON r.id = f.reportid
+                WHERE ' . $select;
+        $userlist->add_from_sql('usercreated', $sql, $params);
 
         // Users who have created audiences.
         $sql = 'SELECT a.usercreated, a.usermodified
@@ -224,6 +214,10 @@ class provider implements
 
         // We need to get all reports that the user has created, or reports they have created audience/schedules for.
         $select = 'type = 0 AND (usercreated = ? OR usermodified = ? OR id IN (
+            SELECT f.reportid
+              FROM {' . user_filter::TABLE . '} f
+             WHERE f.usercreated = ?
+             UNION
             SELECT a.reportid
               FROM {' . audience::TABLE . '} a
              WHERE a.usercreated = ? OR a.usermodified = ?
@@ -232,12 +226,17 @@ class provider implements
               FROM {' . schedule::TABLE . '} s
              WHERE s.usercreated = ? OR s.usermodified = ?
         ))';
-        $params = array_fill(0, 6, $user->id);
+        $params = array_fill(0, 7, $user->id);
 
         foreach (report::get_records_select($select, $params) as $report) {
             $subcontext = static::get_export_subcontext($report);
 
             self::export_report($subcontext, $report);
+
+            // User filters.
+            if ($userfilters = user_filter::get_records(['reportid' => $report->get('id'), 'usercreated' => $user->id])) {
+                static::export_user_filters($report->get_context(), $subcontext, $userfilters);
+            }
 
             $select = 'reportid = ? AND (usercreated = ? OR usermodified = ?)';
             $params = [$report->get('id'), $user->id, $user->id];
@@ -310,6 +309,25 @@ class provider implements
     }
 
     /**
+     * Export given user filters in context
+     *
+     * @param context $context
+     * @param array $subcontext
+     * @param user_filter[] $userfilters
+     */
+    protected static function export_user_filters(context $context, array $subcontext, array $userfilters): void {
+        $userfilterdata = array_map(static function(user_filter $userfilter): stdClass {
+            return (object) [
+                'filterdata' => $userfilter->get('filterdata'),
+                'timecreated' => transform::datetime($userfilter->get('timecreated')),
+                'timemodified' => transform::datetime($userfilter->get('timemodified')),
+            ];
+        }, $userfilters);
+
+        writer::with_context($context)->export_related_data($subcontext, 'userfilters', (object) ['data' => $userfilterdata]);
+    }
+
+    /**
      * Export given audiences in context
      *
      * @param context $context
@@ -349,31 +367,38 @@ class provider implements
         $formatoptions = schedule_helper::get_format_options();
         $recurrenceoptions = schedule_helper::get_recurrence_options();
         $viewasoptions = schedule_helper::get_viewas_options();
-        $reportemptyoptions = schedule_helper::get_report_empty_options();
 
-        $scheduledata = array_map(static function(schedule $schedule) use (
-                $context, $formatoptions, $recurrenceoptions, $viewasoptions, $reportemptyoptions): stdClass {
+        $scheduledata = array_map(
+            static function (schedule $schedule) use (
+                $context,
+                $formatoptions,
+                $recurrenceoptions,
+                $viewasoptions,
+            ): stdClass {
+                // Show the schedule name, if it exists.
+                $scheduleinstance = base::from_persistent($schedule);
 
-            // The "User view as" property will be either creator, recipient or a specific userid.
-            $userviewas = $schedule->get('userviewas');
+                // The "User view as" property will be either creator, recipient or a specific userid.
+                $userviewas = $schedule->get('userviewas');
 
-            return (object) [
-                'name' => $schedule->get_formatted_name($context),
-                'enabled' => transform::yesno($schedule->get('enabled')),
-                'format' => $formatoptions[$schedule->get('format')],
-                'timescheduled' => transform::datetime($schedule->get('timescheduled')),
-                'recurrence' => $recurrenceoptions[$schedule->get('recurrence')],
-                'userviewas' => $viewasoptions[$userviewas] ?? transform::user($userviewas),
-                'audiences' => $schedule->get('audiences'),
-                'subject' => $schedule->get('subject'),
-                'message' => format_text($schedule->get('message'), $schedule->get('messageformat'), ['context' => $context]),
-                'reportempty' => $reportemptyoptions[$schedule->get('reportempty')],
-                'usercreated' => transform::user($schedule->get('usercreated')),
-                'usermodified' => transform::user($schedule->get('usermodified')),
-                'timecreated' => transform::datetime($schedule->get('timecreated')),
-                'timemodified' => transform::datetime($schedule->get('timemodified')),
-            ];
-        }, $schedules);
+                return (object) [
+                    'name' => $schedule->get_formatted_name($context),
+                    'enabled' => transform::yesno($schedule->get('enabled')),
+                    'classname' => $scheduleinstance?->get_name() ?? $schedule->get('classname'),
+                    'configdata' => $schedule->get('configdata'),
+                    'format' => $formatoptions[$schedule->get('format')],
+                    'timescheduled' => transform::datetime($schedule->get('timescheduled')),
+                    'recurrence' => $recurrenceoptions[$schedule->get('recurrence')],
+                    'userviewas' => $viewasoptions[$userviewas] ?? transform::user($userviewas),
+                    'audiences' => $schedule->get('audiences'),
+                    'usercreated' => transform::user($schedule->get('usercreated')),
+                    'usermodified' => transform::user($schedule->get('usermodified')),
+                    'timecreated' => transform::datetime($schedule->get('timecreated')),
+                    'timemodified' => transform::datetime($schedule->get('timemodified')),
+                ];
+            },
+            $schedules,
+        );
 
         writer::with_context($context)->export_related_data($subcontext, 'schedules', (object) ['data' => $scheduledata]);
     }

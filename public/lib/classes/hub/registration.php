@@ -46,7 +46,7 @@ class registration {
     const FORM_FIELDS = ['policyagreed', 'language', 'countrycode', 'privacy',
         'contactemail', 'emailalert', 'emailalertemail', 'commnews', 'commnewsemail',
         'contactname', 'name', 'description', 'imageurl', 'contactphone', 'regioncode',
-        'geolocation', 'street', 'organisationtype'];
+        'geolocation', 'street', 'organisationtype', 'commnewsfirstname', 'commnewslastname'];
 
     /** @var array List of new FORM_FIELDS or siteinfo fields added indexed by the version when they were added.
      * If site was already registered, admin will be promted to confirm new registration data manually. Until registration is manually confirmed,
@@ -817,12 +817,34 @@ class registration {
         $formattedvalues = [];
 
         foreach ($values as $key => $value) {
-            if (get_string_manager()->string_exists($key, 'hub', $value)) {
-                $formattedvalues[]['values'] = get_string($key, 'hub', $value);
+            if (get_string_manager()->string_exists($key, 'hub')) {
+                if ($key === 'models') {
+                    $formattedvalues[] = [
+                        'label' => get_string($key, 'hub'),
+                        'models' => self::format_ai_usage_model_values($value),
+                    ];
+                } else {
+                    $formattedvalues[]['values'] = get_string($key, 'hub', $value);
+                }
             }
         }
 
         return $formattedvalues;
+    }
+
+    /**
+     * Formats model values with their counts.
+     *
+     * @param array $values Formatted model values
+     */
+    private static function format_ai_usage_model_values(array $values): array {
+        $modelvalues = [];
+
+        foreach ($values as $model => $count) {
+            $modelvalues[] = "$model ($count[count])";
+        }
+
+        return $modelvalues;
     }
 
     /**
@@ -856,6 +878,7 @@ class registration {
                     'fail_count' => 0,
                     'times' => [],
                     'errors' => [],
+                    'modelstemp' => [],
                 ];
             }
 
@@ -869,9 +892,13 @@ class registration {
                 // Collect errors for determing the predominant one.
                 $data[$provider][$actionname]['errors'][] = $action->errorcode;
             }
+
+            // Collect models used and identify unknown ones.
+            $model = $action->model ?? 'unknown';
+            $data[$provider][$actionname]['modelstemp'][] = $model;
         }
 
-        // Parse the errors and everage the times, then add them to the data.
+        // Parse the errors, average the times, count the models and then add them to the data.
         foreach ($data as $p => $provider) {
             foreach ($provider as $a => $actionname) {
                 if (isset($data[$p][$a]['errors'])) {
@@ -896,6 +923,15 @@ class registration {
                     }
                 }
                 unset($data[$p][$a]['times']);
+
+                if (isset($data[$p][$a]['modelstemp'])) {
+                    // Create an array with the models counted.
+                    $countedmodels = array_count_values($data[$p][$a]['modelstemp']);
+                    foreach ($countedmodels as $model => $count) {
+                        $data[$p][$a]['models'][$model]['count'] = $count;
+                    }
+                }
+                unset($data[$p][$a]['modelstemp']);
             }
         }
 

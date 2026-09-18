@@ -450,27 +450,44 @@ class core_text {
      * @return array with (html entity => utf-8) elements
      */
     protected static function get_entities_table() {
-        static $trans_tbl = null;
+        static $translationtable = null;
 
         // Generate/create $trans_tbl
-        if (!isset($trans_tbl)) {
-            if (version_compare(phpversion(), '5.3.4') < 0) {
-                $trans_tbl = array();
-                foreach (get_html_translation_table(HTML_ENTITIES, ENT_COMPAT) as $val=>$key) {
-                    $trans_tbl[$key] = self::convert($val, 'ISO-8859-1', 'utf-8');
-                }
+        if (!isset($translationtable)) {
+            $translationtable = get_html_translation_table(HTML_ENTITIES, ENT_COMPAT | ENT_HTML401, 'UTF-8');
+            $translationtable = array_flip($translationtable);
+        }
 
-            } else if (version_compare(phpversion(), '5.4.0') < 0) {
-                $trans_tbl = get_html_translation_table(HTML_ENTITIES, ENT_COMPAT, 'UTF-8');
-                $trans_tbl = array_flip($trans_tbl);
+        return $translationtable;
+    }
 
-            } else {
-                $trans_tbl = get_html_translation_table(HTML_ENTITIES, ENT_COMPAT | ENT_HTML401, 'UTF-8');
-                $trans_tbl = array_flip($trans_tbl);
+    /**
+     * Returns transliteration table for conversion of named
+     * html entities to numeric html entities.
+     * @return array
+     */
+    protected static function get_named_entities_table(): array {
+        static $translationtable = null;
+
+        if (!isset($translationtable)) {
+            $translationtable = [];
+            // NOTE: do not use ENT_HTML5 here because it adds way too many items.
+            $entities = get_html_translation_table(HTML_ENTITIES, ENT_COMPAT | ENT_HTML401, 'UTF-8');
+            foreach ($entities as $char => $entity) {
+                $translationtable[$entity] = '&#' . IntlChar::ord($char) . ';';
             }
         }
 
-        return $trans_tbl;
+        return $translationtable;
+    }
+
+    /**
+     * Converts all named html entities &quot; to numeric entities &#nnnn;
+     * @param string $str input string
+     * @return string
+     */
+    public static function entities_named_to_numeric(string $str): string {
+        return strtr($str, self::get_named_entities_table());
     }
 
     /**

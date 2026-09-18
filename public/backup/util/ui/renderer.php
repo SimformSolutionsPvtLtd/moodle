@@ -22,6 +22,9 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+use core_course\output\activity_icon;
+use core\output\local\properties\iconsize;
+
 defined('MOODLE_INTERNAL') || die;
 
 global $CFG;
@@ -199,16 +202,24 @@ class core_backup_renderer extends plugin_renderer_base {
                         $table->head = array(get_string('module', 'backup'), get_string('title', 'backup'), get_string('userinfo', 'backup'));
                         $table->colclasses = array('modulename', 'moduletitle', 'userinfoincluded');
                         $table->align = array('left', 'left', 'center');
-                        $table->attributes = array('class' => 'activitytable generaltable');
+                        $table->attributes = ['class' => 'activitytable table generaltable'];
                         $table->data = array();
                     }
                     $name = get_string('pluginname', $activity->modulename);
-                    $icon = new image_icon('monologo', '', $activity->modulename);
-                    $table->data[] = array(
-                        $this->output->render($icon).$name,
+                    $icon = activity_icon::from_modname($activity->modulename)
+                        ->set_icon_size(iconsize::SIZE4)
+                        ->set_colourize(false);
+
+                    $content = $this->output->container(
+                        contents: $this->output->render($icon) . $name,
+                        classes: 'd-flex align-items-center',
+                    );
+
+                    $table->data[] = [
+                        $content,
                         format_string($activity->title),
                         ($activity->settings[$activitykey.'_userinfo']) ? $yestick : $notick,
-                    );
+                    ];
                 }
                 if (!empty($table)) {
                     $html .= $this->backup_detail_pair(get_string('sectionactivities', 'backup'), html_writer::table($table));
@@ -679,7 +690,7 @@ class core_backup_renderer extends plugin_renderer_base {
             }
 
             $table = new html_table();
-            $table->attributes['class'] = 'backup-files-table generaltable';
+            $table->attributes['class'] = 'backup-files-table table generaltable table-hover';
             $table->head = $tablehead;
             $table->width = '100%';
             $table->data = [];
@@ -1040,7 +1051,7 @@ class core_backup_renderer extends plugin_renderer_base {
         $tablehead = array(get_string('course'), get_string('time'), get_string('status', 'backup'));
 
         $table = new html_table();
-        $table->attributes['class'] = 'backup-files-table generaltable';
+        $table->attributes['class'] = 'backup-files-table table generaltable table-hover';
         $table->head = $tablehead;
         $tabledata = array();
 
@@ -1081,7 +1092,7 @@ class core_backup_renderer extends plugin_renderer_base {
         );
 
         $table = new html_table();
-        $table->attributes['class'] = 'backup-files-table generaltable';
+        $table->attributes['class'] = 'backup-files-table table generaltable table-hover';
         $table->head = $tablehead;
 
         $tabledata = array();

@@ -860,6 +860,16 @@ class grade_item extends grade_object {
             $rs = $DB->get_recordset('grade_grades', array('itemid' => $this->id), '', $fields);
         }
         if ($rs) {
+            $frozenlegacypenalty = \core_grades\penalty_manager::is_frozen_for_legacy_penalty($this->courseid);
+            // While frozen, a course-level freeze flag can't by itself tell a still-legacy-corrupted
+            // penalised grade from one already graded correctly after MDL-88407 - a single course can
+            // contain both (see MDL-89497). Fetch Assignment's own authoritative grades once so each
+            // penalised row below can be checked individually, rather than assuming every row in a
+            // frozen course is legacy-corrupted.
+            $authoritativegrades = $frozenlegacypenalty
+                ? \core_grades\penalty_manager::get_authoritative_user_grades($this)
+                : null;
+
             foreach ($rs as $grade_record) {
                 $grade = new grade_grade($grade_record, false);
 
@@ -874,7 +884,24 @@ class grade_item extends grade_object {
                     continue;
                 }
 
-                $grade->finalgrade = $this->adjust_raw_grade($grade->rawgrade, $grade->rawgrademin, $grade->rawgrademax);
+                // While frozen, only trust the legacy (pre-MDL-88407) calculation - which ignores
+                // deductedmark, since it assumes rawgrade already has the penalty baked in - for a
+                // penalised grade that has been positively confirmed to still be in that representation.
+                $uselegacypenalty = $frozenlegacypenalty
+                    && $grade->deductedmark > 0
+                    && \core_grades\penalty_manager::requires_legacy_penalty_calculation($grade, $authoritativegrades, $this);
+
+                if ($uselegacypenalty) {
+                    $grade->finalgrade = $this->adjust_raw_grade($grade->rawgrade, $grade->rawgrademin, $grade->rawgrademax);
+                } else if ($grade->deductedmark > 0) {
+                    // A penalty is recorded on this grade. Preserve it by recalculating
+                    // from the penalised raw grade so that a full regrade does not silently
+                    // undo the penalty that penalty_manager already applied.
+                    $penalisedraw = max($this->grademin, $grade->rawgrade - $grade->deductedmark);
+                    $grade->finalgrade = $this->adjust_raw_grade($penalisedraw, $grade->rawgrademin, $grade->rawgrademax);
+                } else {
+                    $grade->finalgrade = $this->adjust_raw_grade($grade->rawgrade, $grade->rawgrademin, $grade->rawgrademax);
+                }
 
                 if (grade_floats_different($grade_record->finalgrade, $grade->finalgrade)) {
                     $success = $grade->update('system');
@@ -1220,6 +1247,17 @@ class grade_item extends grade_object {
      */
     public function is_aggregate_item() {
         return ($this->is_category_item() || $this->is_course_item());
+    }
+
+
+    /**
+     * Returns whether the item is gradable or not. It's considered gradable when there is at least one gradeitem
+     * set as GRADE_TYPE_VALUE or GRADE_TYPE_SCALE.
+     *
+     * @return bool
+     */
+    public function is_gradable(): bool {
+        return $this->gradetype == GRADE_TYPE_VALUE || $this->gradetype == GRADE_TYPE_SCALE;
     }
 
     /**
@@ -1717,7 +1755,7 @@ class grade_item extends grade_object {
             $params = array();
 
             //only items with numeric or scale values can be aggregated
-            if ($this->gradetype != GRADE_TYPE_VALUE and $this->gradetype != GRADE_TYPE_SCALE) {
+            if (!$this->is_gradable()) {
                 $this->dependson_cache = array();
                 return $this->dependson_cache;
             }
@@ -2054,9 +2092,31 @@ class grade_item extends grade_object {
             $grade->feedbackfiles  = $feedbackfiles;
         }
 
+        // Check whether the course is frozen and this grade still requires the legacy penalty calculation.
+        // A course-level freeze can contain both legacy and correctly calculated grades.
+        $requireslegacypenalty = \core_grades\penalty_manager::is_frozen_for_legacy_penalty($this->courseid)
+            && $grade->deductedmark > 0
+            && \core_grades\penalty_manager::requires_legacy_penalty_calculation(
+                $grade,
+                \core_grades\penalty_manager::get_authoritative_user_grades($this),
+                $this
+            );
+
         // update final grade if possible
         if (!$grade->is_locked() and !$grade->is_overridden()) {
-            $grade->finalgrade = $this->adjust_raw_grade($grade->rawgrade, $grade->rawgrademin, $grade->rawgrademax);
+            if ($grade->deductedmark > 0 && $rawgrade === false) {
+                // No new rawgrade was provided (e.g. a submission-date update). The existing penalty
+                // must be preserved: recalculate finalgrade from the penalised raw grade rather than
+                // the plain rawgrade, so that the penalty indicator remains visible.
+                if ($requireslegacypenalty) {
+                    $grade->finalgrade = $this->adjust_raw_grade($grade->rawgrade, $grade->rawgrademin, $grade->rawgrademax);
+                } else {
+                    $penalisedraw = max($this->grademin, $grade->rawgrade - $grade->deductedmark);
+                    $grade->finalgrade = $this->adjust_raw_grade($penalisedraw, $grade->rawgrademin, $grade->rawgrademax);
+                }
+            } else {
+                $grade->finalgrade = $this->adjust_raw_grade($grade->rawgrade, $grade->rawgrademin, $grade->rawgrademax);
+            }
         }
 
         // TODO: hack alert - create new fields for these in 2.0
@@ -2085,6 +2145,18 @@ class grade_item extends grade_object {
             //keep original graded date
         }
         // end of hack alert
+
+        // While frozen, legacy grades reset deductedmark whenever the grade changes.
+        // Correctly calculated grades only reset it when a new raw grade is provided.
+        if ($requireslegacypenalty) {
+            if ($grade->timemodified !== $oldgrade->timemodified) {
+                $grade->deductedmark = 0;
+            }
+        } else {
+            if ($grade->timemodified !== $oldgrade->timemodified && $rawgrade !== false) {
+                $grade->deductedmark = 0;
+            }
+        }
 
         $gradechanged = false;
         if (empty($grade->id)) {
@@ -2144,6 +2216,21 @@ class grade_item extends grade_object {
         }
 
         return $result;
+    }
+
+    /**
+     * Update penalty value for given user
+     *
+     * @param int $userid The graded user
+     * @param float $deductedmark The mark deducted from final grade
+     */
+    public function update_deducted_mark(int $userid, float $deductedmark): void {
+        $grade = new grade_grade([
+                'itemid' => $this->id,
+                'userid' => $userid,
+            ]);
+        $grade->deductedmark = $deductedmark;
+        $grade->update();
     }
 
     /**
@@ -2602,12 +2689,19 @@ class grade_item extends grade_object {
                 rebuild_course_cache($this->courseid, true);
                 $modinfo = get_fast_modinfo($this->courseid);
             }
-            // Even with a rebuilt cache the module does not exist. This means the
-            // database is in an invalid state - we will log an error and return
-            // the course context but the calling code should be updated.
+
+            // Even with a rebuilt cache the module does not exist. This means we are dealing
+            // with a mod plugin type that is disabled on the site (which are not included in the
+            // modinfo cache) or the database is in an invalid state. In the latter case we will
+            // log an error and return the course context, but the calling code should be updated.
             if (!isset($modinfo->instances[$this->itemmodule][$this->iteminstance])) {
-                mtrace(get_string('moduleinstancedoesnotexist', 'error'));
-                $context = \context_course::instance($this->courseid);
+                if ($cm = get_coursemodule_from_instance($this->itemmodule, $this->iteminstance)) {
+                    // Cache does not contain module plugins that are disabled.
+                    $context = \context_module::instance($cm->id);
+                } else {
+                    debugging(get_string('moduleinstancedoesnotexist', 'error'));
+                    $context = \context_course::instance($this->courseid);
+                }
             } else {
                 $cm = $modinfo->instances[$this->itemmodule][$this->iteminstance];
                 $context = \context_module::instance($cm->id);

@@ -88,6 +88,7 @@ final class users_test extends core_reportbuilder_testcase {
         $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'user:picture']);
         $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'user:firstname']);
         $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'user:lastname']);
+        $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'user:theme']);
         $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'user:city']);
         $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'user:country']);
         $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'user:lang']);
@@ -103,6 +104,7 @@ final class users_test extends core_reportbuilder_testcase {
         $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'user:phone1']);
         $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'user:phone2']);
         $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'user:address']);
+        $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'user:firstaccess']);
         $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'user:lastaccess']);
         $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'user:suspended']);
         $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'user:confirmed']);
@@ -111,7 +113,6 @@ final class users_test extends core_reportbuilder_testcase {
         $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'user:timecreated']);
         $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'user:timemodified']);
         $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'user:lastip']);
-        $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'user:theme']);
 
         // Tags.
         $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'tag:name']);
@@ -128,16 +129,18 @@ final class users_test extends core_reportbuilder_testcase {
             $fullnamewithpicture,
             $fullnamewithpicturelink,
             $picture,
-            $lastname,
             $firstname,
+            $lastname,
+            $theme,
         ] = array_values($content[0]);
 
         $this->assertStringContainsString('Admin User', $fullnamewithlink);
         $this->assertStringContainsString('Admin User', $fullnamewithpicture);
         $this->assertStringContainsString('Admin User', $fullnamewithpicturelink);
         $this->assertNotEmpty($picture);
-        $this->assertEquals('Admin', $lastname);
-        $this->assertEquals('User', $firstname);
+        $this->assertEquals('Admin', $firstname);
+        $this->assertEquals('User', $lastname);
+        $this->assertEquals('Default', $theme);
 
         // User row.
         [
@@ -147,6 +150,7 @@ final class users_test extends core_reportbuilder_testcase {
             $picture,
             $firstname,
             $lastname,
+            $theme,
             $city,
             $country,
             $lang,
@@ -162,6 +166,7 @@ final class users_test extends core_reportbuilder_testcase {
             $phone1,
             $phone2,
             $address,
+            $firstaccess,
             $lastaccess,
             $suspended,
             $confirmed,
@@ -170,7 +175,6 @@ final class users_test extends core_reportbuilder_testcase {
             $timecreated,
             $timemodified,
             $lastip,
-            $theme,
             $tag,
             $cohortname,
         ] = array_values($content[1]);
@@ -181,6 +185,7 @@ final class users_test extends core_reportbuilder_testcase {
         $this->assertNotEmpty($picture);
         $this->assertEquals($user->firstname, $firstname);
         $this->assertEquals($user->lastname, $lastname);
+        $this->assertEquals('Boost', $theme);
         $this->assertEquals($user->city, $city);
         $this->assertEquals('United Kingdom', $country);
         $this->assertEquals('English ‎(en)‎', $lang);
@@ -196,6 +201,7 @@ final class users_test extends core_reportbuilder_testcase {
         $this->assertEquals($user->phone1, $phone1);
         $this->assertEquals($user->phone2, $phone2);
         $this->assertEquals($user->address, $address);
+        $this->assertEmpty($firstaccess);
         $this->assertEmpty($lastaccess);
         $this->assertEquals('No', $suspended);
         $this->assertEquals('Yes', $confirmed);
@@ -204,7 +210,6 @@ final class users_test extends core_reportbuilder_testcase {
         $this->assertNotEmpty($timecreated);
         $this->assertNotEmpty($timemodified);
         $this->assertEquals('0.0.0.0', $lastip);
-        $this->assertEquals('Boost', $theme);
         $this->assertEquals('Horses', $tag);
         $this->assertEquals($cohort->name, $cohortname);
     }
@@ -278,6 +283,12 @@ final class users_test extends core_reportbuilder_testcase {
             'Filter fullname (no match)' => ['user:fullname', [
                 'user:fullname_operator' => text::CONTAINS,
                 'user:fullname_value' => 'Alfie',
+            ], false],
+            'Filter picture' => ['user:picture', [
+                'user:picture_operator' => boolean_select::NOT_CHECKED,
+            ], true],
+            'Filter picture (no match)' => ['user:picture', [
+                'user:picture_operator' => boolean_select::CHECKED,
             ], false],
             'Filter firstname' => ['user:firstname', [
                 'user:firstname_operator' => text::IS_EQUAL_TO,
@@ -380,8 +391,8 @@ final class users_test extends core_reportbuilder_testcase {
                 'user:lang_value' => 'en',
             ], true],
             'Filter lang (no match)' => ['user:lang', [
-                'user:lang_operator' => select::EQUAL_TO,
-                'user:lang_value' => 'de',
+                'user:lang_operator' => select::NOT_EQUAL_TO,
+                'user:lang_value' => 'en',
             ], false],
             'Filter timezone' => ['user:timezone', [
                 'user:timezone_operator' => select::EQUAL_TO,
@@ -397,7 +408,7 @@ final class users_test extends core_reportbuilder_testcase {
             ], true],
             'Filter theme (no match)' => ['user:theme', [
                 'user:theme_operator' => select::EQUAL_TO,
-                'user:theme_value' => 'classic',
+                'user:theme_value' => '',
             ], false],
             'Filter description' => ['user:description', [
                 'user:description_operator' => text::CONTAINS,
@@ -484,6 +495,14 @@ final class users_test extends core_reportbuilder_testcase {
                 'user:timemodified_operator' => date::DATE_RANGE,
                 'user:timemodified_to' => 1622502000,
             ], false],
+            'Filter firstaccess' => ['user:firstaccess', [
+                'user:firstaccess_operator' => date::DATE_EMPTY,
+            ], true],
+            'Filter firstaccess (no match)' => ['user:firstaccess', [
+                'user:firstaccess_operator' => date::DATE_RANGE,
+                'user:firstaccess_from' => 1619823600,
+                'user:firstaccess_to' => 1622502000,
+            ], false],
             'Filter lastaccess' => ['user:lastaccess', [
                 'user:lastaccess_operator' => date::DATE_EMPTY,
             ], true],
@@ -491,6 +510,12 @@ final class users_test extends core_reportbuilder_testcase {
                 'user:lastaccess_operator' => date::DATE_RANGE,
                 'user:lastaccess_from' => 1619823600,
                 'user:lastaccess_to' => 1622502000,
+            ], false],
+            'Filter neveraccessed' => ['user:neveraccessed', [
+                'user:neveraccessed_operator' => boolean_select::CHECKED,
+            ], true],
+            'Filter neveraccessed (no match)' => ['user:neveraccessed', [
+                'user:neveraccessed_operator' => boolean_select::NOT_CHECKED,
             ], false],
             'Filter lastip' => ['user:lastip', [
                 'user:lastip_operator' => text::IS_EQUAL_TO,
@@ -574,14 +599,13 @@ final class users_test extends core_reportbuilder_testcase {
         $generator->create_filter(['reportid' => $report->get('id'), 'uniqueidentifier' => $filtername]);
         $content = $this->get_custom_report_content($report->get('id'), 0, $filtervalues);
 
-        if ($expectmatch) {
-            $this->assertNotEmpty($content);
+        // Merge report usernames into easily traversable array.
+        $usernames = array_merge(...array_map('array_values', $content));
 
-            // Merge report usernames into easily traversable array.
-            $usernames = array_merge(...array_map('array_values', $content));
+        if ($expectmatch) {
             $this->assertContains($user->username, $usernames);
         } else {
-            $this->assertEmpty($content);
+            $this->assertNotContains($user->username, $usernames);
         }
     }
 

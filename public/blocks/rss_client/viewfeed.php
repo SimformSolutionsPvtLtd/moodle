@@ -31,7 +31,7 @@ $returnurl = optional_param('returnurl', '', PARAM_LOCALURL);
 $courseid = optional_param('courseid', 0, PARAM_INT);
 $rssid = required_param('rssid', PARAM_INT);
 
-if ($courseid = SITEID) {
+if ($courseid == SITEID) {
     $courseid = 0;
 }
 if ($courseid) {
@@ -92,7 +92,7 @@ if (!empty($rssrecord->preferredtitle)) {
 } else {
     $feedtitle =  $rss->get_title();
 }
-echo '<table align="center" width="50%" cellspacing="1">'."\n";
+echo '<table class="table-reboot" align="center" width="50%" cellspacing="1">' . "\n";
 echo '<tr><td colspan="2"><strong>'. s($feedtitle) .'</strong></td></tr>'."\n";
 foreach ($rss->get_items() as $item) {
     echo '<tr><td valign="middle">'."\n";

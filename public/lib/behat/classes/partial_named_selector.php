@@ -230,7 +230,7 @@ XPATH
         //div[@data-region='empty-message-container' and not(contains(@class, 'hidden')) and contains(., %locator%)]
 XPATH
     , 'group_message_tab' => <<<XPATH
-        .//*[@data-region='message-drawer']//button[@data-toggle='collapse' and contains(string(), %locator%)]
+        .//*[@data-region='message-drawer']//button[@data-bs-toggle='collapse' and contains(string(), %locator%)]
 XPATH
     , 'group_message_list_area' => <<<XPATH
         .//*[@data-region='message-drawer']//*[contains(@data-region, concat('view-overview-', %locator%))]
@@ -289,7 +289,7 @@ XPATH
         , 'form_row' => <<<XPATH
 .//*[contains(concat(' ', @class, ' '), ' col-form-label ')]
     [normalize-space(.)= %locator%]
-    /ancestor::*[contains(concat(' ', @class, ' '), ' fitem ')]
+    /ancestor::*[contains(concat(' ', @class, ' '), ' fitem ') and not(self::fieldset)]
 XPATH
         , 'autocomplete_selection' => <<<XPATH
 .//div[contains(concat(' ', normalize-space(@class), ' '), concat(' ', 'form-autocomplete-selection', ' '))]/span[@role='option'][contains(normalize-space(.), %locator%)]

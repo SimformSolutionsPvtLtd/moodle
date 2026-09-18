@@ -31,20 +31,6 @@
 function xmldb_format_weeks_upgrade($oldversion) {
     global $CFG, $DB;
 
-    // Automatically generated Moodle v4.1.0 release upgrade line.
-    // Put any upgrade step following this.
-
-    if ($oldversion < 2023030700) {
-        // For sites migrating from 4.0.x or 4.1.x where the indentation was removed,
-        // we are disabling 'indentation' value by default.
-        if ($oldversion >= 2022041900) {
-            set_config('indentation', 0, 'format_weeks');
-        } else {
-            set_config('indentation', 1, 'format_weeks');
-        }
-        upgrade_plugin_savepoint(true, 2023030700, 'format', 'weeks');
-    }
-
     // Automatically generated Moodle v4.2.0 release upgrade line.
     // Put any upgrade step following this.
 
@@ -57,19 +43,25 @@ function xmldb_format_weeks_upgrade($oldversion) {
     // Automatically generated Moodle v4.5.0 release upgrade line.
     // Put any upgrade step following this.
 
-    // Automatically generated Moodle v4.1.0 release upgrade line.
+    // Automatically generated Moodle v5.0.0 release upgrade line.
     // Put any upgrade step following this.
 
-    if ($oldversion < 2022112801) {
-        // For sites migrating from 4.0.x or 4.1.x where the indentation was removed,
-        // we are disabling 'indentation' value by default.
-        if ($oldversion >= 2022041900) {
-            set_config('indentation', 0, 'format_weeks');
-        } else {
-            set_config('indentation', 1, 'format_weeks');
+    if ($oldversion < 2025052600) {
+        $config = get_config('format_weeks');
+        // Crerate the default maxinitialsections setting if is not set.
+        if (!isset($config->maxinitialsections)) {
+            // The system may have some maxsections defined. We will keep the same value.
+            $courseconfig = get_config('moodlecourse');
+            $max = (int) $courseconfig->maxsections;
+            $config->maxinitialsections = $max ?: 52;
+            set_config('maxinitialsections', $config->maxinitialsections, 'format_weeks');
         }
-        upgrade_plugin_savepoint(true, 2022112801, 'format', 'weeks');
+
+        upgrade_plugin_savepoint(true, 2025052600, 'format', 'weeks');
     }
+
+    // Automatically generated Moodle v5.1.0 release upgrade line.
+    // Put any upgrade step following this.
 
     return true;
 }

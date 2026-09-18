@@ -39,13 +39,6 @@ use question_bank;
 class all_calculated_for_qubaid_condition {
 
     /**
-     * @var int previously, the time after which statistics are automatically recomputed.
-     * @deprecated since Moodle 4.3. Use of pre-computed stats is no longer time-limited.
-     * @todo MDL-78090 Final deprecation in Moodle 4.7
-     */
-    const TIME_TO_CACHE = 900; // 15 minutes.
-
-    /**
      * @var object[]
      */
     public $subquestions = [];
@@ -219,6 +212,7 @@ class all_calculated_for_qubaid_condition {
                         debugging('Statistics found for slot ' . $fromdb->slot .
                             ' in stats ' . json_encode($qubaids->from_where_params()) .
                             ' which is not an analysable question.', DEBUG_DEVELOPER);
+                        continue;
                     }
                     $this->questionstats[$fromdb->slot]->populate_from_record($fromdb);
                 } else {
@@ -248,6 +242,13 @@ class all_calculated_for_qubaid_condition {
                     $this->questionstats[$fromdb->slot]->variantstats[$fromdb->variant] = $newcalcinstance;
                     $newcalcinstance->question = $this->questionstats[$fromdb->slot]->question;
                 } else {
+                    if (!isset($this->subquestionstats[$fromdb->questionid])) {
+                        debugging('Statistics found for subquestion ID ' . $fromdb->questionid .
+                            ' (variant ' . $fromdb->variant . ') in stats ' .
+                            json_encode($qubaids->from_where_params()) .
+                            ' which is not an analysable subquestion.', DEBUG_DEVELOPER);
+                        continue;
+                    }
                     $newcalcinstance = new calculated_for_subquestion();
                     $this->subquestionstats[$fromdb->questionid]->variantstats[$fromdb->variant] = $newcalcinstance;
                     if (isset($this->subquestions[$fromdb->questionid])) {

@@ -1,9 +1,20 @@
 # core_completion (subsystem) Upgrade notes
 
-## 4.5.2
+## 5.1.1
+
+### Changed
+
+- The `completion_info::clear_criteria` method takes an optional `$removetypecriteria` to determine whether to remove course type criteria from other courses that refer to the current course
+
+  For more information see [MDL-86332](https://tracker.moodle.org/browse/MDL-86332)
+
+## 5.0
 
 ### Added
 
+- Add hook after_cm_completion_updated triggered when an activity completion is updated.
+
+  For more information see [MDL-83542](https://tracker.moodle.org/browse/MDL-83542)
 - The method `count_modules_completed` now delegate the logic to count the completed modules to the DBMS improving the performance of the method.
 
   For more information see [MDL-83917](https://tracker.moodle.org/browse/MDL-83917)

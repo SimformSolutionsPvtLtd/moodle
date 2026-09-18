@@ -24,9 +24,6 @@
 
 function xmldb_enrol_database_upgrade($oldversion) {
     global $DB;
-    // Automatically generated Moodle v4.1.0 release upgrade line.
-    // Put any upgrade step following this.
-
     // Automatically generated Moodle v4.2.0 release upgrade line.
     // Put any upgrade step following this.
 
@@ -39,7 +36,10 @@ function xmldb_enrol_database_upgrade($oldversion) {
     // Automatically generated Moodle v4.5.0 release upgrade line.
     // Put any upgrade step following this.
 
-    if ($oldversion < 2024100702) {
+    // Automatically generated Moodle v5.0.0 release upgrade line.
+    // Put any upgrade step following this.
+
+    if ($oldversion < 2025070501) {
         // Remove duplicated enrolment records, keeping only the earliest records.
         $transaction = $DB->start_delegated_transaction();
         $courses = $DB->get_records_sql(
@@ -100,8 +100,11 @@ function xmldb_enrol_database_upgrade($oldversion) {
             $DB->delete_records_list('enrol', 'id', $idstodelete);
         }
         $transaction->allow_commit();
-        upgrade_plugin_savepoint(true, 2024100702, 'enrol', 'database');
+        upgrade_plugin_savepoint(true, 2025070501, 'enrol', 'database');
     }
+
+    // Automatically generated Moodle v5.1.0 release upgrade line.
+    // Put any upgrade step following this.
 
     return true;
 }

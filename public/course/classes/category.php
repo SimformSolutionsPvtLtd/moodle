@@ -24,6 +24,7 @@
  */
 
 use core\exception\moodle_exception;
+use core_course\course_request;
 
 /**
  * Class to store, cache, render and manage course category
@@ -1334,14 +1335,9 @@ class core_course_category implements renderable, cacheable_object, IteratorAggr
         } else {
             $sortfields = array('sortorder' => 1);
         }
-        $limit = null;
-        if (!empty($options['limit']) && (int)$options['limit']) {
-            $limit = (int)$options['limit'];
-        }
-        $offset = 0;
-        if (!empty($options['offset']) && (int)$options['offset']) {
-            $offset = (int)$options['offset'];
-        }
+
+        $offset = !empty($options['offset']) && (int) $options['offset'] ? (int) $options['offset'] : 0;
+        $limit = !empty($options['limit']) && (int) $options['limit'] ? (int) $options['limit'] : null;
 
         // First retrieve list of user-visible and sorted children ids from cache.
         $sortedids = $coursecatcache->get('c'. $this->id. ':'.  serialize($sortfields));
@@ -1581,8 +1577,9 @@ class core_course_category implements renderable, cacheable_object, IteratorAggr
      */
     public static function search_courses($search, $options = array(), $requiredcapabilities = array()) {
         global $DB;
-        $offset = !empty($options['offset']) ? $options['offset'] : 0;
-        $limit = !empty($options['limit']) ? $options['limit'] : null;
+
+        $offset = !empty($options['offset']) && (int) $options['offset'] ? (int) $options['offset'] : 0;
+        $limit = !empty($options['limit']) && (int) $options['limit'] ? (int) $options['limit'] : null;
         $sortfields = !empty($options['sort']) ? $options['sort'] : array('sortorder' => 1);
 
         $coursecatcache = cache::make('core', 'coursecat');
@@ -1811,9 +1808,10 @@ class core_course_category implements renderable, cacheable_object, IteratorAggr
      */
     public function get_courses($options = array()) {
         global $DB;
+
         $recursive = !empty($options['recursive']);
-        $offset = !empty($options['offset']) ? $options['offset'] : 0;
-        $limit = !empty($options['limit']) ? $options['limit'] : null;
+        $offset = !empty($options['offset']) && (int) $options['offset'] ? (int) $options['offset'] : 0;
+        $limit = !empty($options['limit']) && (int) $options['limit'] ? (int) $options['limit'] : null;
         $sortfields = !empty($options['sort']) ? $options['sort'] : array('sortorder' => 1);
 
         if (!$this->id && !$recursive) {
@@ -2061,12 +2059,12 @@ class core_course_category implements renderable, cacheable_object, IteratorAggr
         if (!$cb->delete_contents($this->get_context())) {
             throw new moodle_exception('errordeletingcontentfromcategory', 'contentbank', '', $this->get_formatted_name());
         }
-        if (!question_delete_course_category($this, null)) {
-            throw new moodle_exception('cannotdeletecategoryquestions', '', '', $this->get_formatted_name());
-        }
 
         // Delete all events in the category.
         $DB->delete_records('event', array('categoryid' => $this->id));
+
+        // Delete all event subscriptions in the category.
+        $DB->delete_records('event_subscriptions', ['categoryid' => $this->id]);
 
         // Finally delete the category and it's context.
         $categoryrecord = $this->get_db_record();
@@ -2249,12 +2247,6 @@ class core_course_category implements renderable, cacheable_object, IteratorAggr
                         'notifysuccess'
                 );
             }
-        }
-        if (!question_delete_course_category($this, $newparentcat)) {
-            if ($showfeedback) {
-                echo $OUTPUT->notification(get_string('errordeletingquestionsfromcategory', 'question', $catname), 'notifysuccess');
-            }
-            return false;
         }
 
         // Finally delete the category and it's context.
@@ -3126,9 +3118,6 @@ class core_course_category implements renderable, cacheable_object, IteratorAggr
      * @return bool
      */
     public function can_request_course() {
-        global $CFG;
-        require_once($CFG->dirroot . '/course/lib.php');
-
         return course_request::can_request($this->get_context());
     }
 

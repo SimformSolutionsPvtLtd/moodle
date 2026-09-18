@@ -50,12 +50,35 @@ Feature: Use the TinyMCE editor to upload an h5p package
     Then ".h5p-placeholder" "css_element" should exist
 
   @javascript
-  Scenario: When a user does not have any H5P capabilities, they cannot embed H5P content with TinyMCE
-    Given the following "permission overrides" exist:
-      | capability        | permission | role           | contextlevel | reference |
-      | tiny/h5p:addembed | Prohibit   | editingteacher | Course       | C1        |
-    When I am on the PageName1 "page activity editing" page logged in as teacher1
-    Then "Insert H5P content" "button" should not exist
+  Scenario: Permissions can be configured to control access to H5P
+    Given the following "users" exist:
+      | username | firstname | lastname | email                |
+      | teacher2 | Teacher   | 2        | teacher2@example.com |
+    And the following "roles" exist:
+      | name           | shortname | description         | archetype      |
+      | Custom teacher | custom1   | Limited permissions | editingteacher |
+    And the following "course enrolments" exist:
+      | user     | course | role    |
+      | teacher2 | C1     | custom1 |
+    And the following "activity" exists:
+      | activity | assign          |
+      | course   | C1              |
+      | name     | Test assignment |
+    And the following "permission overrides" exist:
+      | capability   | permission | role    | contextlevel | reference |
+      | tiny/h5p:use | Prohibit   | custom1 | Course       | C1        |
+    # Check plugin access as a role with prohibited permissions.
+    And I log in as "teacher2"
+    And I am on the "Test assignment" Activity page
+    And I navigate to "Settings" in current page administration
+    When I click on the "Insert" menu item for the "Activity instructions" TinyMCE editor
+    Then I should not see "Insert H5P content"
+    # Check plugin access as a role with allowed permissions.
+    And I log in as "teacher1"
+    And I am on the "Test assignment" Activity page
+    And I navigate to "Settings" in current page administration
+    And I click on the "Insert" menu item for the "Activity instructions" TinyMCE editor
+    And I should see "Insert H5P content"
 
   @javascript
   Scenario: When a user does not have the Upload H5P capability, they can embed but not upload H5P content with TinyMCE
@@ -162,7 +185,39 @@ Feature: Use the TinyMCE editor to upload an h5p package
     And I select the ".h5p-placeholder" "css_element" in the "Page content" TinyMCE editor
     And I click on the "Insert H5P content" button for the "Page content" TinyMCE editor
     And I click on "H5P options" "link"
-    And "input[aria-label=\"Embed button\"]:not([checked=checked])" "css_element" should exist
+    And the field "Embed button" matches value "1"
+
+  @javascript
+  Scenario: Enable/disable display options
+    Given the following "user private file" exists:
+      | user     | admin                                   |
+      | filepath | h5p/tests/fixtures/guess-the-answer.h5p |
+    When I am on the "PageName1" "page activity editing" page logged in as "admin"
+    And I click on the "Insert H5P content" button for the "Page content" TinyMCE editor
+    Then "Auto-play in the mobile app" "field" should exist
+    And the field "Auto-play in the mobile app" matches value "0"
+    And I click on "Browse repositories..." "button" in the "Insert H5P content" "dialogue"
+    And I click on "Private files" "link" in the ".fp-repo-area" "css_element"
+    And I click on "guess-the-answer.h5p" "link"
+    And I click on "Select this file" "button"
+    And I click on "Display options" "link"
+    And I click on "Auto-play in the mobile app" "checkbox"
+    And I click on "Insert H5P" "button" in the "Insert H5P content" "dialogue"
+    And I click on "Save and display" "button"
+    And ".h5p-placeholder[data-mobileapp-autoplay=true]" "css_element" should exist
+    And I navigate to "Settings" in current page administration
+    And I select the ".h5p-placeholder" "css_element" in the "Page content" TinyMCE editor
+    And I click on the "Insert H5P content" button for the "Page content" TinyMCE editor
+    And the field "Auto-play in the mobile app" matches value "1"
+    And I click on "Auto-play in the mobile app" "checkbox"
+    And I click on "Insert H5P" "button" in the "Insert H5P content" "dialogue"
+    And I wait "1" seconds
+    And I click on "Save and display" "button"
+    And ".h5p-placeholder:not([data-mobileapp-autoplay=true])" "css_element" should exist
+    And I navigate to "Settings" in current page administration
+    And I select the ".h5p-placeholder" "css_element" in the "Page content" TinyMCE editor
+    And I click on the "Insert H5P content" button for the "Page content" TinyMCE editor
+    And the field "Auto-play in the mobile app" matches value "0"
 
   @javascript
   Scenario: Private H5P files are shown to students

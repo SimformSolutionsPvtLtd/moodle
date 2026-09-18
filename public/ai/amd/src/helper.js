@@ -29,13 +29,81 @@ export default class AIHelper {
      * @returns {String}
      */
     static replaceLineBreaks(text) {
-        // Replace double line breaks with </p><p> for paragraphs
-        const textWithParagraphs = text.replace(/\n{2,}|\r\n/g, '<br/><br/>');
+        // Normalise double line breaks
+        const textWithParagraphs = text.replace(/(\r\n|\n|<br\s*\/?>){2,}/g, '\n');
 
         // Replace remaining single line breaks with <br> tags
-        const textWithBreaks = textWithParagraphs.replace(/\n/g, '<br/>');
+        const textWithBreaks = textWithParagraphs.replace(/\n/g, '<br/><br/>');
 
         // Add opening and closing <p> tags to wrap the entire content
         return `<p>${textWithBreaks}</p>`;
     }
+
+    /**
+     * Replace markdown formatting.
+     * Even when asked not to, AI models will sometimes return markdown.
+     *
+     * @param {String} text The text to replace.
+     * @returns {String}
+     */
+    static replaceMarkdown(text) {
+        // Replace markdown bold formatting HTML equivalent.
+        const textWithMarkdown = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+        return textWithMarkdown;
+    }
+
+    /**
+     * Format the response provided by the AI model.
+     *
+     * @param {String} text The text to format.
+     * @returns {String}
+     */
+    static formatResponse(text) {
+        let formattedText = this.replaceLineBreaks(text) ;
+        formattedText = this.replaceMarkdown(formattedText);
+
+        return formattedText;
+    }
+
+    /**
+     * Populate fields using settings that match key to name of input.
+     *
+     * @param {Object} settings The settings to populate with.
+     * @param {String} containerId The target container.
+     */
+    static populateFields = (settings, containerId) => {
+        const container = document.getElementById(containerId);
+
+        if (container) {
+            for (const [key, value] of Object.entries(settings)) {
+                const field = container.querySelector(`[name="${key}"]`);
+                if (field) {
+                    field.value = value;
+                }
+            }
+        }
+    };
+
+    /**
+     * Reset all fields in a container.
+     *
+     * @param {String} containerId The target container.
+     */
+    static clearFields = (containerId) => {
+        const container = document.getElementById(containerId);
+
+        if (container) {
+            const allFormElements = container.querySelectorAll('input, select, textarea');
+            allFormElements.forEach(element => {
+                if (element.type === 'checkbox' || element.type === 'radio') {
+                    element.checked = false;
+                } else if (element.tagName === 'SELECT') {
+                    element.selectedIndex = 0;
+                } else {
+                    element.value = '';
+                }
+            });
+        }
+    };
 }

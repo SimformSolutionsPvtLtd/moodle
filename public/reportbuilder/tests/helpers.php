@@ -22,6 +22,7 @@ declare(strict_types=1);
  * @package     core_reportbuilder
  * @copyright   2021 Paul Holden <paulh@moodle.com>
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @deprecated  since Moodle 5.0 - please use {@see \core_reportbuilder\tests\core_reportbuilder_testcase} instead
  */
 
 class_alias(\core_reportbuilder\tests\core_reportbuilder_testcase::class, \core_reportbuilder_testcase::class);

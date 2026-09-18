@@ -17,18 +17,11 @@
 namespace core_xapi\external;
 
 use core\context\module;
-use core_external\external_api;
 use core_xapi\iri;
 use core_xapi\local\statement\item_activity;
 use core_xapi\local\statement\item_agent;
 use core_xapi\test_helper;
 use core_xapi\xapi_exception;
-use externallib_advanced_testcase;
-
-defined('MOODLE_INTERNAL') || die();
-
-global $CFG;
-require_once($CFG->dirroot . '/webservice/tests/helpers.php');
 
 /**
  * Unit tests for xAPI delete states webservice.
@@ -39,8 +32,7 @@ require_once($CFG->dirroot . '/webservice/tests/helpers.php');
  * @copyright  2023 Laurent David <laurent.david@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-final class delete_states_test extends externallib_advanced_testcase {
-
+final class delete_states_test extends \core_external\tests\externallib_testcase {
     /**
      * Setup to ensure that fixtures are loaded.
      */
@@ -189,7 +181,8 @@ final class delete_states_test extends externallib_advanced_testcase {
      * @param array $expectedstates
      * @return void
      */
-    public function test_delete_states(string $testedusername,
+    public function test_delete_states(
+        string $testedusername,
         string $testedcomponent,
         string $testedactivityname,
         array $states,
@@ -267,9 +260,9 @@ final class delete_states_test extends externallib_advanced_testcase {
     public static function states_provider(): array {
         return [
             'Activities with different users and components' => [
-                'username' => 'user1',
-                'component' => 'mod_h5pactivity',
-                'activity' => 'Activity 1',
+                'testedusername' => 'user1',
+                'testedcomponent' => 'mod_h5pactivity',
+                'testedactivityname' => 'Activity 1',
                 'states' => [
                     [
                         'user' => 'user1',
@@ -293,15 +286,15 @@ final class delete_states_test extends externallib_advanced_testcase {
                         'component' => 'mod_h5pactivity'
                     ],
                 ],
-                'expectedstatesleft' => [
+                'expectedstates' => [
                     ['user' => 'user2', 'activity' => 'Activity 1'],
                     ['user' => 'user1', 'activity' => 'Activity 3']
                 ]
             ],
             'Activities with one single user' => [
-                'username' => 'user1',
-                'component' => 'mod_h5pactivity',
-                'activity' => 'Activity 1',
+                'testedusername' => 'user1',
+                'testedcomponent' => 'mod_h5pactivity',
+                'testedactivityname' => 'Activity 1',
                 'states' => [
                     [
                         'user' => 'user1',
@@ -319,7 +312,7 @@ final class delete_states_test extends externallib_advanced_testcase {
                         'component' => 'mod_h5pactivity'
                     ],
                 ],
-                'expectedstatesleft' => []
+                'expectedstates' => []
             ],
         ];
     }

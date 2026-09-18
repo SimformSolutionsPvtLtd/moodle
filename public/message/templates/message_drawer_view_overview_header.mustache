@@ -36,7 +36,7 @@
 <div class="border-bottom p-1 px-sm-2" aria-hidden="false" {{^isdrawer}}data-in-panel="true"{{/isdrawer}} data-region="view-overview">
     <div class="d-flex align-items-center">
         <div class="input-group simplesearchform" role="group" aria-labelledby="messageoverviewgrouplabel">
-            <span class="sr-only" id="messageoverviewgrouplabel">{{#str}}searchcombined, message{{/str}}</span>
+            <span class="visually-hidden" id="messageoverviewgrouplabel">{{#str}}searchcombined, message{{/str}}</span>
             <input
                 type="text"
                 class="form-control"
@@ -44,11 +44,9 @@
                 aria-label="{{#str}} search, core_search {{/str}}"
                 data-region="view-overview-search-input"
             >
-            <div class="input-group-append">
-                <span class="icon-no-margin btn btn-submit">
-                    {{#pix}} a/search, core {{/pix}}
-                </span>
-            </div>
+            <span class="icon-no-margin btn btn-submit">
+                {{#pix}} a/search, core {{/pix}}
+            </span>
         </div>
         {{#caneditownmessageprofile}}
         <div class="ms-2">
@@ -73,7 +71,7 @@
                 data-region="contact-request-count"
             >
                 <span aria-hidden="true">{{contactrequestcount}}</span>
-                <span class="sr-only">{{#str}} pendingcontactrequests, core_message, {{contactrequestcount}} {{/str}}</span>
+                <span class="visually-hidden">{{#str}} pendingcontactrequests, core_message, {{contactrequestcount}} {{/str}}</span>
             </span>
         </a>
     </div>

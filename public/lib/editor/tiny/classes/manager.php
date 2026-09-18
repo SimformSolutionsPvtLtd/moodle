@@ -26,6 +26,10 @@ use context;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class manager {
+    /** @var int Indicates that the standalone TinyMCE package should be used instead of the bundled version. */
+    public const PACKAGE_SOURCE_STANDALONE = 2;
+    /** @var int Indicates that the shipped TinyMCE package bundled with Moodle should be used. */
+    public const PACKAGE_SOURCE_SHIPPED = 1;
 
     /**
      * Get the configuration for all plugins.
@@ -61,6 +65,8 @@ class manager {
                 continue;
             }
 
+            $options['pluginname'] = $pluginname;
+
             if (!$classname::is_enabled($context, $options, $fpoptions, $editor)) {
                 // This plugin has disabled itself for some reason.
                 // This is typical for media plugins where there is no file storage.
@@ -77,6 +83,48 @@ class manager {
 
             // We suffix the plugin name for Moodle plugins with /plugin to avoid conflicts with Tiny plugins.
             $plugins["{$plugin}/plugin"] = $plugininfo;
+        }
+
+        return $plugins;
+    }
+
+    /**
+     * Get the configuration for external functions.
+     *
+     * @param context $context The context that the editor is used within.
+     */
+    public function get_plugin_configuration_for_external(context $context): array {
+        $plugins = [];
+
+        $moodleplugins = \core_component::get_plugin_list_with_class('tiny', 'plugininfo');
+        $enabledplugins = \editor_tiny\plugininfo\tiny::get_enabled_plugins();
+
+        foreach ($moodleplugins as $plugin => $classname) {
+            [, $pluginname] = explode('_', $plugin, 2);
+            if (!in_array($pluginname, $enabledplugins)) {
+                // This plugin has been disabled.
+                continue;
+            }
+
+            if (!is_a($classname, plugin::class, true)) {
+                // Skip plugins that do not implement the plugin interface.
+                debugging("Plugin {$plugin} does not implement the plugin interface", DEBUG_DEVELOPER);
+                continue;
+            }
+
+            $options = ['pluginname' => $pluginname];
+            if (!$classname::is_enabled_for_external($context, $options)) {
+                // This plugin has disabled itself for some reason.
+                continue;
+            }
+
+            // Get the plugin configuration for external functions.
+            $pluginconfig = [];
+            if (is_a($classname, plugin_with_configuration_for_external::class, true)) {
+                $pluginconfig = $classname::get_plugin_configuration_for_external($context);
+            }
+
+            $plugins[$pluginname] = $pluginconfig;
         }
 
         return $plugins;

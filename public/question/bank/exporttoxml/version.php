@@ -26,6 +26,6 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'qbank_exporttoxml';
-$plugin->version   = 2024100700;
-$plugin->requires  = 2024100100;
+$plugin->version   = 2025100600;
+$plugin->requires  = 2025092600;
 $plugin->maturity  = MATURITY_STABLE;

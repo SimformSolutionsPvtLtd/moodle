@@ -17,15 +17,7 @@
 namespace mod_forum;
 
 use core_external\external_api;
-use externallib_advanced_testcase;
 use mod_forum_external;
-
-defined('MOODLE_INTERNAL') || die();
-
-global $CFG;
-
-require_once($CFG->dirroot . '/webservice/tests/helpers.php');
-require_once($CFG->dirroot . '/mod/forum/lib.php');
 
 /**
  * The module forums external functions unit tests
@@ -35,8 +27,7 @@ require_once($CFG->dirroot . '/mod/forum/lib.php');
  * @copyright  2012 Mark Nelson <markn@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-final class externallib_test extends externallib_advanced_testcase {
-
+final class externallib_test extends \core_external\tests\externallib_testcase {
     /**
      * Tests set up
      */
@@ -194,6 +185,12 @@ final class externallib_test extends externallib_advanced_testcase {
         $expectedforums = array();
         $expectedforums[$forum1->id] = (array) $forum1;
         $expectedforums[$forum2->id] = (array) $forum2;
+
+        // Reset static cache.
+        $forum1cm = get_coursemodule_from_id('forum', $forum1->cmid);
+        forum_tp_count_forum_unread_posts($forum1cm, $course1, true);
+        $forum2cm = get_coursemodule_from_id('forum', $forum2->cmid);
+        forum_tp_count_forum_unread_posts($forum2cm, $course2, true);
 
         // Call the external function passing course ids.
         $forums = mod_forum_external::get_forums_by_courses(array($course1->id, $course2->id));
@@ -494,7 +491,7 @@ final class externallib_test extends externallib_advanced_testcase {
             'timecreated' => $discussion1reply2->created,
             'timemodified' => $discussion1reply2->modified,
             'subject' => $discussion1reply2->subject,
-            'replysubject' => get_string('re', 'mod_forum') . " {$discussion1reply2->subject}",
+            'replysubject' => $discussion1reply2->subject,
             'message' => $message,
             'messageformat' => 1,   // This value is usually changed by \core_external\util::format_text() function.
             'unread' => null,
@@ -557,7 +554,7 @@ final class externallib_test extends externallib_advanced_testcase {
             'timecreated' => $discussion1reply1->created,
             'timemodified' => $discussion1reply1->modified,
             'subject' => $discussion1reply1->subject,
-            'replysubject' => get_string('re', 'mod_forum') . " {$discussion1reply1->subject}",
+            'replysubject' => $discussion1reply1->subject,
             'message' => $message,
             'messageformat' => 1,   // This value is usually changed by \core_external\util::format_text() function.
             'unread' => null,
@@ -2480,7 +2477,7 @@ final class externallib_test extends externallib_advanced_testcase {
                         'timecreated' => $discussion1reply1->created,
                         'timemodified' => $discussion1reply1->modified,
                         'subject' => $discussion1reply1->subject,
-                        'replysubject' => get_string('re', 'mod_forum') . " {$discussion1reply1->subject}",
+                        'replysubject' => $discussion1reply1->subject,
                         'message' => file_rewrite_pluginfile_urls($discussion1reply1->message, 'pluginfile.php',
                         $forum1context->id, 'mod_forum', 'post', $discussion1reply1->id),
                         'messageformat' => 1,   // This value is usually changed by \core_external\util::format_text() function.
@@ -2550,7 +2547,7 @@ final class externallib_test extends externallib_advanced_testcase {
                         'timecreated' => $discussion1firstpostobject->created,
                         'timemodified' => $discussion1firstpostobject->modified,
                         'subject' => $discussion1firstpostobject->subject,
-                        'replysubject' => get_string('re', 'mod_forum') . " {$discussion1firstpostobject->subject}",
+                        'replysubject' => $discussion1firstpostobject->subject,
                         'message' => file_rewrite_pluginfile_urls($discussion1firstpostobject->message, 'pluginfile.php',
                             $forum1context->id, 'mod_forum', 'post', $discussion1firstpostobject->id),
                         'messageformat' => 1,   // This value is usually changed by \core_external\util::format_text() function.
@@ -2631,7 +2628,7 @@ final class externallib_test extends externallib_advanced_testcase {
                         'timecreated' => $discussion2reply1->created,
                         'timemodified' => $discussion2reply1->modified,
                         'subject' => $discussion2reply1->subject,
-                        'replysubject' => get_string('re', 'mod_forum') . " {$discussion2reply1->subject}",
+                        'replysubject' => $discussion2reply1->subject,
                         'message' => file_rewrite_pluginfile_urls($discussion2reply1->message, 'pluginfile.php',
                             $forum1context->id, 'mod_forum', 'post', $discussion2reply1->id),
                         'messageformat' => 1,   // This value is usually changed by \core_external\util::format_text() function.
@@ -2701,7 +2698,7 @@ final class externallib_test extends externallib_advanced_testcase {
                         'timecreated' => $discussion2firstpostobject->created,
                         'timemodified' => $discussion2firstpostobject->modified,
                         'subject' => $discussion2firstpostobject->subject,
-                        'replysubject' => get_string('re', 'mod_forum') . " {$discussion2firstpostobject->subject}",
+                        'replysubject' => $discussion2firstpostobject->subject,
                         'message' => file_rewrite_pluginfile_urls($discussion2firstpostobject->message, 'pluginfile.php',
                             $forum1context->id, 'mod_forum', 'post', $discussion2firstpostobject->id),
                         'messageformat' => 1,   // This value is usually changed by \core_external\util::format_text() function.
@@ -3250,5 +3247,55 @@ final class externallib_test extends externallib_advanced_testcase {
             'message' => 'Update discussion message',
             'messageformat' => FORMAT_MOODLE,
         ], $updatedpost);
+    }
+
+    /**
+     * Test marking individual posts as read.
+     */
+    public function test_mark_posts_read(): void {
+        global $DB;
+        $this->resetAfterTest(true);
+
+        // Setup test data.
+        $course = $this->getDataGenerator()->create_course();
+        $forum = $this->getDataGenerator()->create_module('forum', ['course' => $course->id]);
+        $user = $this->getDataGenerator()->create_user(['trackforums' => 1]);
+        $role = $DB->get_record('role', ['shortname' => 'student'], '*', MUST_EXIST);
+        self::getDataGenerator()->enrol_user($user->id, $course->id, $role->id);
+
+        // Add a discussion.
+        $record = new \stdClass();
+        $record->course = $course->id;
+        $record->userid = $user->id;
+        $record->forum = $forum->id;
+        $discussion = $this->getDataGenerator()->get_plugin_generator('mod_forum')->create_discussion($record);
+        $parentpost = $DB->get_record('forum_posts', ['discussion' => $discussion->id]);
+
+        // Generate some posts.
+        $record = new \stdClass();
+        $record->course = $course->id;
+        $record->userid = $user->id;
+        $record->forum = $forum->id;
+        $record->discussion = $discussion->id;
+        $record->parent = $parentpost->id;
+        $post1 = $this->getDataGenerator()->get_plugin_generator('mod_forum')->create_post($record);
+        $post2 = $this->getDataGenerator()->get_plugin_generator('mod_forum')->create_post($record);
+        $post3 = $this->getDataGenerator()->get_plugin_generator('mod_forum')->create_post($record);
+
+        // Track the forum.
+        $this->setUser($user);
+        forum_tp_start_tracking($forum->id, $user->id);
+
+        // There should be 4 unread posts (1 parent + 3 child posts).
+        $unreadposts = forum_tp_get_course_unread_posts($user->id, $course->id);
+        $this->assertEquals(4, $unreadposts[$forum->id]->unread);
+
+        // Marks some posts as read for this user.
+        $result = mod_forum_external::mark_posts_read([$post1->id, $post2->id], $discussion->id);
+        $this->assertTrue($result);
+
+        // There should be 2 unread posts left (1 parent + 1 child post).
+        $unreadposts = forum_tp_get_course_unread_posts($user->id, $course->id);
+        $this->assertEquals(2, $unreadposts[$forum->id]->unread);
     }
 }

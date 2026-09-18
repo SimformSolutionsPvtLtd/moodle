@@ -16,7 +16,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Strings for component 'data', language 'en', branch 'MOODLE_20_STABLE'
+ * Strings for component 'mod_data', language 'en', branch 'MOODLE_20_STABLE'
  *
  * @package   mod_data
  * @copyright 1999 onwards Martin Dougiamas  {@link http://moodle.com}
@@ -88,12 +88,10 @@ $string['csvimport_help'] = 'Entries may be imported via a plain text file with 
 $string['csvwithselecteddelimiter'] = '<abbr title="Comma Separated Values">CSV</abbr>';
 $string['data:addinstance'] = 'Add a new database';
 $string['data:approve'] = 'Approve and undo approved entries';
-$string['data:comment'] = 'Write comments';
 $string['data:exportallentries'] = 'Export all database entries';
 $string['data:exportentry'] = 'Export a database entry';
 $string['data:exportownentry'] = 'Export own database entry';
 $string['data:exportuserinfo'] = 'Export user information';
-$string['data:managecomments'] = 'Manage comments';
 $string['data:manageentries'] = 'Manage entries';
 $string['data:managetemplates'] = 'Manage templates';
 $string['data:manageuserpresets'] = 'Manage presets';
@@ -126,6 +124,7 @@ $string['descending'] = 'Descending';
 $string['directorynotapreset'] = '{$a->directory} Not a preset: missing files: {$a->missing_files}';
 $string['disapprove'] = 'Undo approval';
 $string['download'] = 'Download';
+$string['duedate'] = 'Due date';
 $string['edit'] = 'Edit';
 $string['editcomment'] = 'Edit comment';
 $string['editentry'] = 'Edit entry';
@@ -311,6 +310,7 @@ $string['movezipfailed'] = 'Can\'t move zip';
 $string['multientry'] = 'Repeated entry';
 $string['multimenu'] = 'Menu (Multi-select)';
 $string['multipletags'] = 'Multiple tags found! Template not saved';
+$string['myentries'] = 'My entries';
 $string['newentry'] = 'New entry';
 $string['newfield'] = 'Create a field';
 $string['newfield_help'] = 'A field allows the input of data. Each entry in a database activity can have multiple fields of multiple types such as a date field, which allows participants to select a day, month and year from a drop-down menu, a picture field, which allows participants to upload an image file, or a checkbox field, which allows participants to select one or more options.
@@ -332,6 +332,7 @@ $string['notinjectivemap'] = 'Not an injective map';
 $string['notemplates'] = 'No templates yet';
 $string['notopenyet'] = 'Sorry, this activity is not available until {$a}';
 $string['number'] = 'Number';
+$string['numberofentriestoapprove'] = 'Entries to approve: {$a}';
 $string['numberrssarticles'] = 'Entries in the RSS feed';
 $string['numnotapproved'] = 'Pending';
 $string['numrecords'] = '{$a} entries';
@@ -449,6 +450,7 @@ $string['text'] = 'Text';
 $string['textarea'] = 'Text area';
 $string['timeadded'] = 'Time added';
 $string['timemodified'] = 'Time modified';
+$string['totalentries'] = 'Total entries';
 $string['type'] = 'Field type';
 $string['undefinedprocessactionmethod'] = 'No action method defined in Data_Preset to handle action "{$a}".';
 $string['unsupportedfields'] = 'Unsupported fields';
@@ -466,6 +468,7 @@ $string['usepredefinedset'] = 'Use predefined set';
 $string['usepreset'] = 'Use this preset';
 $string['usestandard'] = 'Use a preset';
 $string['usestandard_help'] = 'To use a preset available to the whole site, select it from the list. (If you have added a preset to the list using the save as preset feature then you have the option of deleting it.)';
+$string['viewentries'] = 'View entries';
 $string['viewfromdate'] = 'Read only from';
 $string['viewnavigation'] = 'View mode tertiary navigation';
 $string['viewtemplates'] = 'View templates';
@@ -473,13 +476,9 @@ $string['viewtodate'] = 'Read only to';
 $string['viewtodatevalidation'] = 'The read only to date cannot be before the read only from date.';
 $string['wrongdataid'] = 'Wrong data ID provided';
 
-// Deprecated since Moodle 4.2.
-$string['fieldids'] = 'Field ids';
-
-// Deprecated since Moodle 4.3.
-$string['completionentries'] = 'Require entries';
-
-// Deprecated since Moodle 4.4.
-
 // Deprecated since Moodle 4.5.
 $string['tagsdeleted'] = 'Database tags have been deleted';
+
+// Deprecated since Moodle 5.0.
+$string['data:comment'] = 'Write comments';
+$string['data:managecomments'] = 'Manage comments';

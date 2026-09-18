@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * This file contains the strings used by backup
+ * Strings for component 'core_backup', language 'en'.
  *
  * @package   core
  * @copyright 2010 Eloy
@@ -35,8 +35,8 @@ $string['asyncgeneralsettings'] = 'Asynchronous backup/restore';
 $string['asyncemailenable'] = 'Enable notifications';
 $string['asyncemailenabledetail'] = 'If enabled, users will receive a notification when an asynchronous backup or restore completes.';
 $string['asyncmessagebody'] = 'Notification';
+$string['asyncmessagebodydefault'] = '{operation} (ID: {backupid}) completed. Access it here: <a href="{link}">{link}</a>.';
 $string['asyncmessagebodydetail'] = 'Notification to send when an asynchronous backup or restore completes.';
-$string['asyncmessagebodydefault'] = 'Your {operation} (ID: {backupid}) has completed successfully. You can access it here: <a href="{link}">{link}</a>.';
 $string['asyncmessagesubject'] = 'Subject';
 $string['asyncmessagesubjectdetail'] = 'Notification subject';
 $string['asyncmessagesubjectdefault'] = 'Moodle {operation} completed successfully';
@@ -55,7 +55,7 @@ $string['asyncrestoreinprogress_help'] = 'Asynchronous course restores that are 
 $string['autoactivedisabled'] = 'Disabled';
 $string['autoactiveenabled'] = 'Enabled';
 $string['autoactivemanual'] = 'Manual';
-$string['autoactivedescription'] = 'Choose whether or not to do automated backups. If manual is selected automated backups will be possible only by through the automated backups CLI script. This can be done either manually on the command line or through cron.';
+$string['autoactivedescription'] = 'Automated backups may be run automatically or manually, using a Command Line Interface (CLI) script.';
 $string['automatedbackupschedule'] = 'Schedule';
 $string['automatedbackupschedulehelp'] = 'Choose which days of the week to perform automated backups.';
 $string['automatedbackupsinactive'] = 'Automated backups haven\'t been enabled by the site admin';
@@ -135,7 +135,6 @@ $string['configgeneralfiles'] = 'Sets the default for including files in a backu
 $string['configgeneralfilters'] = 'Sets the default for including filters in a backup.';
 $string['configgeneralhistories'] = 'Sets the default for including user history within a backup.';
 $string['configgenerallogs'] = 'If enabled logs will be included in backups by default.';
-$string['configgeneralquestionbank'] = 'If enabled the question bank will be included in backups by default. PLEASE NOTE: Disabling this setting will disable the backup of activities which use the question bank, such as the quiz.';
 $string['configgeneralgroups'] = 'Sets the default for including groups and groupings in a backup.';
 $string['configgeneralroleassignments'] = 'If enabled by default roles assignments will also be backed up.';
 $string['configgeneralpermissions'] = 'If enabled the role permissions will be imported. This may override existing permissions for enrolled users.';
@@ -239,7 +238,6 @@ $string['generalhistories'] = 'Include histories';
 $string['generalgradehistories'] = 'Include histories';
 $string['generallegacyfiles'] = 'Include legacy course files';
 $string['generallogs'] = 'Include logs';
-$string['generalquestionbank'] = 'Include question bank';
 $string['generalgroups'] = 'Include groups and groupings';
 $string['generalrestoredefaults'] = 'General restore defaults';
 $string['mergerestoredefaults'] = 'Restore defaults when merging into another course';
@@ -317,9 +315,9 @@ $string['privacy:metadata:backup_controllers:operation'] = 'The operation that w
 $string['privacy:metadata:backup_controllers:timecreated'] = 'The time when the action was created';
 $string['privacy:metadata:backup_controllers:timemodified'] = 'The time when the action was modified';
 $string['privacy:metadata:backup_controllers:type'] = 'The type of the item being operated on, eg. activity.';
-$string['qcategory2coursefallback'] = 'The questions category "{$a->name}", originally at system/course category context in backup file, will be created at course context by restore';
+$string['qcategory2coursefallback'] = 'The questions category "{$a->name}", originally at system|course|course_category context in backup file, will be created at a question bank module context by restore';
 $string['qcategorycannotberestored'] = 'The questions category "{$a->name}" cannot be created by restore';
-$string['question2coursefallback'] = 'The questions category "{$a->name}", originally at system/course category context in backup file, will be created at course context by restore';
+$string['question2coursefallback'] = 'The questions category "{$a->name}", originally at system|course|course_category in backup file, will be created at a question bank module context by restore';
 $string['questioncannotberestored'] = 'The questions "{$a->name}" cannot be created by restore';
 $string['restoreactivity'] = 'Restore activity';
 $string['restorecourse'] = 'Restore course';
@@ -437,6 +435,6 @@ $string['module'] = 'Module';
 $string['morecoursesearchresults'] = 'More than {$a} courses found, showing first {$a} results';
 $string['recyclebin_desc'] = 'Note that these settings will also be used for the recycle bin.';
 
-// Deprecated since Moodle 4.4.
-$string['copycourseheading'] = 'Copy a course';
-$string['backupcourse'] = 'Backup course: {$a}';
+// Deprecated since Moodle 5.0.
+$string['configgeneralquestionbank'] = 'If enabled the question bank will be included in backups by default. PLEASE NOTE: Disabling this setting will disable the backup of activities which use the question bank, such as the quiz.';
+$string['generalquestionbank'] = 'Include question bank';

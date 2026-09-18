@@ -49,6 +49,9 @@ class schedule extends persistent {
     /** @var int No recurrence */
     public const RECURRENCE_NONE = 0;
 
+    /** @var int Hourly recurrence */
+    public const RECURRENCE_HOURLY = 6;
+
     /** @var int Daily recurrence */
     public const RECURRENCE_DAILY = 1;
 
@@ -63,15 +66,6 @@ class schedule extends persistent {
 
     /** @var int Annual recurrence */
     public const RECURRENCE_ANNUALLY = 5;
-
-    /** @var int Send schedule with empty report */
-    public const REPORT_EMPTY_SEND_EMPTY = 0;
-
-    /** @var int Send schedule without report */
-    public const REPORT_EMPTY_SEND_WITHOUT = 1;
-
-    /** @var int Don't send schedule if report is empty */
-    public const REPORT_EMPTY_DONT_SEND = 2;
 
     /**
      * Return the definition of the properties of this model.
@@ -92,26 +86,18 @@ class schedule extends persistent {
             ],
             'audiences' => [
                 'type' => PARAM_RAW,
-                'default' => '[]',
+                'null' => NULL_ALLOWED,
+                'default' => null,
+            ],
+            'classname' => [
+                'type' => PARAM_TEXT,
+            ],
+            'configdata' => [
+                'type' => PARAM_RAW,
+                'default' => '{}',
             ],
             'format' => [
                 'type' => PARAM_PLUGIN,
-            ],
-            'subject' => [
-                'type' => PARAM_TEXT,
-            ],
-            'message' => [
-                'type' => PARAM_CLEANHTML,
-            ],
-            'messageformat' => [
-                'type' => PARAM_INT,
-                'default' => FORMAT_HTML,
-                'choices' => [
-                    FORMAT_MOODLE,
-                    FORMAT_HTML,
-                    FORMAT_PLAIN,
-                    FORMAT_MARKDOWN,
-                ],
             ],
             'userviewas' => [
                 'type' => PARAM_INT,
@@ -125,20 +111,12 @@ class schedule extends persistent {
                 'default' => self::RECURRENCE_NONE,
                 'choices' => [
                     self::RECURRENCE_NONE,
+                    self::RECURRENCE_HOURLY,
                     self::RECURRENCE_DAILY,
                     self::RECURRENCE_WEEKDAYS,
                     self::RECURRENCE_WEEKLY,
                     self::RECURRENCE_MONTHLY,
                     self::RECURRENCE_ANNUALLY,
-                ],
-            ],
-            'reportempty' => [
-                'type' => PARAM_INT,
-                'default' => self::REPORT_EMPTY_SEND_EMPTY,
-                'choices' => [
-                    self::REPORT_EMPTY_SEND_EMPTY,
-                    self::REPORT_EMPTY_SEND_WITHOUT,
-                    self::REPORT_EMPTY_DONT_SEND,
                 ],
             ],
             'timelastsent' => [

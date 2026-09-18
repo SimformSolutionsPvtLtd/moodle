@@ -38,35 +38,6 @@ function xmldb_bigbluebuttonbn_upgrade($oldversion = 0) {
     global $DB;
     $dbman = $DB->get_manager();
 
-    // Automatically generated Moodle v4.1.0 release upgrade line.
-    // Put any upgrade step following this.
-    if ($oldversion < 2023011800) {
-        // Define index course_bbbid_ix (not unique) to be added to bigbluebuttonbn_logs.
-        $table = new xmldb_table('bigbluebuttonbn_logs');
-        $index = new xmldb_index('course_bbbid_ix', XMLDB_INDEX_NOTUNIQUE, ['courseid', 'bigbluebuttonbnid']);
-
-        // Conditionally launch add index course_bbbid_ix.
-        if (!$dbman->index_exists($table, $index)) {
-            $dbman->add_index($table, $index);
-        }
-
-        // Bigbluebuttonbn savepoint reached.
-        upgrade_mod_savepoint(true, 2023011800, 'bigbluebuttonbn');
-    }
-    if ($oldversion < 2023021300) {
-        // Define field lockedlayout to be dropped from bigbluebuttonbn.
-        $table = new xmldb_table('bigbluebuttonbn');
-        $field = new xmldb_field('lockedlayout');
-
-        // Conditionally launch drop field lockedlayout.
-        if ($dbman->field_exists($table, $field)) {
-            $dbman->drop_field($table, $field);
-        }
-
-        // Bigbluebuttonbn savepoint reached.
-        upgrade_mod_savepoint(true, 2023021300, 'bigbluebuttonbn');
-    }
-
     // Automatically generated Moodle v4.2.0 release upgrade line.
     // Put any upgrade step following this.
 
@@ -93,6 +64,55 @@ function xmldb_bigbluebuttonbn_upgrade($oldversion = 0) {
 
     // Automatically generated Moodle v4.5.0 release upgrade line.
     // Put any upgrade step following this.
+
+    if ($oldversion < 2025011000) {
+
+        // Define field grade to be added to bigbluebuttonbn.
+        $table = new xmldb_table('bigbluebuttonbn');
+        $field = new xmldb_field('grade', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'showpresentation');
+
+        // Conditionally launch add field grade.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Bigbluebuttonbn savepoint reached.
+        upgrade_mod_savepoint(true, 2025011000, 'bigbluebuttonbn');
+    }
+
+    // Automatically generated Moodle v5.0.0 release upgrade line.
+    // Put any upgrade step following this.
+
+    // Automatically generated Moodle v5.1.0 release upgrade line.
+    // Put any upgrade step following this.
+
+    if ($oldversion < 2025100601) {
+        // Changing precision of field name on table bigbluebuttonbn to (1333).
+
+        $table = new xmldb_table('bigbluebuttonbn');
+        $field = new xmldb_field('name', XMLDB_TYPE_CHAR, '1333', null, XMLDB_NOTNULL, null, null, 'course');
+
+        // Launch change of precision for field name.
+        $dbman->change_field_precision($table, $field);
+
+        // Bigbluebuttonbn savepoint reached.
+        upgrade_mod_savepoint(true, 2025100601, 'bigbluebuttonbn');
+    }
+
+    if ($oldversion < 2025100602) {
+        // Define field recordings_deleted to be added to bigbluebuttonbn.
+        // Sites upgraded from external Bigbluebuttonbn plugin to core may be missing this field.
+        $table = new xmldb_table('bigbluebuttonbn');
+        $field = new xmldb_field('recordings_deleted', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '1', 'recordings_html');
+
+        // Conditionally launch add field recordings_deleted.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Bigbluebuttonbn savepoint reached.
+        upgrade_mod_savepoint(true, 2025100602, 'bigbluebuttonbn');
+    }
 
     return true;
 }

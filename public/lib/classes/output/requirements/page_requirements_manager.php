@@ -886,6 +886,8 @@ class page_requirements_manager {
                             ['sizegb', 'moodle'], ['sizemb', 'moodle'], ['sizekb', 'moodle'], ['sizeb', 'moodle'],
                             ['maxareabytesreached', 'moodle'], ['serverconnection', 'error'],
                             ['changesmadereallygoaway', 'moodle'], ['complete', 'moodle'],
+                            ['upload_error_folders_not_supported', 'repository_upload'],
+                            ['upload_error_folders_not_supported_title', 'repository_upload'],
                         ],
                     ];
                     break;
@@ -990,7 +992,7 @@ class page_requirements_manager {
      *
      * @param string $stylesheet The path to the .css file, relative to $CFG->wwwroot.
      *   For example:
-     *      $PAGE->requires->css('mod/data/css.php?d='.$data->id);
+     *      $PAGE->requires->css('/mod/data/css.php?d='.$data->id);
      */
     public function css($stylesheet) {
         global $CFG;

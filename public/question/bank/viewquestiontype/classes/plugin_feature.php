@@ -17,6 +17,7 @@
 namespace qbank_viewquestiontype;
 
 use core_question\local\bank\plugin_features_base;
+use core_question\local\bank\view;
 
 /**
  * Class plugin_feature is the entrypoint for the columns.
@@ -27,10 +28,17 @@ use core_question\local\bank\plugin_features_base;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class plugin_feature extends plugin_features_base {
-
+    #[\Override]
     public function get_question_columns($qbank): array {
         return [
-           new question_type_column($qbank)
+           new question_type_column($qbank),
+        ];
+    }
+
+    #[\Override]
+    public function get_question_filters(?view $qbank = null): array {
+        return [
+            new type_condition($qbank),
         ];
     }
 }

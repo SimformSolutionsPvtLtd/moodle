@@ -21,7 +21,7 @@
  * needed during the very first steps of installation. This file was
  * generated automatically by export-installer.php (which is part of AMOS
  * {@link https://moodledev.io/general/projects/api/amos}) using the
- * list of strings defined in install/stringnames.txt file.
+ * list of strings defined in public/install/stringnames.txt file.
  *
  * @package   installer
  * @license   https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -36,7 +36,7 @@ $string['chooselanguagesub'] = 'Per favor, selige un linguage pro le installatio
 $string['clialreadyconfigured'] = 'Le file de configuration config.php existe ja. Per favor usa admin/cli/install_database.php pro installar Moodle pro iste sito.';
 $string['clialreadyinstalled'] = 'Le file de configuration config.php existe ja. Per favor usa admin/cli/install_database.php pro actualisar Moodle pro iste sito.';
 $string['cliinstallheader'] = 'Programma de installation de linea de commando  (CLI) de Moodle {$a}';
-$string['clitablesexist'] = 'Tabellas de base de datos jam presente; le installation CLI non pote continuar.';
+$string['clitablesexist'] = 'Tabellas de base de datos jam presente; le installation de Command Line Interface (CLI), i.e de linea de commando, non pote continuar.';
 $string['databasehost'] = 'Hospite de base de datos';
 $string['databasename'] = 'Nomine d ebase de datos';
 $string['databasetypehead'] = 'Selige driver de base de datos';
@@ -68,6 +68,8 @@ $string['pathsunsecuredataroot'] = 'Location de Dataroot non es secur';
 $string['pathswrongadmindir'] = 'Directorio de admin non existe';
 $string['phpextension'] = '$a} PHP extension';
 $string['phpversion'] = 'Version de PHP';
+$string['webserverconfigproblemdescription'] = 'Tu servitor web non es configurate pro impedir le accesso a files foras del directorio /public. Pro detalios sur como configurar tu servitor web correctemente, vide le documentation <a href="https://docs.moodle.org/en/Upgrading#Code_directories_restructure">Upgrading - Code directories restructure</a> Un vice reconfigurate, <a href="{$a}">revisita le radice web</a>.';
+$string['webservernotconfigured'] = 'Servitor web non configurate';
 $string['welcomep10'] = '{$a->installername} ({$a->installerversion})';
 $string['welcomep20'] = 'Tu vide iste pagina proque tu ha installate e lanceate con successo le pacchetto <strong>{$a->packname} {$a->packversion}</strong> in tu computator. Felicitatones!';
 $string['welcomep30'] = 'Iste version del <strong>{$a->installername}</strong> include le applicationes pro crear un ambiente in le qual <strong>Moodle</strong> operara, a saper:';

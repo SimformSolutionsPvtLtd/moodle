@@ -183,6 +183,14 @@ class behat_course extends behat_base {
     protected function resolve_page_instance_url(string $type, string $identifier): moodle_url {
         $type = strtolower($type);
 
+        // Some selectors can have a sub selector divided by >.
+        $subtype = null;
+        $parts = explode('>', $type);
+        if (count($parts) > 1) {
+            $type = trim($parts[0]);
+            $subtype = trim($parts[1]);
+        }
+
         $sectionpage = 'section.php';
         switch ($type) {
             case 'section settings':
@@ -205,6 +213,12 @@ class behat_course extends behat_base {
                     throw new Exception("The specified section $identifier does not exist.");
                 }
                 return new moodle_url('/course/' . $sectionpage, ['id' => $section->id]);
+            case 'activities':
+                $params = ['id' => $this->get_course_id($identifier)];
+                if ($subtype !== null) {
+                    $params['expand[]'] = $subtype;
+                }
+                return new moodle_url('/course/overview.php', $params);
         }
         throw new Exception('Unrecognised core page type "' . $type . '."');
     }
@@ -275,8 +289,10 @@ class behat_course extends behat_base {
 
         $this->require_javascript('Please use the \'the following "activity" exists:\' data generator instead.');
 
+        $infrontpage = false;
         if ($this->getSession()->getPage()->find('css', 'body#page-site-index') && (int) $sectionnum <= 1) {
             // We are on the frontpage.
+            $infrontpage = true;
             if ($sectionnum) {
                 // Section 1 represents the contents on the frontpage.
                 $sectionxpath = "//body[@id='page-site-index']" .
@@ -292,6 +308,14 @@ class behat_course extends behat_base {
 
         // Clicks add activity or resource section link.
         $sectionnode = $this->find('xpath', $sectionxpath);
+        if (!$infrontpage) {
+            $this->execute('behat_general::i_click_on_in_the', [
+                    "//button[@data-action='open-addingcontent' and not(@data-beforemod)]",
+                    'xpath',
+                    $sectionnode,
+                    'NodeElement',
+            ]);
+        }
         $this->execute('behat_general::i_click_on_in_the', [
             "//button[@data-action='open-chooser' and not(@data-beforemod)]",
             'xpath',
@@ -302,12 +326,19 @@ class behat_course extends behat_base {
         // Clicks the selected activity if it exists.
         $activityliteral = behat_context_helper::escape(ucfirst($activityname));
         $activityxpath = "//div[contains(concat(' ', normalize-space(@class), ' '), ' modchooser ')]" .
-            "/descendant::div[contains(concat(' ', normalize-space(@class), ' '), ' optioninfo ')]" .
+            "/descendant::*[contains(concat(' ', normalize-space(@class), ' '), ' optioninfo ')]" .
             "/descendant::div[contains(concat(' ', normalize-space(@class), ' '), ' optionname ')]" .
             "[normalize-space(.)=$activityliteral]" .
             "/parent::a";
 
         $this->execute('behat_general::i_click_on', [$activityxpath, 'xpath']);
+
+        $this->execute('behat_general::i_click_on_in_the', [
+            get_string('addselectedactivity', 'course'),
+            'button',
+            get_string('addresourceoractivity', 'moodle'),
+            'dialogue',
+        ]);
     }
 
     /**
@@ -327,7 +358,7 @@ class behat_course extends behat_base {
 
         // If it is already opened we do nothing.
         $xpath = $this->section_exists($section);
-        $xpath .= "/descendant::div[contains(@class, 'section-actions')]/descendant::a[@data-toggle='dropdown']";
+        $xpath .= "/descendant::div[contains(@class, 'section-actions')]/descendant::a[@data-bs-toggle='dropdown']";
 
         $exception = new ExpectationException('Section "' . $section . '" was not found', $this->getSession());
         $menu = $this->find('xpath', $xpath, $exception);
@@ -641,7 +672,7 @@ class behat_course extends behat_base {
         if ($this->is_course_editor()) {
             $xpath = $sectionxpath .
                     "/descendant::div[contains(@class, 'section-actions')]" .
-                    "/descendant::a[contains(@data-toggle, 'dropdown')]";
+                    "/descendant::a[contains(@data-bs-toggle, 'dropdown')]";
             if (!$this->getSession()->getPage()->find('xpath', $xpath)) {
                 throw new ExpectationException('The section edit menu is not available', $this->getSession());
             }
@@ -851,9 +882,12 @@ class behat_course extends behat_base {
      * @param int $sectionnumber The number of section
      */
     public function i_move_activity_to_section($activityname, $sectionnumber): void {
+        $this->require_javascript('Moving activities requires javascript.');
+
         // Ensure the destination is valid.
         $sectionxpath = $this->section_exists($sectionnumber);
 
+        // TODO: remove this if clause as part of MDL-83627 when YUI is removed from course.
         // Not all formats are compatible with the move tool.
         $activitynode = $this->get_activity_node($activityname);
         if (!$activitynode->find('css', "[data-action='moveCm']", false, false, 0)) {
@@ -862,29 +896,17 @@ class behat_course extends behat_base {
             return;
         }
 
-        // JS enabled.
-        if ($this->running_javascript()) {
-            $this->i_open_actions_menu($activityname);
-            $this->execute(
-                'behat_course::i_click_on_in_the_activity',
-                [get_string('move'), "link", $this->escape($activityname)]
-            );
-            $this->execute("behat_general::i_click_on_in_the", [
-                "[data-for='section'][data-number='$sectionnumber']",
-                'css_element',
-                "[data-region='modal-container']",
-                'css_element'
-            ]);
-        } else {
-            $this->execute(
-                'behat_course::i_click_on_in_the_activity',
-                [get_string('move'), "link", $this->escape($activityname)]
-            );
-            $this->execute(
-                'behat_general::i_click_on_in_the',
-                ["li.movehere a", "css_element", $this->escape($sectionxpath), "xpath_element"]
-            );
-        }
+        $this->i_open_actions_menu($activityname);
+        $this->execute(
+            'behat_course::i_click_on_in_the_activity',
+            [get_string('move'), "link", $this->escape($activityname)]
+        );
+        $this->execute("behat_general::i_click_on_in_the", [
+            "[data-for='section'][data-number='$sectionnumber']",
+            'css_element',
+            "[data-region='modal-container']",
+            'css_element',
+        ]);
     }
 
     /**
@@ -892,6 +914,7 @@ class behat_course extends behat_base {
      *
      * This step is experimental when using it in Javascript tests. Editing mode should be on.
      *
+     * @todo remove this module as part of MDL-83627.
      * @param string $activityname The activity name
      * @param int $sectionnumber The number of section
      */
@@ -958,7 +981,7 @@ class behat_course extends behat_base {
         $activitynode = $this->get_activity_node($activityname);
 
         // Find the menu.
-        $menunode = $activitynode->find('css', 'a[data-toggle=dropdown]');
+        $menunode = $activitynode->find('css', 'a[data-bs-toggle=dropdown]');
         if (!$menunode) {
             throw new ExpectationException(sprintf('Could not find actions menu for the activity "%s"', $activityname),
                     $this->getSession());
@@ -969,7 +992,7 @@ class behat_course extends behat_base {
         }
 
         $this->execute('behat_course::i_click_on_in_the_activity',
-                array("a[data-toggle='dropdown']", "css_element", $this->escape($activityname))
+                ["a[data-bs-toggle='dropdown']", "css_element", $this->escape($activityname)]
         );
 
         $this->actions_menu_should_be_open($activityname);
@@ -991,7 +1014,7 @@ class behat_course extends behat_base {
         // If it is already closed we do nothing.
         $activitynode = $this->get_activity_node($activityname);
         // Find the menu.
-        $menunode = $activitynode->find('css', 'a[data-toggle=dropdown]');
+        $menunode = $activitynode->find('css', 'a[data-bs-toggle=dropdown]');
         if (!$menunode) {
             throw new ExpectationException(sprintf('Could not find actions menu for the activity "%s"', $activityname),
                     $this->getSession());
@@ -1002,7 +1025,7 @@ class behat_course extends behat_base {
         }
 
         $this->execute('behat_course::i_click_on_in_the_activity',
-                array("a[data-toggle='dropdown']", "css_element", $this->escape($activityname))
+                ["a[data-bs-toggle='dropdown']", "css_element", $this->escape($activityname)]
         );
     }
 
@@ -1021,7 +1044,7 @@ class behat_course extends behat_base {
 
         $activitynode = $this->get_activity_node($activityname);
         // Find the menu.
-        $menunode = $activitynode->find('css', 'a[data-toggle=dropdown]');
+        $menunode = $activitynode->find('css', 'a[data-bs-toggle=dropdown]');
         if (!$menunode) {
             throw new ExpectationException(sprintf('Could not find actions menu for the activity "%s"', $activityname),
                     $this->getSession());
@@ -1151,7 +1174,7 @@ class behat_course extends behat_base {
                 ]
             );
         } else {
-            $this->execute("behat_forms::press_button", get_string('yes'));
+            $this->execute("behat_forms::press_button", get_string('delete'));
         }
 
         return $steps;
@@ -1204,7 +1227,7 @@ class behat_course extends behat_base {
         // Determine the future new activity xpath from the former one.
         $duplicatedxpath = "//li[contains(concat(' ', normalize-space(@class), ' '), ' activity ')]" .
                 "[contains(., $activityliteral)]/following-sibling::li";
-        $duplicatedactionsmenuxpath = $duplicatedxpath . "/descendant::a[@data-toggle='dropdown']";
+        $duplicatedactionsmenuxpath = $duplicatedxpath . "/descendant::a[@data-bs-toggle='dropdown']";
 
         if ($this->running_javascript()) {
             // We wait until the AJAX request finishes and the section is visible again.
@@ -2031,7 +2054,7 @@ class behat_course extends behat_base {
             throw new ExpectationException("Expected action was not available or not found ($action)", $this->getSession());
         }
         if ($this->running_javascript() && !$actionnode->isVisible()) {
-            $actionsnode->find('css', 'a[data-toggle=dropdown]')->click();
+            $actionsnode->find('css', 'a[data-bs-toggle=dropdown]')->click();
             $actionnode = $actionsnode->find('css', '.action-'.$action);
         }
         $actionnode->click();
@@ -2057,7 +2080,7 @@ class behat_course extends behat_base {
      */
     public function i_open_the_action_menu_for_item_in_management_category_listing($name) {
         $node = $this->get_management_category_listing_node_by_name($name);
-        $node->find('xpath', "//*[contains(@class, 'category-item-actions')]//a[@data-toggle='dropdown']")->click();
+        $node->find('xpath', "//*[contains(@class, 'category-item-actions')]//a[@data-bs-toggle='dropdown']")->click();
     }
 
     /**
@@ -2157,8 +2180,11 @@ class behat_course extends behat_base {
      * @Given /^I open the activity chooser$/
      */
     public function i_open_the_activity_chooser() {
+        // Open the "Activity or resource and Subsection" dropdown first.
         $this->execute('behat_general::i_click_on',
-            array('//button[@data-action="open-chooser"]', 'xpath_element'));
+                ['//button[@data-action="open-addingcontent"]', 'xpath_element']);
+        $this->execute('behat_general::i_click_on',
+            ['//button[@data-action="open-chooser"]', 'xpath_element']);
 
         $node = $this->get_selected_node('xpath_element', '//div[@data-region="modules"]');
         $this->ensure_node_is_visible($node);

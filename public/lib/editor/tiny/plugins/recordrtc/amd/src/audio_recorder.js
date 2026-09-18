@@ -24,6 +24,8 @@
 import BaseClass from './base_recorder';
 import Modal from './modal';
 import {component} from 'tiny_recordrtc/common';
+import {convertMp3} from './convert_to_mp3';
+import {add as addToast} from 'core/toast';
 
 export default class Audio extends BaseClass {
 
@@ -57,6 +59,7 @@ export default class Audio extends BaseClass {
     getRecordingOptions() {
         return {
             audioBitsPerSecond: parseInt(this.config.audiobitrate),
+            audioBitsPerSecondInKb: parseInt(this.config.audiobitrate / 1000),
         };
     }
 
@@ -83,6 +86,10 @@ export default class Audio extends BaseClass {
     }
 
     getFileExtension() {
+        if (this.config.audiortcformat === 1) {
+            return 'mp3';
+        }
+
         const options = super.getParsedRecordingOptions(); // Call parent method.
         if (options?.mimeType) {
             const mimeType = options.mimeType.split(';')[0];
@@ -98,5 +105,52 @@ export default class Audio extends BaseClass {
             static TYPE = `${component}/audio_recorder`;
             static TEMPLATE = `${component}/audio_recorder`;
         };
+    }
+
+    /**
+     * Convert the recording to the configured output format, if it is not already in that format.
+     *
+     * This must happen before the recording leaves the browser, whether it is uploaded or downloaded.
+     *
+     * @returns {Promise<boolean>} Whether the recording is ready to be used.
+     */
+    async prepareBlobForOutput() {
+        // If there is nothing to convert, let the caller deal with the missing recording.
+        if (!this.blob || this.getFileExtension() !== 'mp3' || this.blob.type === 'audio/mp3') {
+            return true;
+        }
+
+        try {
+            const options = this.getRecordingOptions();
+            this.blob = await convertMp3(this.player.src, options.audioBitsPerSecondInKb);
+            this.player.src = URL.createObjectURL(this.blob);
+        } catch (error) {
+            // Display a user-friendly error message.
+            const message = `MP3 conversion failed: ${error.message || 'Unknown error'}. Please try again.`;
+            await addToast(message, {type: 'error', delay: 6000});
+
+            return false;
+        }
+
+        return true;
+    }
+
+    async uploadRecording() {
+        if (!await this.prepareBlobForOutput()) {
+            // Disable the upload button.
+            this.setUploadButtonState(false);
+
+            return;
+        }
+
+        await super.uploadRecording();
+    }
+
+    async downloadRecording() {
+        if (!await this.prepareBlobForOutput()) {
+            return;
+        }
+
+        await super.downloadRecording();
     }
 }

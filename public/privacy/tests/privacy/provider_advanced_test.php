@@ -94,12 +94,15 @@ final class provider_advanced_test extends \advanced_testcase {
      * @return array
      */
     public static function is_user_data_provider(): array {
-        return array_filter(self::get_component_list(), function($component): bool {
-            return static::component_implements(
-                $component['classname'],
-                \core_privacy\local\request\core_user_data_provider::class
-            );
-        });
+        return array_map(
+            fn ($data) => ['component' => $data['component']],
+            array_filter(self::get_component_list(), function($component): bool {
+                return static::component_implements(
+                    $component['classname'],
+                    \core_privacy\local\request\core_user_data_provider::class
+                );
+            }),
+        );
     }
 
     /**

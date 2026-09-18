@@ -201,169 +201,6 @@ abstract class section_renderer extends core_course_renderer {
     }
 
     /**
-     * @deprecated since 4.0 - use core_course output components instead.
-     */
-    protected function section_edit_control_menu($controls, $course, $section) {
-
-        throw new coding_exception('section_edit_control_menu() can not be used anymore. Please use ' .
-            'core_courseformat\\output\\local\\content\\section to render a section. In case you need to modify those controls ' .
-            'override core_courseformat\\output\\local\\content\\section\\controlmenu in your format plugin.');
-    }
-
-    /**
-     * @deprecated since 4.0 - use core_course output components instead.
-     */
-    protected function section_right_content($section, $course, $onsectionpage) {
-
-        throw new coding_exception('section_right_content() can not be used anymore. Please use ' .
-            'core_courseformat\\output\\local\\content\\section to render a section.');
-    }
-
-    /**
-     * @deprecated since 4.0 - use core_course output components instead.
-     */
-    protected function section_left_content($section, $course, $onsectionpage) {
-
-        throw new coding_exception('section_left_content() can not be used anymore. Please use ' .
-            'core_courseformat\\output\\local\\content\\section to render a section.');
-    }
-
-    /**
-     * @deprecated since 4.0 - use core_course output components instead.
-     */
-    protected function section_header($section, $course, $onsectionpage, $sectionreturn = null) {
-
-        throw new coding_exception('section_header() can not be used any more. Please use ' .
-            'core_courseformat\\output\\local\\content\\section to render a section ' .
-            'or core_courseformat\output\\local\\content\\section\\header ' .
-            'to print only the header.');
-    }
-
-    /**
-     * @deprecated since 4.0 - use core_course output components instead.
-     */
-    protected function section_footer() {
-
-        throw new coding_exception('section_footer() can not be used any more. Please use ' .
-            'core_courseformat\\output\\local\\content\\section to render individual sections or .' .
-            'core_courseformat\\output\\local\\content to render the full course');
-    }
-
-    /**
-     * @deprecated since 4.0 - use core_course output components instead.
-     */
-    protected function start_section_list() {
-
-        throw new coding_exception('start_section_list() can not be used any more. Please use ' .
-            'core_courseformat\\output\\local\\content\\section to render individual sections or .' .
-            'core_courseformat\\output\\local\\content to render the full course');
-    }
-
-    /**
-     * @deprecated since 4.0 - use core_course output components instead.y
-     */
-    protected function end_section_list() {
-
-        throw new coding_exception('end_section_list() can not be used any more. Please use ' .
-            'core_courseformat\\output\\local\\content\\section to render individual sections or .' .
-            'core_courseformat\\output\\local\\content to render the full course');
-    }
-
-    /**
-     * Old method to print section edit controls. Do not use it!
-     *
-     * @deprecated since Moodle 3.0 MDL-48947 - Use core_courseformat\output\section_renderer::section_edit_control_items() instead
-     */
-    protected function section_edit_controls() {
-        throw new coding_exception('section_edit_controls() can not be used anymore. Please use ' .
-            'section_edit_control_items() instead.');
-    }
-
-    /**
-     * @deprecated since 4.0 - use core_course output components instead.
-     */
-    protected function section_edit_control_items($course, $section, $onsectionpage = false) {
-
-        throw new coding_exception('section_edit_control_items() can not be used any more. Please use or extend' .
-            'core_courseformat\output\\local\\content\\section\\controlmenu instead (like topics format does).');
-    }
-
-    /**
-     * @deprecated since 4.0 - use core_course output components instead.
-     */
-    protected function section_summary($section, $course, $mods) {
-
-        throw new coding_exception('section_summary() can not be used any more. Please use ' .
-            'core_courseformat\output\\local\\content\\section to render sections. If you need to modify those summary, extend ' .
-            'core_courseformat\output\\local\\content\\section\\summary in your format plugin.');
-    }
-
-    /**
-     * @deprecated since 4.0 - use core_course output components instead.
-     */
-    protected function section_activity_summary($section, $course, $mods) {
-
-        throw new coding_exception('section_activity_summary() can not be used any more. Please use ' .
-            'core_courseformat\output\\local\\content\\section to render sections. ' .
-            'If you need to modify those information, extend ' .
-            'core_courseformat\output\\local\\content\\section\\cmsummary in your format plugin.');
-    }
-
-    /**
-     * @deprecated since 4.0 - use core_course output components instead.
-     */
-    protected function section_availability_message($section, $canviewhidden) {
-
-        throw new coding_exception('section_availability_message() can not be used any more. Please use ' .
-            'core_courseformat\output\\local\\content\\section to render sections. If you need to modify this element, extend ' .
-            'core_courseformat\output\\local\\content\\section\\availability in your format plugin.');
-    }
-
-    /**
-     * @deprecated since 4.0 - use core_course output components instead.
-     */
-    public function section_availability($section) {
-        throw new coding_exception('section_availability() can not be used any more. Please use ' .
-            'core_courseformat\output\\local\\content\\section to render sections. If you need to modify this element, extend ' .
-            'core_courseformat\output\\local\\content\\section\\availability in your format plugin.');
-    }
-
-    /**
-     * @deprecated since 4.0 - use core_course output components instead.
-     */
-    protected function course_activity_clipboard($course, $sectionno = null) {
-        throw new coding_exception('Non ajax course edition using course_activity_clipboard is not supported anymore.');
-    }
-
-    /**
-     * @deprecated since 4.0 - use core_course output components instead.
-     */
-    protected function get_nav_links($course, $sections, $sectionno) {
-
-        throw new coding_exception('get_nav_links() can not be used any more. Please use ' .
-            'core_courseformat\\output\\local\\content to render a course. If you need to modify this element, extend ' .
-            'core_courseformat\\output\\local\\content\\sectionnavigation in your format plugin.');
-    }
-
-    /**
-     * @deprecated since 4.0 - use core_course output components instead.
-     */
-    protected function stealth_section_header($sectionno) {
-
-        throw new coding_exception('stealth_section_header() can not be used any more. Please use ' .
-            'core_courseformat\output\\local\\content\\section to render sections.');
-    }
-
-    /**
-     * @deprecated since 4.0 - use core_course output components instead.
-     */
-    protected function stealth_section_footer() {
-
-        throw new coding_exception('stealth_section_footer() can not be used any more. Please use ' .
-            'core_courseformat\output\\local\\content\\section to render sections.');
-    }
-
-    /**
      * Generate the html for a hidden section
      *
      * @param int $sectionno The section number in the course which is being displayed
@@ -394,51 +231,44 @@ abstract class section_renderer extends core_course_renderer {
     }
 
     /**
-     * @deprecated since 4.0 - use core_course output components instead.
+     * Renders the controls to add activities and resources to the course.
+     *
+     * @param course_format $format The course format.
+     * @param section_info $section The section to add controls to.
+     * @param cm_info|null $mod The module before which the controls should be added.
+     * @return string HTML for the controls.
      */
-    protected function section_nav_selection($course, $sections, $displaysection) {
+    public function add_cm_controls(
+        course_format $format,
+        section_info $section,
+        ?cm_info $mod = null,
+    ): string {
+        if (!$format->show_editor()) {
+            return '';
+        }
 
-        throw new coding_exception('section_nav_selection() can not be used anymore. Please use ' .
-            'core_courseformat\\output\\local\\content to render a course. If you need to modify this element, extend ' .
-            'core_courseformat\\output\\local\\content\\sectionnavigation or ' .
-            'core_courseformat\\output\\local\\content\\sectionselector in your format plugin.');
-    }
+        if ($this->page->requires->should_create_one_time_item_now('core_courseformat_modchooser')) {
+            $this->page->requires->js_call_amd(
+                'core_courseformat/activitychooser',
+                'init',
+                [$format->get_courseid()],
+            );
+        }
 
-    /**
-     * @deprecated since 4.0
-     */
-    public function print_single_section_page($course, $sections, $mods, $modnames, $modnamesused, $displaysection) {
+        $classname = $format->get_output_classname('content\\activitychooserbutton');
+        /** @var  \core_courseformat\output\local\content\activitychooserbutton $activitychooserbutton */
+        $activitychooserbutton = new $classname(
+            section: $section,
+            mod: $mod,
+            sectionreturn: $format->get_return_section(),
+        );
 
-        throw new coding_exception('Method print_single_section_page can not be used anymore. Please use' .
-            'core_courseformat\\output\\local\\content instead ' .
-            'or override render_content method to use a different template');
-    }
-
-    /**
-     * @deprecated since 4.0
-     */
-    public function print_multiple_section_page($course, $sections, $mods, $modnames, $modnamesused) {
-
-        throw new coding_exception('Method print_multiple_section_page can not be used anymore. Please use' .
-            'core_courseformat\\output\\local\\content instead ' .
-            'or override render_content method to use a diferent template');
-    }
-
-    /**
-     * @deprecated since 4.0 - use core_course output components instead.
-     */
-    protected function change_number_sections($course, $sectionreturn = null) {
-
-        throw new coding_exception('Method change_number_sections can not be used anymore. Please use' .
-            'core_courseformat\\output\\local\\content\\addsection instead');
-    }
-
-    /**
-     * @deprecated since 4.0 - use core_course output components instead.
-     */
-    protected function format_summary_text($section) {
-
-        throw new coding_exception('Method format_summary_text can not be used anymore. Please use' .
-            'core_courseformat\output\\local\\content\\section\\summary::format_summary_text instead');
+        return $this->render_from_template(
+            'core_courseformat/local/content/divider',
+            [
+                'content' => $this->render($activitychooserbutton),
+                'extraclasses' => 'always-visible my-3',
+            ]
+        );
     }
 }

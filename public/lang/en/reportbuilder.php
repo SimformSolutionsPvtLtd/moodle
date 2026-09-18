@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Strings for component 'reportbuilder', language 'en'
+ * Strings for component 'core_reportbuilder', language 'en'
  *
  * @package    core_reportbuilder
  * @copyright  2020 Sara Arjona <sara@moodle.com>
@@ -31,6 +31,7 @@ $string['aggregatecolumn'] = 'Aggregate column \'{$a}\'';
 $string['aggregationavg'] = 'Average';
 $string['aggregationcount'] = 'Count';
 $string['aggregationcountdistinct'] = 'Count distinct';
+$string['aggregationdate'] = 'Date';
 $string['aggregationgroupconcat'] = 'Comma separated values';
 $string['aggregationgroupconcatdistinct'] = 'Comma separated distinct values';
 $string['aggregationmax'] = 'Maximum';
@@ -102,6 +103,9 @@ $string['deletereportconfirm'] = 'Are you sure you want to delete the report \'{
 $string['deleteschedule'] = 'Delete schedule';
 $string['deletescheduleconfirm'] = 'Are you sure you want to delete the schedule \'{$a}\'?';
 $string['disableschedule'] = 'Disable schedule';
+$string['duplicateaudiences'] = 'Duplicate audiences';
+$string['duplicatereport'] = 'Duplicate report';
+$string['duplicateschedules'] = 'Duplicate schedules';
 $string['editaudience'] = 'Edit audience \'{$a}\'';
 $string['editdetails'] = 'Edit details';
 $string['editor'] = 'Editor';
@@ -117,6 +121,7 @@ $string['enableschedule'] = 'Enable schedule';
 $string['entitycourse'] = 'Course';
 $string['entityuser'] = 'User';
 $string['errorreportcreate'] = 'You cannot create a new report';
+$string['errorreportduplicate'] = 'You cannot duplicate this report';
 $string['errorreportedit'] = 'You cannot edit this report';
 $string['errorreportview'] = 'You cannot view this report';
 $string['errorsourceinvalid'] = 'Could not find valid report source';
@@ -174,6 +179,7 @@ $string['movecolumn'] = 'Move column \'{$a}\'';
 $string['movecondition'] = 'Move condition \'{$a}\'';
 $string['movefilter'] = 'Move filter \'{$a}\'';
 $string['movesorting'] = 'Move sorting for column \'{$a}\'';
+$string['neveraccessed'] = 'Never accessed';
 $string['newreport'] = 'New report';
 $string['newschedule'] = 'New schedule';
 $string['noaudiences'] = 'There are no audiences for this report';
@@ -197,7 +203,6 @@ $string['privacy:metadata:filter'] = 'Report filter definitions';
 $string['privacy:metadata:filter:uniqueidentifier'] = 'Unique identifier of the filter';
 $string['privacy:metadata:filter:usercreated'] = 'The ID of the user who created the filter';
 $string['privacy:metadata:filter:usermodified'] = 'The ID of the user who last modified the filter';
-$string['privacy:metadata:preference:reportfilter'] = 'Stored report filter values';
 $string['privacy:metadata:report'] = 'Report definitions';
 $string['privacy:metadata:report:conditiondata'] = 'Configuration data for the report conditions';
 $string['privacy:metadata:report:name'] = 'The name of the report';
@@ -210,22 +215,26 @@ $string['privacy:metadata:report:usercreated'] = 'The ID of the user who created
 $string['privacy:metadata:report:usermodified'] = 'The ID of the user who last modified the report';
 $string['privacy:metadata:schedule'] = 'Report schedule definitions';
 $string['privacy:metadata:schedule:audiences'] = 'The audiences this schedule is for';
+$string['privacy:metadata:schedule:classname'] = 'The class used by the schedule';
+$string['privacy:metadata:schedule:configdata'] = 'Configuration data used by the schedule';
 $string['privacy:metadata:schedule:enabled'] = 'The status of the schedule';
 $string['privacy:metadata:schedule:format'] = 'The format of the scheduled report';
-$string['privacy:metadata:schedule:message'] = 'The message of the schedule';
 $string['privacy:metadata:schedule:name'] = 'The name of the schedule';
 $string['privacy:metadata:schedule:recurrence'] = 'The recurrence of the schedule';
-$string['privacy:metadata:schedule:reportempty'] = 'Action to take if scheduled report is empty';
-$string['privacy:metadata:schedule:subject'] = 'The subject of the schedule';
 $string['privacy:metadata:schedule:timecreated'] = 'The time when the schedule was created';
 $string['privacy:metadata:schedule:timemodified'] = 'The time when the schedule was last modified';
 $string['privacy:metadata:schedule:timescheduled'] = 'The time the schedule will begin';
 $string['privacy:metadata:schedule:usercreated'] = 'The ID of the user who created the schedule';
 $string['privacy:metadata:schedule:usermodified'] = 'The ID of the user who last modified the schedule';
 $string['privacy:metadata:schedule:userviewas'] = 'The ID of the user who the schedule will be viewed as';
+$string['privacy:metadata:user_filter'] = 'Report user filter definitions';
+$string['privacy:metadata:user_filter:filterdata'] = 'Configuration data for the report filters';
+$string['privacy:metadata:user_filter:timecreated'] = 'The time when the user filter was created';
+$string['privacy:metadata:user_filter:timemodified'] = 'The time when the user filter was last modified';
 $string['recurrence'] = 'Recurrence';
 $string['recurrenceannually'] = 'Annually';
 $string['recurrencedaily'] = 'Daily';
+$string['recurrencehourly'] = 'Hourly';
 $string['recurrencemonthly'] = 'Monthly';
 $string['recurrenceweekdays'] = 'Daily (weekdays only)';
 $string['recurrenceweekly'] = 'Weekly';
@@ -233,6 +242,7 @@ $string['renameaudience'] = 'Rename audience \'{$a}\'';
 $string['renamecolumn'] = 'Rename column \'{$a}\'';
 $string['renamefilter'] = 'Rename filter \'{$a}\'';
 $string['reportbuilder'] = 'Report builder';
+$string['reportbuildercustomfields'] = 'Custom report fields';
 $string['reportcreated'] = 'Report created';
 $string['reportdeleted'] = 'Report deleted';
 $string['reports'] = 'Reports';
@@ -245,6 +255,8 @@ $string['resetconditions'] = 'Reset conditions';
 $string['resetconditionsconfirm'] = 'Are you sure you want to reset all conditions for this report?';
 $string['schedulecreated'] = 'Schedule created';
 $string['scheduledeleted'] = 'Schedule deleted';
+$string['scheduleemail'] = 'Schedule an email';
+$string['scheduleemaildescription'] = 'Set up a recurring email to share this report with your chosen audience';
 $string['scheduleempty'] = 'If the report is empty';
 $string['scheduleemptydontsend'] = 'Don\'t send message';
 $string['scheduleemptysendwithattachment'] = 'Send message with empty report';
@@ -273,6 +285,7 @@ $string['timeadded'] = 'Time added';
 $string['timecreated'] = 'Time created';
 $string['timelastsent'] = 'Time last sent';
 $string['timemodified'] = 'Time modified';
+$string['timenextsend'] = 'Time next send';
 $string['uniquerows'] = 'Remove any duplicate rows';
 $string['uniquerows_help'] = 'If the report source contains duplicate rows, should these be removed from this report? This setting has no effect if report columns are aggregated.';
 $string['userany'] = 'Any user';
@@ -281,13 +294,18 @@ $string['userfullnamewithlink'] = 'Full name with link';
 $string['userfullnamewithpicture'] = 'Full name with picture';
 $string['userfullnamewithpicturelink'] = 'Full name with picture and link';
 $string['usermodified'] = 'Modified by';
-$string['userpicture'] = 'User picture';
 $string['userselect'] = 'Select user';
 $string['viewreport'] = 'View report';
-
-// Deprecated since Moodle 4.4.
-$string['filterdurationunit'] = '{$a} unit';
 
 // Deprecated since Moodle 4.5.
 $string['filterdatefrom'] = 'Date from';
 $string['filterdateto'] = 'Date to';
+
+// Deprecated since Moodle 5.0.
+$string['privacy:metadata:preference:reportfilter'] = 'Stored report filter values';
+$string['userpicture'] = 'User picture';
+
+// Deprecated since Moodle 5.1.
+$string['privacy:metadata:schedule:message'] = 'The message of the schedule';
+$string['privacy:metadata:schedule:reportempty'] = 'Action to take if scheduled report is empty';
+$string['privacy:metadata:schedule:subject'] = 'The subject of the schedule';

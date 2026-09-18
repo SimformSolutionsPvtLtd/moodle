@@ -24,12 +24,12 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2024100700;
-$plugin->requires  = 2024100100;
+$plugin->version   = 2025100600;
+$plugin->requires  = 2025092600;
 
 $plugin->component = 'qtype_ddwtos';
 $plugin->maturity  = MATURITY_STABLE;
 
 $plugin->dependencies = [
-    'qtype_gapselect' => 2024100100,
+    'qtype_gapselect' => 2025092600,
 ];

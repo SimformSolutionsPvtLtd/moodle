@@ -7,14 +7,19 @@ Feature: Use the qbank plugin manager page for question history
       | fullname | shortname | category |
       | Course 1 | C1        | 0        |
     And the following "activities" exist:
-      | activity   | name      | course | idnumber |
-      | quiz       | Test quiz | C1     | quiz1    |
+      | activity | name      | intro           | course | idnumber |
+      | quiz     | Test quiz |                 | C1     | quiz1    |
+      | qbank    | Qbank 1   | Question bank 1 | C1     | qbank1   |
+      | qbank    | Qbank 2   | Question bank 2 | C1     | qbank2   |
     And the following "question categories" exist:
-      | contextlevel | reference | name           |
-      | Course         | C1     | Test questions |
+      | contextlevel    | reference | name              |
+      | Activity module | quiz1     | Test questions    |
+      | Activity module | qbank1    | Share questions   |
+      | Activity module | qbank2    | Share questions 2 |
     And the following "questions" exist:
-      | questioncategory | qtype     | name           | questiontext              |
-      | Test questions   | truefalse | First question | Answer the first question |
+      | questioncategory      | qtype     | name                       | questiontext                  |
+      | Default for Test quiz | truefalse | First question             | Answer the first question     |
+      | Default for Qbank 1   | essay     | Test question to be edited | Write about whatever you want |
 
   Scenario: Enable/disable question history column from the base view
     Given I log in as "admin"
@@ -42,8 +47,8 @@ Feature: Use the qbank plugin manager page for question history
   @javascript
   Scenario: Viewing history for a question in a non-default category
     Given the following "question categories" exist:
-      | contextlevel | reference | name             |
-      | Course       | C1        | Test questions 2 |
+      | contextlevel    | reference | name             |
+      | Activity module | quiz1     | Test questions 2 |
     And the following "questions" exist:
       | questioncategory | qtype     | name            | questiontext               |
       | Test questions 2 | truefalse | Second question | Answer the second question |
@@ -57,23 +62,26 @@ Feature: Use the qbank plugin manager page for question history
 
   Scenario: Viewing history for a Question in a Subcategory
     Given the following "question categories" exist:
-      | contextlevel | reference | questioncategory | name          |
-      | Course       | C1        | Test questions   | Subcategory 1 |
+      | contextlevel    | reference | name                 |
+      | Activity module | quiz1     | Questions Category 1 |
+    And the following "question categories" exist:
+      | contextlevel    | reference | name          | questioncategory     |
+      | Activity module | quiz1     | Subcategory 1 | Questions Category 1 |
     And the following "questions" exist:
-      | questioncategory | qtype     | name          | questiontext       |
-      | Subcategory 1    | truefalse | Question (v1) | Question version 1 |
-    When I am on the "Course 1" "core_question > course question categories" page logged in as "admin"
+      | questioncategory | qtype     | name                | questiontext       |
+      | Subcategory 1    | truefalse | First question (v1) | Question version 1 |
+    When I am on the "Test quiz" "mod_quiz > question categories" page logged in as "admin"
     And I should see "Subcategory 1"
     And I click on "Subcategory 1" "link"
-    Then I should see "Question (v1)"
-    And I choose "Edit question" action for "Question (v1)" in the question bank
+    Then I should see "First question (v1)"
+    And I choose "Edit question" action for "First question (v1)" in the question bank
     And I set the following fields to these values:
-      | Question name | Question (v2)      |
-      | Question text | Question version 2 |
+      | Question name | First question (v2) |
+      | Question text | Question version 2  |
     And I press "id_submitbutton"
-    And I choose "History" action for "Question (v2)" in the question bank
-    And "Question (v1)" "table_row" should exist
-    And "Question (v2)" "table_row" should exist
+    And I choose "History" action for "First question (v2)" in the question bank
+    And "First question (v1)" "table_row" should exist
+    And "First question (v2)" "table_row" should exist
 
   @javascript
   Scenario: Delete question from the history using Edit question menu
@@ -92,8 +100,8 @@ Feature: Use the qbank plugin manager page for question history
       | user  | preference                       | value                                                           |
       | admin | qbank_columnsortorder_hiddencols | qbank_usage\question_last_used_column-question_last_used_column |
     And the following "questions" exist:
-      | questioncategory | qtype     | name            | questiontext               |
-      | Test questions   | truefalse | Second question | Answer the second question |
+      | questioncategory      | qtype     | name            | questiontext               |
+      | Default for Test quiz | truefalse | Second question | Answer the second question |
     When I am on the "Test quiz" "mod_quiz > question bank" page logged in as "admin"
     And "Last used" "qbank_columnsortorder > column header" should not exist
     Then I should see "First question"
@@ -106,3 +114,12 @@ Feature: Use the qbank plugin manager page for question history
     And "Last used" "qbank_columnsortorder > column header" should exist
     And "First question" "table_row" should exist
     And "Second question" "table_row" should not exist
+
+  Scenario: Go History page in edit question page.
+    Given I am on the "Test quiz" "mod_quiz > question bank" page logged in as "admin"
+    When I choose "Edit question" action for "First question" in the question bank
+    And I click on "History" "link"
+    Then I should see "First question"
+    And I follow "Close"
+    And the following fields match these values:
+      | Question text | Answer the first question |

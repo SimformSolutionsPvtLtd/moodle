@@ -33,6 +33,7 @@ use stdClass;
 use moodle_url;
 use context;
 use context_system;
+use core\output\local\properties\button;
 use core_competency\api;
 use core_competency\competency_framework;
 use core_competency\external\competency_framework_exporter;
@@ -83,7 +84,7 @@ class manage_competency_frameworks_page implements renderable, templatable {
                 new moodle_url('https://moodle.net/search', ['q' => 'competency frameworks']),
                 get_string('competencyframeworksrepository', 'tool_lp') . $icon,
                 null,
-                ['target' => '_blank', 'class' => 'btn btn-secondary ms-sm-2'],
+                ['target' => '_blank', 'class' => button::SECONDARY->classes() . ' ms-sm-2'],
             );
             $this->navigation[] = $competenciesrepository;
         }

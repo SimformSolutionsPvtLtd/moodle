@@ -16,9 +16,12 @@
 
 namespace qbank_managecategories;
 
+use core\context;
 use core\output\datafilter;
 use core_question\local\bank\condition;
 use core_question\local\bank\view;
+use restore_questions_activity_structure_step;
+use stdClass;
 
 /**
  * This class controls from which category questions are listed.
@@ -31,6 +34,9 @@ use core_question\local\bank\view;
 class category_condition extends condition {
     /** @var \stdClass The course record. */
     protected $course;
+
+    /** @var \stdClass The course_modules record. */
+    protected \stdClass $cm;
 
     /** @var \stdClass The category record. */
     protected $category;
@@ -57,8 +63,11 @@ class category_condition extends condition {
             return;
         }
         $this->cat = $qbank->get_pagevars('cat');
-        $this->contexts = $qbank->contexts->having_one_edit_tab_cap($qbank->get_pagevars('tabname'));
+        $this->contexts = array_filter($qbank->contexts->having_one_edit_tab_cap($qbank->get_pagevars('tabname')),
+            static fn($context) => $context->contextlevel === CONTEXT_MODULE
+        );
         $this->course = $qbank->course;
+        $this->cm = $qbank->cm;
 
         [$categoryid, $contextid] = self::validate_category_param($this->cat);
         if (is_null($categoryid)) {
@@ -83,7 +92,7 @@ class category_condition extends condition {
      */
     public function get_default_category(): \stdClass {
         if (empty($this->category)) {
-            return question_get_default_category(\context_course::instance($this->course->id)->id);
+            return question_get_default_category(\context_module::instance($this->cm->id)->id, true);
         }
 
         return $this->category;
@@ -103,102 +112,43 @@ class category_condition extends condition {
     }
 
     /**
-     * Called by question_bank_view to display the GUI for selecting a category
      * @deprecated since Moodle 4.3 MDL-72321 - please do not use this function any more.
-     * @todo Final deprecation on Moodle 4.7 MDL-78090
      */
+    #[\core\attribute\deprecated('filtering objects', since: '4.3', mdl: 'MDL-72321', final: true)]
     public function display_options() {
-        debugging('Function display_options() is deprecated, please use filtering objects', DEBUG_DEVELOPER);
-        global $PAGE;
-        $displaydata = [];
-        $catmenu = helper::question_category_options($this->contexts, true, 0,
-                true, -1, false);
-        $displaydata['categoryselect'] = \html_writer::select($catmenu, 'category', $this->cat, [],
-                array('class' => 'searchoptions custom-select', 'id' => 'id_selectacategory'));
-        $displaydata['categorydesc'] = '';
-        if ($this->category) {
-            $displaydata['categorydesc'] = $this->print_category_info($this->category);
-        }
-        return $PAGE->get_renderer('qbank_managecategories')->render_category_condition($displaydata);
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
     }
 
     /**
-     * Displays the recursion checkbox GUI.
-     * question_bank_view places this within the section that is hidden by default
      * @deprecated since Moodle 4.3 MDL-72321 - please do not use this function any more.
-     * @todo Final deprecation on Moodle 4.7 MDL-78090
      */
+    #[\core\attribute\deprecated('foobar::blah()', since: '4.3', mdl: 'MDL-72321', final: true)]
     public function display_options_adv() {
-        debugging('Function display_options_adv() is deprecated, please use filtering objects', DEBUG_DEVELOPER);
-        global $PAGE;
-        $displaydata = [];
-        if ($this->recurse) {
-            $displaydata['checked'] = 'checked';
-        }
-        return $PAGE->get_renderer('qbank_managecategories')->render_category_condition_advanced($displaydata);
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
     }
 
     /**
-     * Display the drop down to select the category.
-     *
-     * @param array $contexts of contexts that can be accessed from here.
-     * @param \moodle_url $pageurl the URL of this page.
-     * @param string $current 'categoryID,contextID'.
      * @deprecated since Moodle 4.3
-     * @todo Final deprecation on Moodle 4.7 MDL-78090
      */
+    #[\core\attribute\deprecated('core_question renderer', since: '4.3', mdl: 'MDL-72321', final: true)]
     protected function display_category_form($contexts, $pageurl, $current) {
-        debugging(
-            'Function display_category_form() is deprecated, please use the core_question renderer instead.',
-            DEBUG_DEVELOPER
-        );
-        echo \html_writer::start_div('choosecategory');
-        $catmenu = question_category_options($contexts, true, 0, true, -1, false);
-        echo \html_writer::label(get_string('selectacategory', 'question'), 'id_selectacategory', true, ["class" => "me-1"]);
-        echo \html_writer::select($catmenu, 'category', $current, [],
-                array('class' => 'searchoptions custom-select', 'id' => 'id_selectacategory'));
-        echo \html_writer::end_div() . "\n";
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
     }
 
     /**
-     * Print the text if category id not available.
      * @deprecated since Moodle 4.3
-     * @todo Final deprecation in Moodle 4.7 MDL-78090
      */
+    #[\core\attribute\deprecated('qbank_managecategories/choose_category template', since: '4.3', mdl: 'MDL-72321', final: true)]
     public static function print_choose_category_message(): void {
-        debugging(
-            'Function print_choose_category_message() is deprecated, please use ' .
-                'qbank_managecategories/choose_category template instead.',
-            DEBUG_DEVELOPER
-        );
-        global $OUTPUT;
-        echo $OUTPUT->render_from_template('qbank_managecategories/choose_category', []);
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
     }
 
     /**
-     * Look up the category record based on category ID and context
-     * @param string $categoryandcontext categoryID,contextID as used with question_bank_view->display()
-     * @return \stdClass The category record
      * @deprecated since Moodle 4.3
-     * @todo Final deprecation in Moodle 4.7 MDL-78090
      */
+    #[\core\attribute\deprecated(null, since: '4.3', mdl: 'MDL-72321', final: true)]
     public static function get_current_category($categoryandcontext) {
-        debugging('Function get_current_category() is deprecated. Please do not use it anymore.', DEBUG_DEVELOPER);
-        global $DB, $OUTPUT;
-        [$categoryid, $contextid] = explode(',', $categoryandcontext);
-        if (!$categoryid) {
-            self::print_choose_category_message();
-            return false;
-        }
-
-        if (!$category = $DB->get_record('question_categories', ['id' => $categoryid, 'contextid' => $contextid])) {
-            echo $OUTPUT->box_start('generalbox questionbank');
-            echo $OUTPUT->notification('Category not found!');
-            echo $OUTPUT->box_end();
-            return false;
-        }
-
-        return $category;
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
     }
 
     /**
@@ -232,22 +182,11 @@ class category_condition extends condition {
     }
 
     /**
-     * Print the category description
-     * @param \stdClass $category the category information form the database.
      * @deprecated since Moodle 4.3 MDL-72321 - please do not use this function any more.
-     * @todo Final deprecation on Moodle 4.7 MDL-78090
      */
+    #[\core\attribute\deprecated(null, since: '4.3', mdl: 'MDL-72321', final: true)]
     protected function print_category_info($category): string {
-        debugging('Function print_category_info() is deprecated. Please do not use it anymore', DEBUG_DEVELOPER);
-        $formatoptions = new \stdClass();
-        $formatoptions->noclean = true;
-        $formatoptions->overflowdiv = true;
-        if (isset($this->maxinfolength)) {
-            return shorten_text(format_text($category->info, $category->infoformat, $formatoptions, $this->course->id),
-                    $this->maxinfolength);
-        }
-
-        return format_text($category->info, $category->infoformat, $formatoptions, $this->course->id);
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
     }
 
     public static function build_query_from_filter(array $filter): array {
@@ -365,6 +304,45 @@ class category_condition extends condition {
 
         return $filterconditions;
 
+    }
+
+    #[\Override]
+    public function restore_filtercondition(
+        array $filtercondition,
+        stdClass $setreference,
+        restore_questions_activity_structure_step $restorestep,
+        bool $originalbankinbackup = false,
+    ): array {
+        global $DB;
+        // Map category id used for category filter condition and corresponding context id.
+        $oldcategoryid = $filtercondition['filter']['category']['values'][0];
+        // Decide if we're going to refer back to the original category, or to the new category.
+        // Are we restoring to a different site?
+        // Has the original context or category been deleted?
+        // Did the old category belong to the same context as the original set reference?
+        // Are we allowed to use its questions?
+        $questionscontext = context::instance_by_id($setreference->questionscontextid, IGNORE_MISSING);
+        if (
+            !$restorestep->get_task()->is_samesite()
+            || !$questionscontext
+            || !$DB->record_exists('question_categories', ['id' => $oldcategoryid])
+            || $originalbankinbackup
+            || $setreference->usingcontextid == $setreference->questionscontextid
+            || !has_capability('moodle/question:useall', $questionscontext)
+        ) {
+            $newcategoryid = $restorestep->get_mappingid('question_category', $oldcategoryid);
+            $filtercondition['filter']['category']['values'][0] = $newcategoryid;
+        }
+
+        $filtercondition['cat'] = implode(
+            ',',
+            [
+                $filtercondition['filter']['category']['values'][0],
+                $setreference->questionscontextid,
+            ],
+        );
+
+        return $filtercondition;
     }
 
 }

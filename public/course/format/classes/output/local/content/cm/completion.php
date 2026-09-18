@@ -19,11 +19,13 @@ namespace core_courseformat\output\local\content\cm;
 use cm_info;
 use core_course\output\activity_completion;
 use section_info;
-use renderable;
 use stdClass;
+use core\output\externable;
 use core\output\named_templatable;
+use core\output\renderable;
 use core\output\local\dropdown\dialog as dropdown_dialog;
 use core_completion\cm_completion_details;
+use core_completion\external\completion_info_exporter;
 use core_courseformat\base as course_format;
 use core_courseformat\output\local\courseformat_named_templatable;
 
@@ -34,9 +36,11 @@ use core_courseformat\output\local\courseformat_named_templatable;
  * @copyright 2023 Mikel Martin <mikel@moodle.com>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class completion implements named_templatable, renderable {
-
+class completion implements externable, named_templatable, renderable {
     use courseformat_named_templatable;
+
+    /** @var bool $smallbutton if the button is rendered small (like in course page). */
+    private bool $smallbutton = true;
 
     /**
      * Constructor.
@@ -50,6 +54,19 @@ class completion implements named_templatable, renderable {
         protected section_info $section,
         protected cm_info $mod,
     ) {
+    }
+
+    /**
+     * Set if the button is rendered small.
+     *
+     * By default, the button is rendered small like in the course page. However,
+     * in other pages like the activities overview, the button is rendered like
+     * a regular button.
+     *
+     * @param bool $smallbutton if the button is rendered small (like in course page).
+     */
+    public function set_smallbutton(bool $smallbutton): void {
+        $this->smallbutton = $smallbutton;
     }
 
     /**
@@ -76,7 +93,7 @@ class completion implements named_templatable, renderable {
             return null;
         }
 
-        $completion = new activity_completion($this->mod, $completiondetails);
+        $completion = new activity_completion($this->mod, $completiondetails, $this->smallbutton);
         $completiondata = $completion->export_for_template($output);
 
         if ($completiondata->isautomatic || ($completiondata->ismanual && !$completiondata->istrackeduser)) {
@@ -86,6 +103,29 @@ class completion implements named_templatable, renderable {
         return $completiondata;
     }
 
+    #[\Override]
+    public function get_exporter(?\core\context $context = null): completion_info_exporter {
+        global $USER;
+        return new completion_info_exporter(
+            $this->format->get_course(),
+            $this->mod,
+            $USER->id,
+        );
+    }
+
+    #[\Override]
+    public static function get_read_structure(
+        int $required = VALUE_REQUIRED,
+        mixed $default = null
+    ): \core_external\external_single_structure {
+        return completion_info_exporter::get_read_structure($required, $default);
+    }
+
+    #[\Override]
+    public static function read_properties_definition(): array {
+        return completion_info_exporter::read_properties_definition();
+    }
+
     /**
      * Get the completion dialog.
      *
@@ -93,7 +133,7 @@ class completion implements named_templatable, renderable {
      * @param stdClass $completioninfo the completion info
      * @return array the completion dialog exported for template
      */
-    private function get_completion_dialog(\renderer_base $output, stdClass $completioninfo): array {
+    protected function get_completion_dialog(\renderer_base $output, stdClass $completioninfo): array {
         global $PAGE;
 
         $editurl = new \moodle_url(
@@ -106,18 +146,20 @@ class completion implements named_templatable, renderable {
         $dialogcontent = $output->render_from_template('core_courseformat/local/content/cm/completion_dialog', $completioninfo);
 
         $buttoncontent = get_string('completionmenuitem', 'completion');
-        $buttonclass = '';
+        $buttonclass = 'btn-subtle-body';
         if ($completioninfo->istrackeduser) {
             $buttoncontent = get_string('todo', 'completion');
             if ($completioninfo->overallcomplete) {
                 $buttoncontent = $output->pix_icon('i/checked', '') . " " . get_string('completion_manual:done', 'core_course');
-                $buttonclass = 'btn-success';
+                $buttonclass = 'btn-subtle-success';
             }
         }
 
+        $buttonclass .= $this->smallbutton ? ' btn-sm' : '';
+
         $completiondialog = new dropdown_dialog($buttoncontent, $dialogcontent, [
             'classes' => 'completion-dropdown',
-            'buttonclasses' => 'btn btn-sm dropdown-toggle icon-no-margin ' . $buttonclass,
+            'buttonclasses' => 'btn dropdown-toggle icon-no-margin ' . $buttonclass,
             'dropdownposition' => dropdown_dialog::POSITION['end'],
         ]);
 

@@ -41,7 +41,7 @@ require_once(__DIR__.'/../../../../lib/behat/lib.php');
 require_once(__DIR__.'/../../../../lib/behat/classes/behat_command.php');
 require_once(__DIR__.'/../../../../lib/behat/classes/behat_config_manager.php');
 
-error_reporting(E_ALL | E_STRICT);
+error_reporting(E_ALL);
 ini_set('display_errors', '1');
 ini_set('log_errors', '1');
 
@@ -89,7 +89,7 @@ Options:
 -h, --help         Print out this help
 
 Example from Moodle root directory:
-\$ php admin/tool/behat/cli/run.php --tags=\"@javascript\"
+\$ php public/admin/tool/behat/cli/run.php --tags=\"@javascript\"
 
 More info in https://moodledev.io/general/development/tools/behat/running
 ";
@@ -278,7 +278,7 @@ if (empty($parallelrun)) {
     }
 
     // Execute all commands, relative to moodle root directory.
-    $processes = cli_execute_parallel($cmds, __DIR__ . "/../../../../", BEHAT_PARALLEL_START_DELAY);
+    $processes = cli_execute_parallel($cmds, __DIR__ . "/../../../../../", BEHAT_PARALLEL_START_DELAY);
     $stoponfail = empty($options['stop-on-failure']) ? false : true;
 
     // Print header.

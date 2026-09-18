@@ -730,21 +730,17 @@ function get_courses_search($searchterms, $sort, $page, $recordsperpage, &$total
 
     $i = 0;
 
-    // Thanks Oracle for your non-ansi concat and type limits in coalesce. MDL-29912
-    if ($DB->get_dbfamily() == 'oracle') {
-        $concat = "(c.summary|| ' ' || c.fullname || ' ' || c.idnumber || ' ' || c.shortname)";
-    } else {
-        $concat = $DB->sql_concat("COALESCE(c.summary, '')", "' '", 'c.fullname', "' '", 'c.idnumber', "' '", 'c.shortname');
-    }
+    $concat = $DB->sql_concat("COALESCE(c.summary, '')", "' '", 'c.fullname', "' '", 'c.idnumber', "' '", 'c.shortname');
 
     foreach ($searchterms as $searchterm) {
         $i++;
 
-        $NOT = false; /// Initially we aren't going to perform NOT LIKE searches, only MSSQL and Oracle
-                   /// will use it to simulate the "-" operator with LIKE clause
+        // Initially we aren't going to perform NOT LIKE searches, only MSSQL
+        // will use it to simulate the "-" operator with LIKE clause.
+        $NOT = false;
 
-    /// Under Oracle and MSSQL, trim the + and - operators and perform
-    /// simpler LIKE (or NOT LIKE) queries
+        // Under MSSQL, trim the + and - operators and perform
+        // simpler LIKE (or NOT LIKE) queries.
         if (!$DB->sql_regex_supported()) {
             if (substr($searchterm, 0, 1) == '-') {
                 $NOT = true;
@@ -1104,7 +1100,7 @@ function get_my_remotecourses($userid=0) {
         $userid = $USER->id;
     }
 
-    // we can not use SELECT DISTINCT + text field (summary) because of MS SQL and Oracle, subselect used therefore
+    // We can not use SELECT DISTINCT + text field (summary) because of MS SQL, subselect used therefore.
     $sql = "SELECT c.id, c.remoteid, c.shortname, c.fullname,
                    c.hostid, c.summary, c.summaryformat, c.categoryname AS cat_name,
                    h.name AS hostname
@@ -1398,7 +1394,7 @@ function get_all_instances_in_courses($modulename, $courses, $userid=NULL, $incl
     $params['modulename'] = $modulename;
 
     if (!$rawmods = $DB->get_records_sql("SELECT cm.id AS coursemodule, m.*, cw.section, cm.visible AS visible,
-                                                 cm.groupmode, cm.groupingid, cm.lang
+                                                 cm.groupmode, cm.groupingid, cm.lang, cm.enableaitools, cm.enabledaiactions
                                             FROM {course_modules} cm, {course_sections} cw, {modules} md,
                                                  {".$modulename."} m
                                            WHERE cm.course $coursessql AND
@@ -1423,11 +1419,7 @@ function get_all_instances_in_courses($modulename, $courses, $userid=NULL, $incl
             if (!isset($rawmods[$cm->id])) {
                 continue;
             }
-            $instance = $rawmods[$cm->id];
-            if (!empty($cm->extra)) {
-                $instance->extra = $cm->extra;
-            }
-            $outputarray[] = $instance;
+            $outputarray[] = $rawmods[$cm->id];
         }
     }
 
@@ -1726,7 +1718,7 @@ function print_object($item, array $expandclasses = ['/./'], bool $textonly = fa
         switch (gettype($item)) {
             case 'NULL':
             case 'boolean':
-                return 'font-italic';
+                return 'fst-italic';
             case 'integer':
             case 'double':
                 return 'text-primary';
@@ -1871,11 +1863,11 @@ function print_object($item, array $expandclasses = ['/./'], bool $textonly = fa
                 switch ($access) {
                     case 'protected':
                         // Protected is in normal font.
-                        $bootstrapstyle = ' font-weight-normal';
+                        $bootstrapstyle = ' fw-normal';
                         break;
                     case 'private':
                         // Private is italic.
-                        $bootstrapstyle = ' font-weight-normal font-italic';
+                        $bootstrapstyle = ' fw-normal fst-italic';
                         break;
                     default:
                         // Public is bold, same for array keys.

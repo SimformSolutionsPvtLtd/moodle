@@ -16,8 +16,11 @@
 
 namespace core;
 
+use core\context\course;
+use core\context\module;
 use core_question\local\bank\question_bank_helper;
 use mod_quiz\quiz_settings;
+use PHPUnit\Framework\Attributes\DataProvider;
 use question_bank;
 
 defined('MOODLE_INTERNAL') || die();
@@ -52,12 +55,21 @@ final class questionlib_test extends \advanced_testcase {
     }
 
     /**
+     * Generate a course and question bank module instance for use in test cases, and return the bank context.
+     * @return module
+     */
+    protected function create_course_and_question_bank(): module {
+        $course = self::getDataGenerator()->create_course();
+        $qbank = self::getDataGenerator()->create_module('qbank', ['course' => $course->id]);
+        return \context_module::instance($qbank->cmid);
+    }
+
+    /**
      * Setup a course, a quiz, a question category and a question for testing.
      *
-     * @param string $type The type of question category to create.
      * @return array The created data objects
      */
-    public function setup_quiz_and_questions($type = 'module') {
+    public function setup_quiz_and_questions() {
         // Create course category.
         $category = $this->getDataGenerator()->create_category();
 
@@ -78,23 +90,7 @@ final class questionlib_test extends \advanced_testcase {
         /** @var \core_question_generator $qgen */
         $qgen = $this->getDataGenerator()->get_plugin_generator('core_question');
 
-        switch ($type) {
-            case 'course':
-                $context = \context_course::instance($course->id);
-                break;
-
-            case 'category':
-                $context = \context_coursecat::instance($category->id);
-                break;
-
-            case 'system':
-                $context = \context_system::instance();
-                break;
-
-            default:
-                $context = \context_module::instance($quiz->cmid);
-                break;
-        }
+        $context = \context_module::instance($quiz->cmid);
 
         $qcat = $qgen->create_question_category(array('contextid' => $context->id));
 
@@ -164,83 +160,63 @@ final class questionlib_test extends \advanced_testcase {
         // Set to admin user.
         $this->setAdminUser();
 
-        // Create two course categories - we are going to delete one of these later and will expect
-        // all the questions belonging to the course in the deleted category to be moved.
+        // Create 2 qbank instances - we are going to delete one of these later and will expect
+        // all the questions belonging to the deleted module to be moved.
         $coursecat1 = $this->getDataGenerator()->create_category();
+        $course1 = $this->getDataGenerator()->create_course(['category' => $coursecat1->id]);
+        $modqbank1 = $this->getDataGenerator()->create_module('qbank', ['course' => $course1->id]);
         $coursecat2 = $this->getDataGenerator()->create_category();
+        $course2 = $this->getDataGenerator()->create_course(['category' => $coursecat2->id]);
+        $modqbank2 = $this->getDataGenerator()->create_module('qbank', ['course' => $course2->id]);
 
         // Create a couple of categories and questions.
-        $context1 = \context_coursecat::instance($coursecat1->id);
-        $context2 = \context_coursecat::instance($coursecat2->id);
+        $context1 = \context_module::instance($modqbank1->cmid);
+        $context2 = \context_module::instance($modqbank2->cmid);
         /** @var \core_question_generator $questiongenerator */
         $questiongenerator = $this->getDataGenerator()->get_plugin_generator('core_question');
-        $questioncat1 = $questiongenerator->create_question_category(array('contextid' =>
-            $context1->id));
-        $questioncat2 = $questiongenerator->create_question_category(array('contextid' =>
-            $context2->id));
-        $question1 = $questiongenerator->create_question('shortanswer', null, array('category' => $questioncat1->id));
-        $question2 = $questiongenerator->create_question('shortanswer', null, array('category' => $questioncat1->id));
-        $question3 = $questiongenerator->create_question('shortanswer', null, array('category' => $questioncat2->id));
-        $question4 = $questiongenerator->create_question('shortanswer', null, array('category' => $questioncat2->id));
+        $questioncat1 = question_get_default_category($context1->id);
+        $questioncat2 = question_get_default_category($context2->id);
+        $question1 = $questiongenerator->create_question('shortanswer', null, ['category' => $questioncat1->id]);
+        $question2 = $questiongenerator->create_question('shortanswer', null, ['category' => $questioncat1->id]);
+        $question3 = $questiongenerator->create_question('shortanswer', null, ['category' => $questioncat2->id]);
+        $question4 = $questiongenerator->create_question('shortanswer', null, ['category' => $questioncat2->id]);
 
         // Now lets tag these questions.
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $context1, array('tag 1', 'tag 2'));
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $context1, array('tag 3', 'tag 4'));
-        \core_tag_tag::set_item_tags('core_question', 'question', $question3->id, $context2, array('tag 5', 'tag 6'));
-        \core_tag_tag::set_item_tags('core_question', 'question', $question4->id, $context2, array('tag 7', 'tag 8'));
+        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $context1, ['tag 1', 'tag 2']);
+        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $context1, ['tag 3', 'tag 4']);
+        \core_tag_tag::set_item_tags('core_question', 'question', $question3->id, $context2, ['tag 5', 'tag 6']);
+        \core_tag_tag::set_item_tags('core_question', 'question', $question4->id, $context2, ['tag 7', 'tag 8']);
 
-        // Test moving the questions to another category.
-        question_move_questions_to_category(array($question1->id, $question2->id), $questioncat2->id);
-
-        // Test that all tag_instances belong to one context.
-        $this->assertEquals(8, $DB->count_records('tag_instance', array('component' => 'core_question',
-            'contextid' => $questioncat2->contextid)));
-
-        // Test moving them back.
-        question_move_questions_to_category(array($question1->id, $question2->id), $questioncat1->id);
-
-        // Test that all tag_instances are now reset to how they were initially.
-        $this->assertEquals(4, $DB->count_records('tag_instance', array('component' => 'core_question',
-            'contextid' => $questioncat1->contextid)));
-        $this->assertEquals(4, $DB->count_records('tag_instance', array('component' => 'core_question',
-            'contextid' => $questioncat2->contextid)));
-
-        // Now test moving a whole question category to another context.
+        // Test moving a whole question category to another context.
         question_move_category_to_context($questioncat1->id, $questioncat1->contextid, $questioncat2->contextid);
 
         // Test that all tag_instances belong to one context.
-        $this->assertEquals(8, $DB->count_records('tag_instance', array('component' => 'core_question',
-            'contextid' => $questioncat2->contextid)));
+        $this->assertEquals(8, $DB->count_records('tag_instance', ['component' => 'core_question',
+            'contextid' => $questioncat2->contextid]));
 
         // Now test moving them back.
         question_move_category_to_context($questioncat1->id, $questioncat2->contextid,
-            \context_coursecat::instance($coursecat1->id)->id);
+            \context_module::instance($modqbank1->cmid)->id);
 
         // Test that all tag_instances are now reset to how they were initially.
-        $this->assertEquals(4, $DB->count_records('tag_instance', array('component' => 'core_question',
-            'contextid' => $questioncat1->contextid)));
-        $this->assertEquals(4, $DB->count_records('tag_instance', array('component' => 'core_question',
-            'contextid' => $questioncat2->contextid)));
-
-        // Now we want to test deleting the course category and moving the questions to another category.
-        question_delete_course_category($coursecat1, $coursecat2);
-
-        // Test that all tag_instances belong to one context.
-        $this->assertEquals(8, $DB->count_records('tag_instance', array('component' => 'core_question',
-            'contextid' => $questioncat2->contextid)));
+        $this->assertEquals(4, $DB->count_records('tag_instance', ['component' => 'core_question',
+            'contextid' => $questioncat1->contextid]));
+        $this->assertEquals(4, $DB->count_records('tag_instance', ['component' => 'core_question',
+            'contextid' => $questioncat2->contextid]));
 
         // Create a course.
         $course = $this->getDataGenerator()->create_course();
+        $modqbank3 = $this->getDataGenerator()->create_module('qbank', ['course' => $course->id]);
 
         // Create some question categories and questions in this course.
-        $coursecontext = \context_course::instance($course->id);
-        $questioncat = $questiongenerator->create_question_category(array('contextid' => $coursecontext->id));
-        $question1 = $questiongenerator->create_question('shortanswer', null, array('category' => $questioncat->id));
-        $question2 = $questiongenerator->create_question('shortanswer', null, array('category' => $questioncat->id));
+        $modcontext = \context_module::instance($modqbank3->cmid);
+        $questioncat = question_get_default_category($modcontext->id);
+        $question1 = $questiongenerator->create_question('shortanswer', null, ['category' => $questioncat->id]);
+        $question2 = $questiongenerator->create_question('shortanswer', null, ['category' => $questioncat->id]);
 
         // Add some tags to these questions.
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $coursecontext, array('tag 1', 'tag 2'));
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $coursecontext, array('tag 1', 'tag 2'));
+        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $modcontext, ['tag 1', 'tag 2']);
+        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $modcontext, ['tag 1', 'tag 2']);
 
         // Create a course that we are going to restore the other course to.
         $course2 = $this->getDataGenerator()->create_course();
@@ -262,9 +238,21 @@ final class questionlib_test extends \advanced_testcase {
         $rc->execute_precheck();
         $rc->execute_plan();
 
+        $modinfo = get_fast_modinfo($course2);
+        $qbanks = $modinfo->get_instances_of('qbank');
+        $qbankids = array_column($qbanks, 'instance');
+        $qbankrecords = $DB->get_records_list('qbank', 'id', $qbankids, '', 'id, type');
+        $qbanks = array_filter($qbanks, static function($bank) use ($qbankrecords) {
+            if (isset($qbankrecords[$bank->instance])) {
+                return $qbankrecords[$bank->instance]->type === question_bank_helper::TYPE_STANDARD;
+            }
+            return false;
+        });
+        $qbank = reset($qbanks);
+
         // Get the created question category.
         $restoredcategory = $DB->get_record_select('question_categories', 'contextid = ? AND parent <> 0',
-                array(\context_course::instance($course2->id)->id), '*', MUST_EXIST);
+                [$qbank->context->id, '*', MUST_EXIST]);
 
         // Check that there are two questions in the restored to course's context.
         $this->assertEquals(2, $DB->get_record_sql('SELECT COUNT(q.id) as questioncount
@@ -285,7 +273,7 @@ final class questionlib_test extends \advanced_testcase {
         global $DB;
 
         // Setup.
-        $context = \context_system::instance();
+        $context = $this->create_course_and_question_bank();
         /** @var \core_question_generator $qgen */
         $qgen = $this->getDataGenerator()->get_plugin_generator('core_question');
         $qcat = $qgen->create_question_category(array('contextid' => $context->id));
@@ -308,7 +296,7 @@ final class questionlib_test extends \advanced_testcase {
         global $DB;
 
         // Setup.
-        $context = \context_system::instance();
+        $context = $this->create_course_and_question_bank();
         /** @var \core_question_generator $qgen */
         $qgen = $this->getDataGenerator()->get_plugin_generator('core_question');
         $qcat = $qgen->create_question_category(array('contextid' => $context->id));
@@ -335,8 +323,7 @@ final class questionlib_test extends \advanced_testcase {
     public function test_question_delete_question_missing_context(): void {
         global $DB;
 
-        $coursecategory = $this->getDataGenerator()->create_category();
-        $context = $coursecategory->get_context();
+        $context = $this->create_course_and_question_bank();
 
         /** @var \core_question_generator $generator */
         $generator = $this->getDataGenerator()->get_plugin_generator('core_question');
@@ -357,27 +344,137 @@ final class questionlib_test extends \advanced_testcase {
     }
 
     /**
-     * This function tests the question_category_delete_safe function.
+     * Test parameters for calling question_category_delete_safe
+     *
+     * @return array
      */
-    public function test_question_category_delete_safe(): void {
+    public static function delete_category_parameters(): array {
+        return [
+            'Delete category' => [
+                'coursedeletion' => false,
+            ],
+            'Delete category with course' => [
+                'coursedeletion' => true,
+            ],
+        ];
+    }
+
+    /**
+     * This function tests the question_category_delete_safe function.
+     *
+     * @param bool $coursedeletion If true, simulate calling question_category_delete_safe as part of deletion of the whole course.
+     * @dataProvider delete_category_parameters
+     * @covers ::question_category_delete_safe
+     */
+    public function test_question_category_delete_safe(bool $coursedeletion): void {
         global $DB;
         $this->resetAfterTest(true);
         $this->setAdminUser();
 
-        list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions();
+        [, $course, , $qcat, $questions] = $this->setup_quiz_and_questions();
 
-        question_category_delete_safe($qcat);
+        $targetcourseid = $coursedeletion ? SITEID : $course->id;
+
+        question_category_delete_safe($qcat, $coursedeletion);
 
         // Verify category deleted.
-        $criteria = array('id' => $qcat->id);
+        $criteria = ['id' => $qcat->id];
         $this->assertEquals(0, $DB->count_records('question_categories', $criteria));
 
         // Verify questions deleted or moved.
         $this->assert_category_contains_questions($qcat->id, 0);
 
         // Verify question not deleted.
-        $criteria = array('id' => $questions[0]->id);
-        $this->assertEquals(1, $DB->count_records('question', $criteria));
+        $criteria = ['id' => $questions[0]->id];
+        $savedquestion = $DB->get_record_sql(
+            "SELECT q.*, qbe.questioncategoryid
+               FROM {question} q
+                    JOIN {question_versions} qv ON qv.questionid = q.id
+                    JOIN {question_bank_entries} qbe ON qv.questionbankentryid = qbe.id",
+            $criteria
+        );
+        $this->assertNotEmpty($savedquestion);
+
+        // Verify question now sits in a system qbank in the target course.
+        $this->assertNotEquals($qcat->id, $savedquestion->id);
+        $newcategory = $DB->get_record('question_categories', ['id' => $savedquestion->questioncategoryid], strictness: MUST_EXIST);
+        $newcategorycontext = context::instance_by_id($newcategory->contextid);
+        $this->assertEquals(\context_module::LEVEL, $newcategorycontext->contextlevel);
+        [$newcourse, $newcm] = get_course_and_cm_from_cmid($newcategorycontext->instanceid);
+        $this->assertEquals($newcm->modname, 'qbank');
+        $this->assertEquals(question_bank_helper::TYPE_SYSTEM, $DB->get_field('qbank', 'type', ['id' => $newcm->instance]));
+        $this->assertEquals($targetcourseid, $newcourse->id);
+    }
+
+    /**
+     * This function tests the question_category_delete_safe function when the context of
+     * the question category no longer exists (orphaned category).
+     *
+     * When using the script admin/cli/fix_orphaned_question_categories the context of
+     * a question category is missing: the questions should be rescued to the site-level
+     * question bank instead of throwing a fatal error.
+     *
+     * @covers ::question_category_delete_safe
+     */
+    public function test_question_catetory_delete_safe_orphaned(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        [, , , $qcat, $questions] = $this->setup_quiz_and_questions();
+
+        // Simulate an orphaned question category by deleting the context from the database directly,
+        // bypassing Moodle's context cleanup so the category still references the now-missing context.
+        $DB->delete_records('context', ['id' => $qcat->contextid]);
+        \context_helper::reset_caches();
+
+        $sink = $this->redirectEvents();
+
+        // Calling question_category_delete_safe on an orphaned category must not throw an exception.
+        question_category_delete_safe($qcat);
+
+        // Verify event question_moved is triggered for systemcontext.
+        $events = $sink->get_events();
+
+        // Reset expected debugging call caused by missing context.
+        $this->resetDebugging();
+
+        $questionmovedevents = array_filter($events, function ($event) {
+            return $event->get_data()['eventname'] === '\core\event\question_moved';
+        });
+
+        $this->assertCount(1, $questionmovedevents);
+        $questionmovedevent = reset($questionmovedevents);
+        $this->assertEquals(SITEID, $questionmovedevent->get_data()['contextid']);
+
+        // Verify category deleted.
+        $criteria = ['id' => $qcat->id];
+        $this->assertEquals(0, $DB->count_records('question_categories', $criteria));
+
+        // Verify questions deleted or moved out of the deleted category.
+        $this->assert_category_contains_questions($qcat->id, 0);
+
+        // Verify question not deleted – it must have been rescued to the site-level question bank.
+        $criteria = ['id' => $questions[0]->id];
+        $savedquestion = $DB->get_record_sql(
+            "SELECT q.*, qbe.questioncategoryid
+               FROM {question} q
+                    JOIN {question_versions} qv ON qv.questionid = q.id
+                    JOIN {question_bank_entries} qbe ON qv.questionbankentryid = qbe.id",
+            $criteria
+        );
+        $this->assertNotEmpty($savedquestion);
+
+        // Verify question now sits in a system qbank at site level (fallback when context is missing).
+        $this->assertNotEquals($qcat->id, $savedquestion->questioncategoryid);
+        $newcategory = $DB->get_record('question_categories', ['id' => $savedquestion->questioncategoryid], strictness: MUST_EXIST);
+        $newcategorycontext = \context::instance_by_id($newcategory->contextid);
+        $this->assertEquals(\context_module::LEVEL, $newcategorycontext->contextlevel);
+        [$newcourse, $newcm] = get_course_and_cm_from_cmid($newcategorycontext->instanceid);
+        $this->assertEquals($newcm->modname, 'qbank');
+        $this->assertEquals(question_bank_helper::TYPE_SYSTEM, $DB->get_field('qbank', 'type', ['id' => $newcm->instance]));
+        // When context is missing, questions must be rescued to the site (SITEID).
+        $this->assertEquals(SITEID, $newcourse->id);
     }
 
     /**
@@ -405,6 +502,8 @@ final class questionlib_test extends \advanced_testcase {
 
     /**
      * This function tests the question_delete_context function.
+     *
+     * @covers ::question_delete_context()
      */
     public function test_question_delete_context(): void {
         global $DB;
@@ -417,110 +516,31 @@ final class questionlib_test extends \advanced_testcase {
         $result = question_delete_context($qcat->contextid);
 
         // Verify category deleted.
-        $criteria = array('id' => $qcat->id);
+        $criteria = ['id' => $qcat->id];
         $this->assertEquals(0, $DB->count_records('question_categories', $criteria));
 
         // Verify questions deleted or moved.
         $this->assert_category_contains_questions($qcat->id, 0);
-    }
-
-    /**
-     * This function tests the question_delete_course function.
-     */
-    public function test_question_delete_course(): void {
-        global $DB;
-        $this->resetAfterTest(true);
-        $this->setAdminUser();
-
-        list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('course');
-
-        // Test the deletion.
-        question_delete_course($course);
-
-        // Verify category deleted.
-        $criteria = array('id' => $qcat->id);
-        $this->assertEquals(0, $DB->count_records('question_categories', $criteria));
-
-        // Verify questions deleted or moved.
-        $this->assert_category_contains_questions($qcat->id, 0);
-    }
-
-    /**
-     * This function tests the question_delete_course_category function.
-     */
-    public function test_question_delete_course_category(): void {
-        global $DB;
-        $this->resetAfterTest(true);
-        $this->setAdminUser();
-
-        list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
-
-        // Test that the feedback works.
-        question_delete_course_category($category, null);
-
-        // Verify category deleted.
-        $criteria = array('id' => $qcat->id);
-        $this->assertEquals(0, $DB->count_records('question_categories', $criteria));
-
-        // Verify questions deleted or moved.
-        $this->assert_category_contains_questions($qcat->id, 0);
-    }
-
-    /**
-     * This function tests the question_delete_course_category function when it is supposed to move question categories.
-     */
-    public function test_question_delete_course_category_move_qcats(): void {
-        global $DB;
-        $this->resetAfterTest(true);
-        $this->setAdminUser();
-
-        list($category1, $course1, $quiz1, $qcat1, $questions1) = $this->setup_quiz_and_questions('category');
-        list($category2, $course2, $quiz2, $qcat2, $questions2) = $this->setup_quiz_and_questions('category');
-
-        $questionsinqcat1 = count($questions1);
-        $questionsinqcat2 = count($questions2);
-
-        // Test the delete.
-        question_delete_course_category($category1, $category2);
-
-        // Verify category not deleted.
-        $criteria = array('id' => $qcat1->id);
-        $this->assertEquals(1, $DB->count_records('question_categories', $criteria));
-
-        // Verify questions are moved.
-        $params = array($qcat2->contextid);
-        $actualquestionscount = $DB->count_records_sql("SELECT COUNT(*)
-                                                              FROM {question} q
-                                                              JOIN {question_versions} qv ON qv.questionid = q.id
-                                                              JOIN {question_bank_entries} qbe ON qbe.id = qv.questionbankentryid
-                                                              JOIN {question_categories} qc ON qc.id = qbe.questioncategoryid
-                                                             WHERE qc.contextid = ?", $params);
-        $this->assertEquals($questionsinqcat1 + $questionsinqcat2, $actualquestionscount);
-
-        // Verify there is just a single top-level category.
-        $criteria = array('contextid' => $qcat2->contextid, 'parent' => 0);
-        $this->assertEquals(1, $DB->count_records('question_categories', $criteria));
-
-        // Verify there is no question category in previous context.
-        $criteria = array('contextid' => $qcat1->contextid);
-        $this->assertEquals(0, $DB->count_records('question_categories', $criteria));
     }
 
     /**
      * This function tests the question_save_from_deletion function when it is supposed to make a new category and
      * move question categories to that new category.
+     *
+     * @covers ::question_save_from_deletion()
      */
     public function test_question_save_from_deletion(): void {
         global $DB;
         $this->resetAfterTest(true);
         $this->setAdminUser();
 
-        list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions();
+        [$category, $course, $quiz, $qcat, $questions] = $this->setup_quiz_and_questions();
+        $qbank = self::getDataGenerator()->create_module('qbank', ['course' => $course->id]);
+        $qbankcontext = \context_module::instance($qbank->cmid);
 
         $context = \context::instance_by_id($qcat->contextid);
 
-        $newcat = question_save_from_deletion(array_column($questions, 'id'),
-                $context->get_parent_context()->id, $context->get_context_name());
+        $newcat = question_save_from_deletion(array_column($questions, 'id'), $qbankcontext->id, $context->get_context_name());
 
         // Verify that the newcat itself is not a tep level category.
         $this->assertNotEquals(0, $newcat->parent);
@@ -532,13 +552,17 @@ final class questionlib_test extends \advanced_testcase {
     /**
      * This function tests the question_save_from_deletion function when it is supposed to make a new category and
      * move question categories to that new category when quiz name is very long but less than 256 characters.
+     *
+     * @covers ::question_save_from_deletion()
      */
     public function test_question_save_from_deletion_quiz_with_long_name(): void {
         global $DB;
         $this->resetAfterTest(true);
         $this->setAdminUser();
 
-        list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions();
+        [$category, $course, $quiz, $qcat, $questions] = $this->setup_quiz_and_questions();
+        $qbank = self::getDataGenerator()->create_module('qbank', ['course' => $course->id]);
+        $qbankcontext = \context_module::instance($qbank->cmid);
 
         // Moodle doesn't allow you to enter a name longer than 255 characters.
         $quiz->name = shorten_text(str_repeat('123456789 ', 26), 255);
@@ -547,8 +571,7 @@ final class questionlib_test extends \advanced_testcase {
 
         $context = \context::instance_by_id($qcat->contextid);
 
-        $newcat = question_save_from_deletion(array_column($questions, 'id'),
-                $context->get_parent_context()->id, $context->get_context_name());
+        $newcat = question_save_from_deletion(array_column($questions, 'id'), $qbankcontext->id, $context->get_context_name());
 
         // Verifying that the inserted record's name is expected or not.
         $this->assertEquals($DB->get_record('question_categories', ['id' => $newcat->id])->name, $newcat->name);
@@ -562,9 +585,11 @@ final class questionlib_test extends \advanced_testcase {
 
     /**
      * get_question_options should add the category object to the given question.
+     *
+     * @covers ::get_question_options()
      */
     public function test_get_question_options_includes_category_object_single_question(): void {
-        list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
+        [$category, $course, $quiz, $qcat, $questions] = $this->setup_quiz_and_questions();
         $question = array_shift($questions);
 
         get_question_options($question);
@@ -575,9 +600,11 @@ final class questionlib_test extends \advanced_testcase {
     /**
      * get_question_options should add the category object to all of the questions in
      * the given list.
+     *
+     * @covers ::get_question_options()
      */
     public function test_get_question_options_includes_category_object_multiple_questions(): void {
-        list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
+        [$category, $course, $quiz, $qcat, $questions] = $this->setup_quiz_and_questions();
 
         get_question_options($questions);
 
@@ -588,9 +615,11 @@ final class questionlib_test extends \advanced_testcase {
 
     /**
      * get_question_options includes the tags for all questions in the list.
+     *
+     * @covers ::get_question_options()
      */
     public function test_get_question_options_includes_question_tags(): void {
-        list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
+        [$category, $course, $quiz, $qcat, $questions] = $this->setup_quiz_and_questions();
         $question1 = $questions[0];
         $question2 = $questions[1];
         $qcontext = \context::instance_by_id($qcat->contextid);
@@ -618,130 +647,6 @@ final class questionlib_test extends \advanced_testcase {
 
             // The question should have a full set of each tag object.
             $this->assertEquals($tags, $actualtagobjects);
-            // The question should not have any course tags.
-            $this->assertEmpty($question->coursetagobjects);
-        }
-    }
-
-    /**
-     * get_question_options includes the course tags for all questions in the list.
-     */
-    public function test_get_question_options_includes_course_tags(): void {
-        list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
-        $question1 = $questions[0];
-        $question2 = $questions[1];
-        $coursecontext = \context_course::instance($course->id);
-
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $coursecontext, ['foo', 'bar']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $coursecontext, ['baz', 'bop']);
-
-        get_question_options($questions, true);
-
-        foreach ($questions as $question) {
-            $tags = \core_tag_tag::get_item_tags('core_question', 'question', $question->id);
-            $expectedcoursetags = [];
-            $actualcoursetags = $question->coursetags;
-            foreach ($tags as $tag) {
-                $expectedcoursetags[$tag->id] = $tag->get_display_name();
-            }
-
-            // The question should have a coursetags property populated with each tag id
-            // and display name as a key vale pair.
-            $this->assertEquals($expectedcoursetags, $actualcoursetags);
-
-            $actualcoursetagobjects = $question->coursetagobjects;
-            sort($tags);
-            sort($actualcoursetagobjects);
-
-            // The question should have a full set of the course tag objects.
-            $this->assertEquals($tags, $actualcoursetagobjects);
-            // The question should not have any other tags.
-            $this->assertEmpty($question->tagobjects);
-            $this->assertEmpty($question->tags);
-        }
-    }
-
-    /**
-     * get_question_options only categorises a tag as a course tag if it is in a
-     * course context that is different from the question context.
-     */
-    public function test_get_question_options_course_tags_in_course_question_context(): void {
-        list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('course');
-        $question1 = $questions[0];
-        $question2 = $questions[1];
-        $coursecontext = \context_course::instance($course->id);
-
-        // Create course level tags in the course context that matches the question
-        // course context.
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $coursecontext, ['foo', 'bar']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $coursecontext, ['baz', 'bop']);
-
-        get_question_options($questions, true);
-
-        foreach ($questions as $question) {
-            $tags = \core_tag_tag::get_item_tags('core_question', 'question', $question->id);
-
-            $actualtagobjects = $question->tagobjects;
-            sort($tags);
-            sort($actualtagobjects);
-
-            // The tags should not be considered course tags because they are in
-            // the same context as the question. That makes them question tags.
-            $this->assertEmpty($question->coursetagobjects);
-            // The course context tags should be returned in the regular tag object
-            // list.
-            $this->assertEquals($tags, $actualtagobjects);
-        }
-    }
-
-    /**
-     * get_question_options includes the tags and course tags for all questions in the list
-     * if each question has course and question level tags.
-     */
-    public function test_get_question_options_includes_question_and_course_tags(): void {
-        list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
-        $question1 = $questions[0];
-        $question2 = $questions[1];
-        $qcontext = \context::instance_by_id($qcat->contextid);
-        $coursecontext = \context_course::instance($course->id);
-
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $qcontext, ['foo', 'bar']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $coursecontext, ['cfoo', 'cbar']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $qcontext, ['baz', 'bop']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $coursecontext, ['cbaz', 'cbop']);
-
-        get_question_options($questions, true);
-
-        foreach ($questions as $question) {
-            $alltags = \core_tag_tag::get_item_tags('core_question', 'question', $question->id);
-            $tags = array_filter($alltags, function($tag) use ($qcontext) {
-                return $tag->taginstancecontextid == $qcontext->id;
-            });
-            $coursetags = array_filter($alltags, function($tag) use ($coursecontext) {
-                return $tag->taginstancecontextid == $coursecontext->id;
-            });
-
-            $expectedtags = [];
-            $actualtags = $question->tags;
-            foreach ($tags as $tag) {
-                $expectedtags[$tag->id] = $tag->get_display_name();
-            }
-
-            // The question should have a tags property populated with each tag id
-            // and display name as a key vale pair.
-            $this->assertEquals($expectedtags, $actualtags);
-
-            $actualtagobjects = $question->tagobjects;
-            sort($tags);
-            sort($actualtagobjects);
-            // The question should have a full set of each tag object.
-            $this->assertEquals($tags, $actualtagobjects);
-
-            $actualcoursetagobjects = $question->coursetagobjects;
-            sort($coursetags);
-            sort($actualcoursetagobjects);
-            // The question should have a full set of course tag objects.
-            $this->assertEquals($coursetags, $actualcoursetagobjects);
         }
     }
 
@@ -749,9 +654,11 @@ final class questionlib_test extends \advanced_testcase {
      * get_question_options should update the context id to the question category
      * context id for any non-course context tag that isn't in the question category
      * context.
+     *
+     * @covers ::get_question_options()
      */
     public function test_get_question_options_normalises_question_tags(): void {
-        list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
+        list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions();
         $question1 = $questions[0];
         $question2 = $questions[1];
         $qcontext = \context::instance_by_id($qcat->contextid);
@@ -789,606 +696,33 @@ final class questionlib_test extends \advanced_testcase {
     }
 
     /**
-     * get_question_options if the question is a course level question then tags
-     * in that context should not be consdered course tags, they are question tags.
-     */
-    public function test_get_question_options_includes_course_context_question_tags(): void {
-        list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('course');
-        $question1 = $questions[0];
-        $question2 = $questions[1];
-        $coursecontext = \context_course::instance($course->id);
-
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $coursecontext, ['foo', 'bar']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $coursecontext, ['baz', 'bop']);
-
-        get_question_options($questions, true);
-
-        foreach ($questions as $question) {
-            $tags = \core_tag_tag::get_item_tags('core_question', 'question', $question->id);
-            // Tags in a course context that matches the question context should
-            // not be considered course tags.
-            $this->assertEmpty($question->coursetagobjects);
-            $this->assertEmpty($question->coursetags);
-
-            $actualtagobjects = $question->tagobjects;
-            sort($tags);
-            sort($actualtagobjects);
-            // The tags should be considered question tags not course tags.
-            $this->assertEquals($tags, $actualtagobjects);
-        }
-    }
-
-    /**
-     * get_question_options should return tags from all course contexts by default.
-     */
-    public function test_get_question_options_includes_multiple_courses_tags(): void {
-        list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
-        $question1 = $questions[0];
-        $question2 = $questions[1];
-        $coursecontext = \context_course::instance($course->id);
-        // Create a sibling course.
-        $siblingcourse = $this->getDataGenerator()->create_course(['category' => $course->category]);
-        $siblingcoursecontext = \context_course::instance($siblingcourse->id);
-
-        // Create course tags.
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $coursecontext, ['c1']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $coursecontext, ['c1']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $siblingcoursecontext, ['c2']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $siblingcoursecontext, ['c2']);
-
-        get_question_options($questions, true);
-
-        foreach ($questions as $question) {
-            $this->assertCount(2, $question->coursetagobjects);
-
-            foreach ($question->coursetagobjects as $tag) {
-                if ($tag->name == 'c1') {
-                    $this->assertEquals($coursecontext->id, $tag->taginstancecontextid);
-                } else {
-                    $this->assertEquals($siblingcoursecontext->id, $tag->taginstancecontextid);
-                }
-            }
-        }
-    }
-
-    /**
-     * get_question_options should filter the course tags by the given list of courses.
-     */
-    public function test_get_question_options_includes_filter_course_tags(): void {
-        list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
-        $question1 = $questions[0];
-        $question2 = $questions[1];
-        $coursecontext = \context_course::instance($course->id);
-        // Create a sibling course.
-        $siblingcourse = $this->getDataGenerator()->create_course(['category' => $course->category]);
-        $siblingcoursecontext = \context_course::instance($siblingcourse->id);
-
-        // Create course tags.
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $coursecontext, ['foo']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $coursecontext, ['bar']);
-        // Create sibling course tags. These should be filtered out.
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $siblingcoursecontext, ['filtered1']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $siblingcoursecontext, ['filtered2']);
-
-        // Ask to only receive course tags from $course (ignoring $siblingcourse tags).
-        get_question_options($questions, true, [$course]);
-
-        foreach ($questions as $question) {
-            foreach ($question->coursetagobjects as $tag) {
-                // We should only be seeing course tags from $course. The tags from
-                // $siblingcourse should have been filtered out.
-                $this->assertEquals($coursecontext->id, $tag->taginstancecontextid);
-            }
-        }
-    }
-
-    /**
-     * question_move_question_tags_to_new_context should update all of the
-     * question tags contexts when they are moving down (from system to course
-     * category context).
-     */
-    public function test_question_move_question_tags_to_new_context_system_to_course_cat_qtags(): void {
-        list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('system');
-        $question1 = $questions[0];
-        $question2 = $questions[1];
-        $qcontext = \context::instance_by_id($qcat->contextid);
-        $newcontext = \context_coursecat::instance($category->id);
-
-        foreach ($questions as $question) {
-            $question->contextid = $qcat->contextid;
-        }
-
-        // Create tags in the system context.
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $qcontext, ['foo', 'bar']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $qcontext, ['foo', 'bar']);
-
-        question_move_question_tags_to_new_context($questions, $newcontext);
-
-        foreach ($questions as $question) {
-            $tags = \core_tag_tag::get_item_tags('core_question', 'question', $question->id);
-
-            // All of the tags should have their context id set to the new context.
-            foreach ($tags as $tag) {
-                $this->assertEquals($newcontext->id, $tag->taginstancecontextid);
-            }
-        }
-    }
-
-    /**
-     * question_move_question_tags_to_new_context should update all of the question tags
-     * contexts when they are moving down (from system to course category context)
-     * but leave any tags in the course context where they are.
-     */
-    public function test_question_move_question_tags_to_new_context_system_to_course_cat_qtags_and_course_tags(): void {
-        list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('system');
-        $question1 = $questions[0];
-        $question2 = $questions[1];
-        $qcontext = \context::instance_by_id($qcat->contextid);
-        $coursecontext = \context_course::instance($course->id);
-        $newcontext = \context_coursecat::instance($category->id);
-
-        foreach ($questions as $question) {
-            $question->contextid = $qcat->contextid;
-        }
-
-        // Create tags in the system context.
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $qcontext, ['foo']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $qcontext, ['foo']);
-        // Create tags in the course context.
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $coursecontext, ['ctag']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $coursecontext, ['ctag']);
-
-        question_move_question_tags_to_new_context($questions, $newcontext);
-
-        foreach ($questions as $question) {
-            $tags = \core_tag_tag::get_item_tags('core_question', 'question', $question->id);
-
-            foreach ($tags as $tag) {
-                if ($tag->name == 'ctag') {
-                    // Course tags should remain in the course context.
-                    $this->assertEquals($coursecontext->id, $tag->taginstancecontextid);
-                } else {
-                    // Other tags should be updated.
-                    $this->assertEquals($newcontext->id, $tag->taginstancecontextid);
-                }
-            }
-        }
-    }
-
-    /**
-     * question_move_question_tags_to_new_context should update all of the question
-     * contexts tags when they are moving up (from course category to system context).
-     */
-    public function test_question_move_question_tags_to_new_context_course_cat_to_system_qtags(): void {
-        list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
-        $question1 = $questions[0];
-        $question2 = $questions[1];
-        $qcontext = \context::instance_by_id($qcat->contextid);
-        $newcontext = \context_system::instance();
-
-        foreach ($questions as $question) {
-            $question->contextid = $qcat->contextid;
-        }
-
-        // Create tags in the course category context.
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $qcontext, ['foo', 'bar']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $qcontext, ['foo', 'bar']);
-
-        question_move_question_tags_to_new_context($questions, $newcontext);
-
-        foreach ($questions as $question) {
-            $tags = \core_tag_tag::get_item_tags('core_question', 'question', $question->id);
-
-            // All of the tags should have their context id set to the new context.
-            foreach ($tags as $tag) {
-                $this->assertEquals($newcontext->id, $tag->taginstancecontextid);
-            }
-        }
-    }
-
-    /**
-     * question_move_question_tags_to_new_context should update all of the question
-     * tags contexts when they are moving up (from course category context to system
-     * context) but leave any tags in the course context where they are.
-     */
-    public function test_question_move_question_tags_to_new_context_course_cat_to_system_qtags_and_course_tags(): void {
-        list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
-        $question1 = $questions[0];
-        $question2 = $questions[1];
-        $qcontext = \context::instance_by_id($qcat->contextid);
-        $coursecontext = \context_course::instance($course->id);
-        $newcontext = \context_system::instance();
-
-        foreach ($questions as $question) {
-            $question->contextid = $qcat->contextid;
-        }
-
-        // Create tags in the system context.
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $qcontext, ['foo']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $qcontext, ['foo']);
-        // Create tags in the course context.
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $coursecontext, ['ctag']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $coursecontext, ['ctag']);
-
-        question_move_question_tags_to_new_context($questions, $newcontext);
-
-        foreach ($questions as $question) {
-            $tags = \core_tag_tag::get_item_tags('core_question', 'question', $question->id);
-
-            foreach ($tags as $tag) {
-                if ($tag->name == 'ctag') {
-                    // Course tags should remain in the course context.
-                    $this->assertEquals($coursecontext->id, $tag->taginstancecontextid);
-                } else {
-                    // Other tags should be updated.
-                    $this->assertEquals($newcontext->id, $tag->taginstancecontextid);
-                }
-            }
-        }
-    }
-
-    /**
-     * question_move_question_tags_to_new_context should merge all tags into the course
-     * context when moving down from course category context into course context.
-     */
-    public function test_question_move_question_tags_to_new_context_course_cat_to_coures_qtags_and_course_tags(): void {
-        list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
-        $question1 = $questions[0];
-        $question2 = $questions[1];
-        $qcontext = \context::instance_by_id($qcat->contextid);
-        $coursecontext = \context_course::instance($course->id);
-        $newcontext = $coursecontext;
-
-        foreach ($questions as $question) {
-            $question->contextid = $qcat->contextid;
-        }
-
-        // Create tags in the system context.
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $qcontext, ['foo']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $qcontext, ['foo']);
-        // Create tags in the course context.
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $coursecontext, ['ctag']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $coursecontext, ['ctag']);
-
-        question_move_question_tags_to_new_context($questions, $newcontext);
-
-        foreach ($questions as $question) {
-            $tags = \core_tag_tag::get_item_tags('core_question', 'question', $question->id);
-            // Each question should have 2 tags.
-            $this->assertCount(2, $tags);
-
-            foreach ($tags as $tag) {
-                // All tags should be updated to the course context and merged in.
-                $this->assertEquals($newcontext->id, $tag->taginstancecontextid);
-            }
-        }
-    }
-
-    /**
-     * question_move_question_tags_to_new_context should delete all of the tag
-     * instances from sibling courses when moving the context of a question down
-     * from a course category into a course context because the other courses will
-     * no longer have access to the question.
-     */
-    public function test_question_move_question_tags_to_new_context_remove_other_course_tags(): void {
-        list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
-        // Create a sibling course.
-        $siblingcourse = $this->getDataGenerator()->create_course(['category' => $course->category]);
-        $question1 = $questions[0];
-        $question2 = $questions[1];
-        $qcontext = \context::instance_by_id($qcat->contextid);
-        $coursecontext = \context_course::instance($course->id);
-        $siblingcoursecontext = \context_course::instance($siblingcourse->id);
-        $newcontext = $coursecontext;
-
-        foreach ($questions as $question) {
-            $question->contextid = $qcat->contextid;
-        }
-
-        // Create tags in the system context.
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $qcontext, ['foo']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $qcontext, ['foo']);
-        // Create tags in the target course context.
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $coursecontext, ['ctag']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $coursecontext, ['ctag']);
-        // Create tags in the sibling course context. These should be deleted as
-        // part of the move.
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $siblingcoursecontext, ['stag']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $siblingcoursecontext, ['stag']);
-
-        question_move_question_tags_to_new_context($questions, $newcontext);
-
-        foreach ($questions as $question) {
-            $tags = \core_tag_tag::get_item_tags('core_question', 'question', $question->id);
-            // Each question should have 2 tags, 'foo' and 'ctag'.
-            $this->assertCount(2, $tags);
-
-            foreach ($tags as $tag) {
-                $tagname = $tag->name;
-                // The 'stag' should have been deleted because it's in a sibling
-                // course context.
-                $this->assertContains($tagname, ['foo', 'ctag']);
-                // All tags should be in the course context now.
-                $this->assertEquals($coursecontext->id, $tag->taginstancecontextid);
-            }
-        }
-    }
-
-    /**
-     * question_move_question_tags_to_new_context should update all of the question
-     * tags to be the course category context when moving the tags from a course
-     * context to a course category context.
-     */
-    public function test_question_move_question_tags_to_new_context_course_to_course_cat(): void {
-        list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('course');
-        $question1 = $questions[0];
-        $question2 = $questions[1];
-        $qcontext = \context::instance_by_id($qcat->contextid);
-        // Moving up into the course category context.
-        $newcontext = \context_coursecat::instance($category->id);
-
-        foreach ($questions as $question) {
-            $question->contextid = $qcat->contextid;
-        }
-
-        // Create tags in the course context.
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $qcontext, ['foo']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $qcontext, ['foo']);
-
-        question_move_question_tags_to_new_context($questions, $newcontext);
-
-        foreach ($questions as $question) {
-            $tags = \core_tag_tag::get_item_tags('core_question', 'question', $question->id);
-
-            // All of the tags should have their context id set to the new context.
-            foreach ($tags as $tag) {
-                $this->assertEquals($newcontext->id, $tag->taginstancecontextid);
-            }
-        }
-    }
-
-    /**
-     * question_move_question_tags_to_new_context should update all of the
-     * question tags contexts when they are moving down (from system to course
-     * category context).
-     */
-    public function test_question_move_question_tags_to_new_context_orphaned_tag_contexts(): void {
-        list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('system');
-        $question1 = $questions[0];
-        $question2 = $questions[1];
-        $othercategory = $this->getDataGenerator()->create_category();
-        $qcontext = \context::instance_by_id($qcat->contextid);
-        $newcontext = \context_coursecat::instance($category->id);
-        $othercategorycontext = \context_coursecat::instance($othercategory->id);
-
-        foreach ($questions as $question) {
-            $question->contextid = $qcat->contextid;
-        }
-
-        // Create tags in the system context.
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $qcontext, ['foo']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $qcontext, ['foo']);
-        // Create tags in the other course category context. These should be
-        // update to the next context id because they represent erroneous data
-        // from a time before context id was mandatory in the tag API.
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $othercategorycontext, ['bar']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $othercategorycontext, ['bar']);
-
-        question_move_question_tags_to_new_context($questions, $newcontext);
-
-        foreach ($questions as $question) {
-            $tags = \core_tag_tag::get_item_tags('core_question', 'question', $question->id);
-            // Each question should have two tags, 'foo' and 'bar'.
-            $this->assertCount(2, $tags);
-
-            // All of the tags should have their context id set to the new context
-            // (course category context).
-            foreach ($tags as $tag) {
-                $this->assertEquals($newcontext->id, $tag->taginstancecontextid);
-            }
-        }
-    }
-
-    /**
-     * When moving from a course category context down into an activity context
-     * all question context tags and course tags (where the course is a parent of
-     * the activity) should move into the new context.
-     */
-    public function test_question_move_question_tags_to_new_context_course_cat_to_activity_qtags_and_course_tags(): void {
-        list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
-        $question1 = $questions[0];
-        $question2 = $questions[1];
-        $qcontext = \context::instance_by_id($qcat->contextid);
-        $coursecontext = \context_course::instance($course->id);
-        $newcontext = \context_module::instance($quiz->cmid);
-
-        foreach ($questions as $question) {
-            $question->contextid = $qcat->contextid;
-        }
-
-        // Create tags in the course category context.
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $qcontext, ['foo']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $qcontext, ['foo']);
-        // Move the questions to the activity context which is a child context of
-        // $coursecontext.
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $coursecontext, ['ctag']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $coursecontext, ['ctag']);
-
-        question_move_question_tags_to_new_context($questions, $newcontext);
-
-        foreach ($questions as $question) {
-            $tags = \core_tag_tag::get_item_tags('core_question', 'question', $question->id);
-            // Each question should have 2 tags.
-            $this->assertCount(2, $tags);
-
-            foreach ($tags as $tag) {
-                $this->assertEquals($newcontext->id, $tag->taginstancecontextid);
-            }
-        }
-    }
-
-    /**
-     * When moving from a course category context down into an activity context
-     * all question context tags and course tags (where the course is a parent of
-     * the activity) should move into the new context. Tags in course contexts
-     * that are not a parent of the activity context should be deleted.
-     */
-    public function test_question_move_question_tags_to_new_context_course_cat_to_activity_orphaned_tags(): void {
-        list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
-        $question1 = $questions[0];
-        $question2 = $questions[1];
-        $qcontext = \context::instance_by_id($qcat->contextid);
-        $coursecontext = \context_course::instance($course->id);
-        $newcontext = \context_module::instance($quiz->cmid);
-        $othercourse = $this->getDataGenerator()->create_course();
-        $othercoursecontext = \context_course::instance($othercourse->id);
-
-        foreach ($questions as $question) {
-            $question->contextid = $qcat->contextid;
-        }
-
-        // Create tags in the course category context.
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $qcontext, ['foo']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $qcontext, ['foo']);
-        // Create tags in the course context.
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $coursecontext, ['ctag']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $coursecontext, ['ctag']);
-        // Create tags in the other course context. These should be deleted.
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $othercoursecontext, ['delete']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $othercoursecontext, ['delete']);
-
-        // Move the questions to the activity context which is a child context of
-        // $coursecontext.
-        question_move_question_tags_to_new_context($questions, $newcontext);
-
-        foreach ($questions as $question) {
-            $tags = \core_tag_tag::get_item_tags('core_question', 'question', $question->id);
-            // Each question should have 2 tags.
-            $this->assertCount(2, $tags);
-
-            foreach ($tags as $tag) {
-                // Make sure we don't have any 'delete' tags.
-                $this->assertContains($tag->name, ['foo', 'ctag']);
-                $this->assertEquals($newcontext->id, $tag->taginstancecontextid);
-            }
-        }
-    }
-
-    /**
-     * When moving from a course context down into an activity context all of the
-     * course tags should move into the activity context.
-     */
-    public function test_question_move_question_tags_to_new_context_course_to_activity_qtags(): void {
-        list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('course');
-        $question1 = $questions[0];
-        $question2 = $questions[1];
-        $qcontext = \context::instance_by_id($qcat->contextid);
-        $newcontext = \context_module::instance($quiz->cmid);
-
-        foreach ($questions as $question) {
-            $question->contextid = $qcat->contextid;
-        }
-
-        // Create tags in the course context.
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $qcontext, ['foo']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $qcontext, ['foo']);
-
-        question_move_question_tags_to_new_context($questions, $newcontext);
-
-        foreach ($questions as $question) {
-            $tags = \core_tag_tag::get_item_tags('core_question', 'question', $question->id);
-
-            foreach ($tags as $tag) {
-                $this->assertEquals($newcontext->id, $tag->taginstancecontextid);
-            }
-        }
-    }
-
-    /**
-     * When moving from a course context down into an activity context all of the
-     * course tags should move into the activity context.
-     */
-    public function test_question_move_question_tags_to_new_context_activity_to_course_qtags(): void {
-        list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions();
-        $question1 = $questions[0];
-        $question2 = $questions[1];
-        $qcontext = \context::instance_by_id($qcat->contextid);
-        $newcontext = \context_course::instance($course->id);
-
-        foreach ($questions as $question) {
-            $question->contextid = $qcat->contextid;
-        }
-
-        // Create tags in the activity context.
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $qcontext, ['foo']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $qcontext, ['foo']);
-
-        question_move_question_tags_to_new_context($questions, $newcontext);
-
-        foreach ($questions as $question) {
-            $tags = \core_tag_tag::get_item_tags('core_question', 'question', $question->id);
-
-            foreach ($tags as $tag) {
-                $this->assertEquals($newcontext->id, $tag->taginstancecontextid);
-            }
-        }
-    }
-
-    /**
-     * question_move_question_tags_to_new_context should update all of the
-     * question tags contexts when they are moving down (from system to course
-     * category context).
+     * When moving all tags from one activity context into another activity context.
      *
-     * Course tags within the new category context should remain while any course
-     * tags in course contexts that can no longer access the question should be
-     * deleted.
+     * @covers ::question_move_question_tags_to_new_context()
      */
-    public function test_question_move_question_tags_to_new_context_system_to_course_cat_with_orphaned_tags(): void {
-        list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('system');
+    public function test_question_move_question_tags_to_new_context_activity_to_activity_qtags(): void {
+        [$category, $course, $quiz, $qcat, $questions] = $this->setup_quiz_and_questions();
+        $qbank = self::getDataGenerator()->create_module('qbank', ['course' => $course->id]);
         $question1 = $questions[0];
         $question2 = $questions[1];
-        $othercategory = $this->getDataGenerator()->create_category();
-        $othercourse = $this->getDataGenerator()->create_course(['category' => $othercategory->id]);
         $qcontext = \context::instance_by_id($qcat->contextid);
-        $newcontext = \context_coursecat::instance($category->id);
-        $othercategorycontext = \context_coursecat::instance($othercategory->id);
-        $coursecontext = \context_course::instance($course->id);
-        $othercoursecontext = \context_course::instance($othercourse->id);
+        $newcontext = \context_module::instance($qbank->cmid);
 
         foreach ($questions as $question) {
             $question->contextid = $qcat->contextid;
         }
 
-        // Create tags in the system context.
+        // Create tags in the quiz context.
         \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $qcontext, ['foo']);
         \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $qcontext, ['foo']);
-        // Create tags in the child course context of the new context.
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $coursecontext, ['bar']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $coursecontext, ['bar']);
-        // Create tags in the other course context. These should be deleted when
-        // the question moves to the new course category context because this
-        // course belongs to a different category, which means it will no longer
-        // have access to the question.
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $othercoursecontext, ['delete']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $othercoursecontext, ['delete']);
 
         question_move_question_tags_to_new_context($questions, $newcontext);
 
         foreach ($questions as $question) {
             $tags = \core_tag_tag::get_item_tags('core_question', 'question', $question->id);
-            // Each question should have two tags, 'foo' and 'bar'.
-            $this->assertCount(2, $tags);
 
-            // All of the tags should have their context id set to the new context
-            // (course category context).
             foreach ($tags as $tag) {
-                $this->assertContains($tag->name, ['foo', 'bar']);
-
-                if ($tag->name == 'foo') {
-                    $this->assertEquals($newcontext->id, $tag->taginstancecontextid);
-                } else {
-                    $this->assertEquals($coursecontext->id, $tag->taginstancecontextid);
-                }
+                $this->assertEquals($newcontext->id, $tag->taginstancecontextid);
             }
         }
     }
@@ -1398,7 +732,7 @@ final class questionlib_test extends \advanced_testcase {
      */
     public function test_question_sort_tags_includes_question_tags(): void {
 
-        list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
+        [$category, $course, $quiz, $qcat, $questions] = $this->setup_quiz_and_questions();
         $question1 = $questions[0];
         $question2 = $questions[1];
         $qcontext = \context::instance_by_id($qcat->contextid);
@@ -1426,115 +760,6 @@ final class questionlib_test extends \advanced_testcase {
 
             // The question should have a full set of each tag object.
             $this->assertEquals($tags, $actualtagobjects);
-            // The question should not have any course tags.
-            $this->assertEmpty($tagobjects->coursetagobjects);
-        }
-    }
-
-    /**
-     * question_sort_tags() includes course tags for all questions in the list.
-     */
-    public function test_question_sort_tags_includes_question_course_tags(): void {
-        global $DB;
-
-        list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
-        $question1 = $questions[0];
-        $question2 = $questions[1];
-        $coursecontext = \context_course::instance($course->id);
-
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $coursecontext, ['foo', 'bar']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $coursecontext, ['baz', 'bop']);
-
-        foreach ($questions as $question) {
-            $tags = \core_tag_tag::get_item_tags('core_question', 'question', $question->id);
-            $tagobjects = question_sort_tags($tags, $qcat);
-
-            $expectedtags = [];
-            $actualtags = $tagobjects->coursetags;
-            foreach ($actualtags as $coursetagid => $coursetagname) {
-                $expectedtags[$coursetagid] = $coursetagname;
-            }
-
-            // The question should have a tags property populated with each tag id
-            // and display name as a key vale pair.
-            $this->assertEquals($expectedtags, $actualtags);
-
-            $actualtagobjects = $tagobjects->coursetagobjects;
-            sort($tags);
-            sort($actualtagobjects);
-
-            // The question should have a full set of each tag object.
-            $this->assertEquals($tags, $actualtagobjects);
-            // The question should not have any course tags.
-            $this->assertEmpty($tagobjects->tagobjects);
-        }
-    }
-
-    /**
-     * question_sort_tags() should return tags from all course contexts by default.
-     */
-    public function test_question_sort_tags_includes_multiple_courses_tags(): void {
-        global $DB;
-
-        list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
-        $question1 = $questions[0];
-        $question2 = $questions[1];
-        $coursecontext = \context_course::instance($course->id);
-        // Create a sibling course.
-        $siblingcourse = $this->getDataGenerator()->create_course(['category' => $course->category]);
-        $siblingcoursecontext = \context_course::instance($siblingcourse->id);
-
-        // Create course tags.
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $coursecontext, ['c1']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $coursecontext, ['c1']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $siblingcoursecontext, ['c2']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $siblingcoursecontext, ['c2']);
-
-        foreach ($questions as $question) {
-            $tags = \core_tag_tag::get_item_tags('core_question', 'question', $question->id);
-            $tagobjects = question_sort_tags($tags, $qcat);
-            $this->assertCount(2, $tagobjects->coursetagobjects);
-
-            foreach ($tagobjects->coursetagobjects as $tag) {
-                if ($tag->name == 'c1') {
-                    $this->assertEquals($coursecontext->id, $tag->taginstancecontextid);
-                } else {
-                    $this->assertEquals($siblingcoursecontext->id, $tag->taginstancecontextid);
-                }
-            }
-        }
-    }
-
-    /**
-     * question_sort_tags() should filter the course tags by the given list of courses.
-     */
-    public function test_question_sort_tags_includes_filter_course_tags(): void {
-        global $DB;
-
-        list($category, $course, $quiz, $qcat, $questions) = $this->setup_quiz_and_questions('category');
-        $question1 = $questions[0];
-        $question2 = $questions[1];
-        $coursecontext = \context_course::instance($course->id);
-        // Create a sibling course.
-        $siblingcourse = $this->getDataGenerator()->create_course(['category' => $course->category]);
-        $siblingcoursecontext = \context_course::instance($siblingcourse->id);
-
-        // Create course tags.
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $coursecontext, ['foo']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $coursecontext, ['bar']);
-        // Create sibling course tags. These should be filtered out.
-        \core_tag_tag::set_item_tags('core_question', 'question', $question1->id, $siblingcoursecontext, ['filtered1']);
-        \core_tag_tag::set_item_tags('core_question', 'question', $question2->id, $siblingcoursecontext, ['filtered2']);
-
-        foreach ($questions as $question) {
-            $tags = \core_tag_tag::get_item_tags('core_question', 'question', $question->id);
-            $tagobjects = question_sort_tags($tags, $qcat, [$course]);
-            foreach ($tagobjects->coursetagobjects as $tag) {
-
-                // We should only be seeing course tags from $course. The tags from
-                // $siblingcourse should have been filtered out.
-                $this->assertEquals($coursecontext->id, $tag->taginstancecontextid);
-            }
         }
     }
 
@@ -1549,7 +774,7 @@ final class questionlib_test extends \advanced_testcase {
                 'capabilities' => [
                     'moodle/question:config' => CAP_ALLOW,
                 ],
-                'testcapability' => 'config',
+                'capability' => 'config',
                 'isowner' => true,
                 'expect' => true,
             ],
@@ -1557,21 +782,21 @@ final class questionlib_test extends \advanced_testcase {
                 'capabilities' => [
                     'moodle/question:config' => CAP_ALLOW,
                 ],
-                'testcapability' => 'config',
+                'capability' => 'config',
                 'isowner' => false,
                 'expect' => true,
             ],
             'Unrelated capability which is not set' => [
                 'capabilities' => [
                 ],
-                'testcapability' => 'config',
+                'capability' => 'config',
                 'isowner' => true,
                 'expect' => false,
             ],
             'Unrelated capability which is not set (not owner)' => [
                 'capabilities' => [
                 ],
-                'testcapability' => 'config',
+                'capability' => 'config',
                 'isowner' => false,
                 'expect' => false,
             ],
@@ -1579,7 +804,7 @@ final class questionlib_test extends \advanced_testcase {
                 'capabilities' => [
                     'moodle/question:config' => CAP_PREVENT,
                 ],
-                'testcapability' => 'config',
+                'capability' => 'config',
                 'isowner' => true,
                 'expect' => false,
             ],
@@ -1587,21 +812,21 @@ final class questionlib_test extends \advanced_testcase {
                 'capabilities' => [
                     'moodle/question:config' => CAP_PREVENT,
                 ],
-                'testcapability' => 'config',
+                'capability' => 'config',
                 'isowner' => false,
                 'expect' => false,
             ],
             'Related capability which is not set' => [
                 'capabilities' => [
                 ],
-                'testcapability' => 'edit',
+                'capability' => 'edit',
                 'isowner' => true,
                 'expect' => false,
             ],
             'Related capability which is not set (not owner)' => [
                 'capabilities' => [
                 ],
-                'testcapability' => 'edit',
+                'capability' => 'edit',
                 'isowner' => false,
                 'expect' => false,
             ],
@@ -1609,7 +834,7 @@ final class questionlib_test extends \advanced_testcase {
                 'capabilities' => [
                     'moodle/question:editall' => CAP_ALLOW,
                 ],
-                'testcapability' => 'edit',
+                'capability' => 'edit',
                 'isowner' => true,
                 'expect' => true,
             ],
@@ -1617,7 +842,7 @@ final class questionlib_test extends \advanced_testcase {
                 'capabilities' => [
                     'moodle/question:editall' => CAP_ALLOW,
                 ],
-                'testcapability' => 'edit',
+                'capability' => 'edit',
                 'isowner' => false,
                 'expect' => true,
             ],
@@ -1626,7 +851,7 @@ final class questionlib_test extends \advanced_testcase {
                     'moodle/question:editall' => CAP_ALLOW,
                     'moodle/question:editmine' => CAP_PREVENT,
                 ],
-                'testcapability' => 'edit',
+                'capability' => 'edit',
                 'isowner' => true,
                 'expect' => true,
             ],
@@ -1635,7 +860,7 @@ final class questionlib_test extends \advanced_testcase {
                     'moodle/question:editall' => CAP_ALLOW,
                     'moodle/question:editmine' => CAP_PREVENT,
                 ],
-                'testcapability' => 'edit',
+                'capability' => 'edit',
                 'isowner' => false,
                 'expect' => true,
             ],
@@ -1644,7 +869,7 @@ final class questionlib_test extends \advanced_testcase {
                     'moodle/question:editall' => CAP_PREVENT,
                     'moodle/question:editmine' => CAP_ALLOW,
                 ],
-                'testcapability' => 'edit',
+                'capability' => 'edit',
                 'isowner' => true,
                 'expect' => true,
             ],
@@ -1653,7 +878,7 @@ final class questionlib_test extends \advanced_testcase {
                     'moodle/question:editall' => CAP_PREVENT,
                     'moodle/question:editmine' => CAP_ALLOW,
                 ],
-                'testcapability' => 'edit',
+                'capability' => 'edit',
                 'isowner' => false,
                 'expect' => false,
             ],
@@ -1671,8 +896,7 @@ final class questionlib_test extends \advanced_testcase {
          /** @var \core_question_generator $questiongenerator */
          $questiongenerator = $generator->get_plugin_generator('core_question');
 
-        $category = $generator->create_category();
-        $context = \context_coursecat::instance($category->id);
+        $context = $this->create_course_and_question_bank();
         $questioncat = $questiongenerator->create_question_category([
             'contextid' => $context->id,
         ]);
@@ -1755,8 +979,7 @@ final class questionlib_test extends \advanced_testcase {
         $user = $generator->create_user();
         $otheruser = $generator->create_user();
         $roleid = $generator->create_role();
-        $category = $generator->create_category();
-        $context = \context_coursecat::instance($category->id);
+        $context = $this->create_course_and_question_bank();
         $questioncat = $questiongenerator->create_question_category([
             'contextid' => $context->id,
         ]);
@@ -1802,8 +1025,7 @@ final class questionlib_test extends \advanced_testcase {
         $user = $generator->create_user();
         $otheruser = $generator->create_user();
         $roleid = $generator->create_role();
-        $category = $generator->create_category();
-        $context = \context_coursecat::instance($category->id);
+        $context = $this->create_course_and_question_bank();
         $questioncat = $questiongenerator->create_question_category([
             'contextid' => $context->id,
         ]);
@@ -1849,8 +1071,7 @@ final class questionlib_test extends \advanced_testcase {
         $user = $generator->create_user();
         $otheruser = $generator->create_user();
         $roleid = $generator->create_role();
-        $category = $generator->create_category();
-        $context = \context_coursecat::instance($category->id);
+        $context = $this->create_course_and_question_bank();
         $questioncat = $questiongenerator->create_question_category([
             'contextid' => $context->id,
         ]);
@@ -1896,14 +1117,14 @@ final class questionlib_test extends \advanced_testcase {
         $user = $generator->create_user();
         $otheruser = $generator->create_user();
         $roleid = $generator->create_role();
-        $category = $generator->create_category();
-        $context = \context_coursecat::instance($category->id);
+        $context = $this->create_course_and_question_bank();
+        $coursecontext = $context->get_course_context();
         $questioncat = $questiongenerator->create_question_category([
             'contextid' => $context->id,
         ]);
 
-        $newcategory = $generator->create_category();
-        $newcontext = \context_coursecat::instance($newcategory->id);
+        $qbank2 = $generator->create_module('qbank', ['course' => $coursecontext->instanceid]);
+        $newcontext = \context_module::instance($qbank2->cmid);
         $newquestioncat = $questiongenerator->create_question_category([
             'contextid' => $newcontext->id,
         ]);
@@ -1953,8 +1174,7 @@ final class questionlib_test extends \advanced_testcase {
         $user = $generator->create_user();
         $otheruser = $generator->create_user();
         $roleid = $generator->create_role();
-        $category = $generator->create_category();
-        $context = \context_coursecat::instance($category->id);
+        $context = $this->create_course_and_question_bank();
         $questioncat = $questiongenerator->create_question_category([
             'contextid' => $context->id,
         ]);
@@ -1989,8 +1209,7 @@ final class questionlib_test extends \advanced_testcase {
         $questiongenerator = $generator->get_plugin_generator('core_question');
         $user = $generator->create_user();
 
-        $category = $generator->create_category();
-        $context = \context_coursecat::instance($category->id);
+        $context = $this->create_course_and_question_bank();
         $questioncat = $questiongenerator->create_question_category([
             'contextid' => $context->id,
         ]);
@@ -2067,11 +1286,10 @@ final class questionlib_test extends \advanced_testcase {
         /** @var \core_question_generator $questiongenerator */
         $questiongenerator = $this->getDataGenerator()->get_plugin_generator('core_question');
         // Create a Course.
-        $course = $this->getDataGenerator()->create_course();
-        $coursecontext = \context_course::instance($course->id);
+        $context = $this->create_course_and_question_bank();
 
-        $top = question_get_top_category($coursecontext->id, true);
-        $cat1 = $questiongenerator->create_question_category(['parent' => $top->id]);
+        $top = question_get_top_category($context->id, true);
+        $cat1 = question_get_default_category($context->id);
         $sub11 = $questiongenerator->create_question_category(['parent' => $cat1->id]);
         $sub12 = $questiongenerator->create_question_category(['parent' => $cat1->id]);
         $cat2 = $questiongenerator->create_question_category(['parent' => $top->id]);
@@ -2101,16 +1319,18 @@ final class questionlib_test extends \advanced_testcase {
 
         // Create a category tree.
         $course = $this->getDataGenerator()->create_course();
-        $coursecontext = \context_course::instance($course->id);
+        $qbank1 = self::getDataGenerator()->create_module('qbank', ['course' => $course->id]);
+        $bank1context = \context_module::instance($qbank1->cmid);
+        $qbank2 = self::getDataGenerator()->create_module('qbank', ['course' => $course->id]);
         /** @var \core_question_generator $questiongenerator */
         $questiongenerator = $this->getDataGenerator()->get_plugin_generator('core_question');
-        $context = \context_system::instance();
+        $wrongcontext = \context_module::instance($qbank2->cmid);
 
-        $top = question_get_top_category($coursecontext->id, true);
-        $cat1 = $questiongenerator->create_question_category(['parent' => $top->id]);
+        $top = question_get_top_category($bank1context->id, true);
+        $cat1 = question_get_default_category($bank1context->id);
         $sub11 = $questiongenerator->create_question_category(['parent' => $cat1->id]);
         $sub12 = $questiongenerator->create_question_category(['parent' => $cat1->id]);
-        $cat2 = $questiongenerator->create_question_category(['parent' => $top->id, 'contextid' => $context->id]);
+        $cat2 = $questiongenerator->create_question_category(['parent' => $top->id, 'contextid' => $wrongcontext->id]);
         $sub22 = $questiongenerator->create_question_category(['parent' => $cat2->id]);
 
         // Test - returned array has keys and values the same.
@@ -2129,8 +1349,7 @@ final class questionlib_test extends \advanced_testcase {
         $generator = $this->getDataGenerator();
         /** @var \core_question_generator $questiongenerator */
         $questiongenerator = $generator->get_plugin_generator('core_question');
-        $category = $generator->create_category();
-        $context = \context_coursecat::instance($category->id);
+        $context = $this->create_course_and_question_bank();
         // Create a top category.
         $cat0 = question_get_top_category($context->id, true);
         // Add sub-categories.
@@ -2154,15 +1373,18 @@ final class questionlib_test extends \advanced_testcase {
         $generator = $this->getDataGenerator();
         /** @var \core_question_generator $questiongenerator */
         $questiongenerator = $generator->get_plugin_generator('core_question');
-        $category = $generator->create_category();
-        $context = \context_coursecat::instance($category->id);
+        $bank1context = $this->create_course_and_question_bank();
+        $coursecontext = $bank1context->get_course_context();
+        $qbank2 = self::getDataGenerator()->create_module('qbank', ['course' => $coursecontext->instanceid]);
+        $bank2context = \context_module::instance($qbank2->cmid);
+
         // Create a top category.
-        $cat0 = question_get_top_category($context->id, true);
+        $cat0 = question_get_top_category($bank1context->id, true);
         // Add sub-categories - but in a different context.
         $cat1 = $questiongenerator->create_question_category(
-            ['parent' => $cat0->id, 'contextid' => \context_system::instance()->id]);
+            ['parent' => $cat0->id, 'contextid' => $bank2context->id]);
         $cat2 = $questiongenerator->create_question_category(
-            ['parent' => $cat1->id, 'contextid' => \context_system::instance()->id]);
+            ['parent' => $cat1->id, 'contextid' => $bank2context->id]);
 
         // Test the 'get parents' function only returns categories in the same context.
         $this->assertEquals([$cat1->id], question_categorylist_parents($cat2->id));
@@ -2318,7 +1540,7 @@ final class questionlib_test extends \advanced_testcase {
         global $DB;
         $this->resetAfterTest();
         // Setup.
-        $context = \context_system::instance();
+        $context = $this->create_course_and_question_bank();
         /** @var \core_question_generator $qgen */
         $qgen = $this->getDataGenerator()->get_plugin_generator('core_question');
         $qcat = $qgen->create_question_category(array('contextid' => $context->id));
@@ -2355,7 +1577,7 @@ final class questionlib_test extends \advanced_testcase {
         global $DB;
         $this->resetAfterTest();
         // Setup.
-        $context = \context_system::instance();
+        $context = $this->create_course_and_question_bank();
         /** @var \core_question_generator $qgen */
         $qgen = $this->getDataGenerator()->get_plugin_generator('core_question');
         $qcat = $qgen->create_question_category(array('contextid' => $context->id));
@@ -2385,7 +1607,7 @@ final class questionlib_test extends \advanced_testcase {
         global $DB;
         $this->resetAfterTest();
         // Setup.
-        $context = \context_system::instance();
+        $context = $this->create_course_and_question_bank();
         /** @var \core_question_generator $qgen */
         $qgen = $this->getDataGenerator()->get_plugin_generator('core_question');
         $qcat = $qgen->create_question_category(array('contextid' => $context->id));
@@ -2416,7 +1638,7 @@ final class questionlib_test extends \advanced_testcase {
         global $DB;
         $this->resetAfterTest();
         // Setup.
-        $context = \context_system::instance();
+        $context = $this->create_course_and_question_bank();
         /** @var \core_question_generator $qgen */
         $qgen = $this->getDataGenerator()->get_plugin_generator('core_question');
         $qcat = $qgen->create_question_category(array('contextid' => $context->id));
@@ -2440,20 +1662,107 @@ final class questionlib_test extends \advanced_testcase {
     }
 
     /**
+     * Test moving a question category from one context to another
+     *
+     * @covers ::question_move_category_to_context
+     */
+    public function test_question_move_category_to_context(): void {
+
+        global $CFG, $DB;
+
+        $this->setAdminUser();
+
+        // Create a course.
+        $course = self::getDataGenerator()->create_course();
+
+        // Create a quiz activity to store our question in at the start.
+        $quiz1 = $this->getDataGenerator()->create_module('quiz', [
+            'course' => $course->id,
+        ]);
+
+        // And then create another one to move the category to.
+        $quiz2 = $this->getDataGenerator()->create_module('quiz', [
+            'course' => $course->id,
+        ]);
+
+        // Get the question generator and the context of the activities.
+        $generator = self::getDataGenerator()->get_plugin_generator('core_question');
+        $context1 = \context_module::instance($quiz1->cmid);
+        $context2 = \context_module::instance($quiz2->cmid);
+
+        // Create a question category within our first quiz activity.
+        $category = $generator->create_question_category(['contextid' => $context1->id]);
+
+        // And create a question within that.
+        // We will use `truefalse` but it could be any type.
+        $question = $generator->create_question('truefalse', null, ['category' => $category->id]);
+
+        $areas = [
+            'questiontext' => '1.jpg',
+            'generalfeedback' => '2.jpg',
+        ];
+
+        // Add file records to each of the file areas, for our first quiz activity.
+        foreach ($areas as $area => $img) {
+            $fs = get_file_storage();
+            $filerecord = new \stdClass();
+            $filerecord->contextid = $context1->id;
+            $filerecord->component = 'question';
+            $filerecord->filearea = $area;
+            $filerecord->itemid = $question->id;
+            $filerecord->filepath = '/';
+            $filerecord->filename = $img;
+            $fs->create_file_from_pathname($filerecord, $CFG->dirroot .
+                '/lib/tests/fixtures/' . $img);
+        }
+
+        // Firstly, confirm that the file records exist and there were no problems creating them.
+        // We don't care in this test about the actual files in the data dir.
+        $files = $DB->get_records('files', [
+            'component' => 'question',
+            'itemid' => $question->id,
+            'contextid' => $context1->id,
+            'mimetype' => 'image/jpeg',
+        ]);
+
+        $this->assertCount(2, $files);
+
+        // Move the question category to another context.
+        question_move_category_to_context(
+            $category->id,
+            $context1->id,
+            $context2->id,
+        );
+
+        // Now check that the files have been moved to the new category.
+        $files = $DB->get_records('files', [
+            'component' => 'question',
+            'itemid' => $question->id,
+            'contextid' => $context2->id,
+            'mimetype' => 'image/jpeg',
+        ]);
+
+        $this->assertCount(2, $files);
+
+    }
+
+    /**
      * Update the context for a set reference, keeping the original category.
      *
      * @covers ::move_question_set_references()
      */
     public function test_move_question_set_references_context(): void {
         $this->setAdminUser();
-        $sitecontext = \context_system::instance();
-        $topcategory = question_get_top_category($sitecontext->id, true);
+        // Create a course with a quiz containing a random question from a qbank context.
+        $randomcourse = self::getDataGenerator()->create_course(['shortname' => 'Random']);
+        $qbank1 = self::getDataGenerator()->get_plugin_generator('mod_qbank')->create_instance(['course' => $randomcourse->id]);
+        $context1 = \context_module::instance($qbank1->cmid);
+        $qbank2 = self::getDataGenerator()->get_plugin_generator('mod_qbank')->create_instance(['course' => $randomcourse->id]);
+        $context2 = \context_module::instance($qbank2->cmid);
+        $topcategory = question_get_top_category($context1->id, true);
         $randomcategory = self::getDataGenerator()->get_plugin_generator('core_question')->create_question_category(
             ['parent' => $topcategory->id],
         );
-        // Create a course with a quiz containing a random question from the system context.
-        $randomcourse = self::getDataGenerator()->create_course(['shortname' => 'Random']);
-        $coursecontext = \context_course::instance($randomcourse->id);
         $randomquiz = self::getDataGenerator()->get_plugin_generator('mod_quiz')->create_instance(
             [
                 'course' => $randomcourse->id,
@@ -2479,15 +1788,15 @@ final class questionlib_test extends \advanced_testcase {
         $structure = $randomquizsettings->get_structure();
         $randomquestion = $structure->get_question_in_slot(1);
 
-        $this->assertEquals($randomquestion->contextid, $sitecontext->id);
+        $this->assertEquals($randomquestion->contextid, $context1->id);
         $this->assertEquals($randomquestion->filtercondition['filter']['category']['values'][0], $randomcategory->id);
 
-        move_question_set_references($randomcategory->id, $randomcategory->id, $sitecontext->id, $coursecontext->id);
+        move_question_set_references($randomcategory->id, $randomcategory->id, $context1->id, $context2->id);
 
         $structure = $randomquizsettings->get_structure();
         $randomquestion = $structure->get_question_in_slot(1);
 
-        $this->assertEquals($randomquestion->contextid, $coursecontext->id);
+        $this->assertEquals($randomquestion->contextid, $context2->id);
         $this->assertEquals($randomquestion->filtercondition['filter']['category']['values'][0], $randomcategory->id);
     }
 
@@ -2498,12 +1807,14 @@ final class questionlib_test extends \advanced_testcase {
      */
     public function test_move_question_set_references_category(): void {
         $this->setAdminUser();
-        $sitecontext = \context_system::instance();
-        $sitetopcategory = question_get_top_category($sitecontext->id, true);
-        // Create a course with a quiz containing a random question from the system context.
+        // Create a course with a quiz containing a random question from a qbank context.
         $randomcourse = self::getDataGenerator()->create_course(['shortname' => 'Random']);
-        $coursecontext = \context_course::instance($randomcourse->id);
-        $coursetopcategory = question_get_top_category($coursecontext->id, true);
+        $qbank1 = self::getDataGenerator()->get_plugin_generator('mod_qbank')->create_instance(['course' => $randomcourse->id]);
+        $context1 = \context_module::instance($qbank1->cmid);
+        $qbank2 = self::getDataGenerator()->get_plugin_generator('mod_qbank')->create_instance(['course' => $randomcourse->id]);
+        $context2 = \context_module::instance($qbank2->cmid);
+        $topcategory1 = question_get_top_category($context1->id, true);
+        $topcategory2 = question_get_top_category($context2->id, true);
         $randomquiz = self::getDataGenerator()->get_plugin_generator('mod_quiz')->create_instance(
             [
                 'course' => $randomcourse->id,
@@ -2512,14 +1823,15 @@ final class questionlib_test extends \advanced_testcase {
                 'layout' => '1,0',
             ],
         );
-        $randomquizsettings = quiz_settings::create($randomquiz->id);
 
+        $randomquizsettings = quiz_settings::create($randomquiz->id);
         $structure = $randomquizsettings->get_structure();
+
         $filtercondition = [
             'filter' => [
                 'category' => [
                     'jointype' => \core_question\local\bank\condition::JOINTYPE_DEFAULT,
-                    'values' => [$sitetopcategory->id],
+                    'values' => [$topcategory1->id],
                     'filteroptions' => ['includesubcategories' => true],
                 ],
             ],
@@ -2528,15 +1840,87 @@ final class questionlib_test extends \advanced_testcase {
         $structure = $randomquizsettings->get_structure();
         $randomquestion = $structure->get_question_in_slot(1);
 
-        $this->assertEquals($randomquestion->contextid, $sitecontext->id);
-        $this->assertEquals($randomquestion->filtercondition['filter']['category']['values'][0], $sitetopcategory->id);
+        $this->assertEquals($randomquestion->contextid, $context1->id);
+        $this->assertEquals($randomquestion->filtercondition['filter']['category']['values'][0], $topcategory1->id);
 
-        move_question_set_references($sitetopcategory->id, $coursetopcategory->id, $sitecontext->id, $coursecontext->id);
+        move_question_set_references($topcategory1->id, $topcategory2->id, $context1->id, $context2->id);
 
         $structure = $randomquizsettings->get_structure();
         $randomquestion = $structure->get_question_in_slot(1);
 
-        $this->assertEquals($randomquestion->contextid, $coursecontext->id);
-        $this->assertEquals($randomquestion->filtercondition['filter']['category']['values'][0], $coursetopcategory->id);
+        $this->assertEquals($randomquestion->contextid, $context2->id);
+        $this->assertEquals($randomquestion->filtercondition['filter']['category']['values'][0], $topcategory2->id);
+    }
+
+    /**
+     * Provide examples of different modules and the page types returned by their _page_type_list function.
+     *
+     * @return array[] Module name, and a list of page types.
+     */
+    public static function module_page_types(): array {
+        return [
+            'quiz' => [
+                'module' => 'quiz',
+                'pagetypes' => [
+                    'mod-quiz-*',
+                    'mod-quiz-view',
+                    'mod-quiz-attempt',
+                    'mod-quiz-summary',
+                    'mod-quiz-review',
+                    'mod-quiz-edit',
+                    'mod-quiz-report',
+                ],
+            ],
+            'forum' => [
+                'module' => 'forum',
+                'pagetypes' => [
+                    'mod-forum-*',
+                    'mod-forum-view',
+                    'mod-forum-discuss',
+                ],
+            ],
+            'scorm' => [
+                'module' => 'scorm',
+                'pagetypes' => [
+                    'mod-scorm-*',
+                ],
+            ],
+            'lti' => [ // LTI has no additional page types.
+                'module' => 'lti',
+                'pagetypes' => [],
+            ],
+        ];
+    }
+
+    /**
+     * Calling question_page_type_list should return the question page types, plus the page types for the module context.
+     *
+     * @covers ::question_page_type_list
+     * @param string $module The module name.
+     * @param string[] $pagetypes A list of the page type patterns this module should add.
+     */
+    #[DataProvider('module_page_types')]
+    public function test_question_page_type_list(string $module, array $pagetypes): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $course = $this->getDataGenerator()->create_course();
+        $coursecontext = course::instance($course->id);
+
+        $modulerecord = $this->getDataGenerator()->create_module($module, ['course' => $course->id]);
+        $modulecontext = module::instance($modulerecord->cmid);
+
+        $questionpagetypes = [
+            'question-*',
+            'question-edit',
+            'question-bank-managecategories-category',
+            'question-bank-exportquestions-export',
+            'question-bank-importquestions-import',
+        ];
+
+        $expectedpagetypes = array_merge($pagetypes, $questionpagetypes);
+        $actualpagetypes = question_page_type_list('question-edit', $coursecontext, $modulecontext);
+        // Check that the expected page type patterns match those returned for this module.
+        $this->assertEquals($expectedpagetypes, array_keys($actualpagetypes));
     }
 }

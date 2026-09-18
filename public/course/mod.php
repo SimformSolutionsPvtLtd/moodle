@@ -29,20 +29,20 @@ require_once("lib.php");
 $sectionreturn = optional_param('sr', null, PARAM_INT);
 $add           = optional_param('add', '', PARAM_ALPHANUM);
 $type          = optional_param('type', '', PARAM_ALPHA);
-$indent        = optional_param('indent', 0, PARAM_INT);
+$indent        = optional_param('indent', 0, PARAM_INT); // TODO remove this param as part of MDL-83530.
 $update        = optional_param('update', 0, PARAM_INT);
-$duplicate     = optional_param('duplicate', 0, PARAM_INT);
-$hide          = optional_param('hide', 0, PARAM_INT);
-$stealth       = optional_param('stealth', 0, PARAM_INT);
-$show          = optional_param('show', 0, PARAM_INT);
-$copy          = optional_param('copy', 0, PARAM_INT);
-$moveto        = optional_param('moveto', 0, PARAM_INT);
-$movetosection = optional_param('movetosection', 0, PARAM_INT);
-$delete        = optional_param('delete', 0, PARAM_INT);
+$duplicate     = optional_param('duplicate', 0, PARAM_INT); // TODO remove this param as part of MDL-83530.
+$hide          = optional_param('hide', 0, PARAM_INT); // TODO remove this param as part of MDL-83530.
+$stealth       = optional_param('stealth', 0, PARAM_INT); // TODO remove this param as part of MDL-83530.
+$show          = optional_param('show', 0, PARAM_INT); // TODO remove this param as part of MDL-83530.
+$copy          = optional_param('copy', 0, PARAM_INT); // TODO remove this param as part of MDL-83530.
+$moveto        = optional_param('moveto', 0, PARAM_INT); // TODO remove this param as part of MDL-83530.
+$movetosection = optional_param('movetosection', 0, PARAM_INT); // TODO remove this param as part of MDL-83530.
+$delete        = optional_param('delete', 0, PARAM_INT); // TODO remove this param as part of MDL-83530.
 $course        = optional_param('course', 0, PARAM_INT);
-$groupmode     = optional_param('groupmode', -1, PARAM_INT);
-$cancelcopy    = optional_param('cancelcopy', 0, PARAM_BOOL);
-$confirm       = optional_param('confirm', 0, PARAM_BOOL);
+$groupmode     = optional_param('groupmode', -1, PARAM_INT); // TODO remove this param as part of MDL-83530.
+$cancelcopy    = optional_param('cancelcopy', 0, PARAM_BOOL); // TODO remove this param as part of MDL-83530.
+$confirm       = optional_param('confirm', 0, PARAM_BOOL); // TODO remove this param as part of MDL-83530.
 
 // This page should always redirect
 $url = new moodle_url('/course/mod.php');
@@ -76,16 +76,22 @@ require_login();
 //check if we are adding / editing a module that has new forms using formslib
 if (!empty($add)) {
     $id          = required_param('id', PARAM_INT);
-    $section     = required_param('section', PARAM_INT);
+    $sectionid   = optional_param('sectionid', null, PARAM_INT);
     $type        = optional_param('type', '', PARAM_ALPHA);
     $returntomod = optional_param('return', 0, PARAM_BOOL);
     $beforemod   = optional_param('beforemod', 0, PARAM_INT);
+
+    if (empty($sectionid)) {
+        $section = required_param('section', PARAM_INT);
+        $sectioninfo = get_fast_modinfo($id)->get_section_info($section);
+        $sectionid = $sectioninfo?->id;
+    }
 
     $params = [
         'add' => $add,
         'type' => $type,
         'course' => $id,
-        'section' => $section,
+        'sectionid' => $sectionid,
         'return' => $returntomod,
         'beforemod' => $beforemod,
     ];
@@ -118,6 +124,11 @@ if (!empty($add)) {
         )
     );
 } else if (!empty($duplicate) and confirm_sesskey()) {
+    // TODO remove this else if as part of MDL-83530.
+    debugging(
+        'The duplicate param is deprecated. Please use action cm_duplicate in course/format/update.php instead.',
+        DEBUG_DEVELOPER
+    );
      $cm     = get_coursemodule_from_id('', $duplicate, 0, true, MUST_EXIST);
      $course = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
 
@@ -130,6 +141,11 @@ if (!empty($add)) {
     redirect(course_get_url($course, $cm->sectionnum, $urloptions));
 
 } else if (!empty($delete)) {
+    // TODO remove this else if as part of MDL-83530.
+    debugging(
+        'The delete param is deprecated. Please use action cm_delete in course/format/update.php instead.',
+        DEBUG_DEVELOPER
+    );
     $cm     = get_coursemodule_from_id('', $delete, 0, true, MUST_EXIST);
     $course = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
 
@@ -137,7 +153,11 @@ if (!empty($add)) {
     $modcontext = context_module::instance($cm->id);
     require_capability('moodle/course:manageactivities', $modcontext);
 
-    $return = course_get_url($course, $cm->sectionnum, $urloptions);
+    if (plugin_supports('mod', $cm->modname, FEATURE_PUBLISHES_QUESTIONS)) {
+        $return = \core_question\local\bank\question_bank_helper::get_url_for_qbank_list($course->id);
+    } else {
+        $return = course_get_url($course, $cm->sectionnum, $urloptions);
+    }
 
     if (!$confirm or !confirm_sesskey()) {
         $fullmodulename = get_string('modulename', $cm->modname);
@@ -178,6 +198,11 @@ if (!empty($add)) {
 
 
 if ((!empty($movetosection) or !empty($moveto)) and confirm_sesskey()) {
+    // TODO remove this if as part of MDL-83530.
+    debugging(
+        'The moveto param is deprecated. Please use the standard move modal instead.',
+        DEBUG_DEVELOPER
+    );
     $cm     = get_coursemodule_from_id('', $USER->activitycopy, 0, true, MUST_EXIST);
     $course = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
 
@@ -216,6 +241,11 @@ if ((!empty($movetosection) or !empty($moveto)) and confirm_sesskey()) {
     redirect(course_get_url($course, $section->section, $urloptions));
 
 } else if (!empty($indent) and confirm_sesskey()) {
+    // TODO remove this else if as part of MDL-83530.
+    debugging(
+        'The indent param deprecated. Please use action cm_moveleft and cm_moveright in course/format/update.php instead.',
+        DEBUG_DEVELOPER
+    );
     $id = required_param('id', PARAM_INT);
 
     $cm     = get_coursemodule_from_id('', $id, 0, true, MUST_EXIST);
@@ -241,6 +271,11 @@ if ((!empty($movetosection) or !empty($moveto)) and confirm_sesskey()) {
     redirect(course_get_url($course, $cm->sectionnum, $urloptions));
 
 } else if (!empty($hide) and confirm_sesskey()) {
+    // TODO remove this else if as part of MDL-83530.
+    debugging(
+        'The hide param deprecated. Please use action cm_hide in course/format/update.php instead.',
+        DEBUG_DEVELOPER
+    );
     $cm     = get_coursemodule_from_id('', $hide, 0, true, MUST_EXIST);
     $course = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
 
@@ -255,6 +290,11 @@ if ((!empty($movetosection) or !empty($moveto)) and confirm_sesskey()) {
     redirect(course_get_url($course, $cm->sectionnum, $urloptions));
 
 } else if (!empty($stealth) and confirm_sesskey()) {
+    // TODO remove this else if as part of MDL-83530.
+    debugging(
+        'The stealth param deprecated. Please use action cm_stealth in course/format/update.php instead.',
+        DEBUG_DEVELOPER
+    );
     list($course, $cm) = get_course_and_cm_from_cmid($stealth);
     require_login($course, false, $cm);
     require_capability('moodle/course:activityvisibility', $cm->context);
@@ -265,6 +305,11 @@ if ((!empty($movetosection) or !empty($moveto)) and confirm_sesskey()) {
     redirect(course_get_url($course, $cm->sectionnum, array('sr' => $sectionreturn)));
 
 } else if (!empty($show) and confirm_sesskey()) {
+    // TODO remove this else if as part of MDL-83530.
+    debugging(
+        'The show param deprecated. Please use action cm_show in course/format/update.php instead.',
+        DEBUG_DEVELOPER
+    );
     list($course, $cm) = get_course_and_cm_from_cmid($show);
     require_login($course, false, $cm);
     require_capability('moodle/course:activityvisibility', $cm->context);
@@ -276,6 +321,11 @@ if ((!empty($movetosection) or !empty($moveto)) and confirm_sesskey()) {
     redirect(course_get_url($course, $section->section, $urloptions));
 
 } else if ($groupmode > -1 and confirm_sesskey()) {
+    // TODO remove this else if as part of MDL-83530.
+    debugging(
+        'The groupmode param deprecated. Please use the group mode actions in course/format/update.php instead.',
+        DEBUG_DEVELOPER
+    );
     $id = required_param('id', PARAM_INT);
 
     $cm     = get_coursemodule_from_id('', $id, 0, true, MUST_EXIST);
@@ -291,6 +341,11 @@ if ((!empty($movetosection) or !empty($moveto)) and confirm_sesskey()) {
     redirect(course_get_url($course, $cm->sectionnum, $urloptions));
 
 } else if (!empty($copy) and confirm_sesskey()) { // value = course module
+    // TODO remove this else if as part of MDL-83530.
+    debugging(
+        'The copy param is deprecated. Please use the standard move modal instead.',
+        DEBUG_DEVELOPER
+    );
     $cm     = get_coursemodule_from_id('', $copy, 0, true, MUST_EXIST);
     $course = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
 
@@ -309,7 +364,11 @@ if ((!empty($movetosection) or !empty($moveto)) and confirm_sesskey()) {
     redirect(course_get_url($course, $section->section, $urloptions));
 
 } else if (!empty($cancelcopy) and confirm_sesskey()) { // value = course module
-
+    // TODO remove this else if as part of MDL-83530.
+    debugging(
+        'The copy param is deprecated. Please use the standard move modal instead.',
+        DEBUG_DEVELOPER
+    );
     $courseid = $USER->activitycopycourse;
     $course = $DB->get_record('course', array('id' => $courseid), '*', MUST_EXIST);
 

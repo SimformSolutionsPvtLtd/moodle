@@ -195,7 +195,7 @@ class factor extends object_factor_base {
 
         $manualtable = new \html_table();
         $manualtable->id = 'manualattributes';
-        $manualtable->attributes['class'] = 'generaltable table table-bordered table-sm w-auto';
+        $manualtable->attributes['class'] = 'generaltable table table-bordered table-sm w-auto table-hover';
         $manualtable->attributes['style'] = 'width: auto;';
         $manualtable->data = [
             [get_string('setupfactor:key', 'factor_totp'), $secret],
@@ -208,8 +208,8 @@ class factor extends object_factor_base {
         $html = \html_writer::div($html, 'collapse', ['id' => 'collapseManualAttributes']);
 
         $togglelink = \html_writer::tag('a', get_string('setupfactor:link', 'factor_totp'), [
-            'data-toggle' => 'collapse',
-            'data-target' => '#collapseManualAttributes',
+            'data-bs-toggle' => 'collapse',
+            'data-bs-target' => '#collapseManualAttributes',
             'aria-expanded' => 'false',
             'aria-controls' => 'collapseManualAttributes',
             'href' => '#',

@@ -71,7 +71,7 @@ class grade_edit_tree {
 
         $this->table = new html_table();
         $this->table->id = "grade_edit_tree_table";
-        $this->table->attributes['class'] = 'generaltable simple setup-grades';
+        $this->table->attributes['class'] = 'table generaltable simple setup-grades';
         if ($this->moving) {
             $this->table->attributes['class'] .= ' moving';
         }
@@ -815,48 +815,56 @@ class grade_edit_tree_column_name extends grade_edit_tree_column {
         return $headercell;
     }
 
+    /**
+     * Return category cell content
+     *
+     * @param grade_category $category
+     * @param string $levelclass
+     * @param array $params Parameters required to build the category cell content (must contain 'name', 'level' and 'eid' keys)
+     */
     public function get_category_cell($category, $levelclass, $params) {
         global $OUTPUT;
 
-        if (empty($params['name']) || empty($params['level'])) {
+        if (!array_key_exists('name', $params) || !array_key_exists('level', $params)) {
             throw new Exception('Array key (name or level) missing from 3rd param of grade_edit_tree_column_name::get_category_cell($category, $levelclass, $params)');
         }
+
         $visibilitytoggle = $OUTPUT->render_from_template('core_grades/grade_category_visibility_toggle', [
             'category' => $params['eid']
         ]);
 
-        $mastercheckbox = '';
+        $togglercheckbox = '';
         if ($this->deepest_level > 1) {
             if (empty($params['eid'])) {
                 throw new Exception('Array key (eid) missing from 3rd param of ' .
-                    'grade_edit_tree_column_select::get_category_cell($category, $levelclass, $params)');
+                    'grade_edit_tree_column_name::get_category_cell($category, $levelclass, $params)');
             }
 
-            // Get toggle group for this master checkbox.
+            // Get toggle group for this toggler checkbox.
             $togglegroup = $this->get_checkbox_togglegroup($category);
-            // Set label for this master checkbox.
-            $masterlabel = $params['level'] === 1 ? get_string('all') : $params['name'];
-            // Build the master checkbox.
-            $mastercheckbox = new \core\output\checkbox_toggleall($togglegroup, true, [
+            // Set label for this toggler checkbox.
+            $togglerlabel = $params['level'] === 1 ? get_string('all') : $params['name'];
+            // Build the toggler checkbox.
+            $togglercheckbox = new \core\output\checkbox_toggleall($togglegroup, true, [
                 'id' => 'select_category_' . $category->id,
                 'name' => $togglegroup,
                 'value' => 1,
                 'classes' => 'itemselect ignoredirty',
-                'label' => $masterlabel,
+                'label' => $togglerlabel,
                 // Consistent label to prevent the select column from resizing.
-                'selectall' => $masterlabel,
-                'deselectall' => $masterlabel,
+                'selectall' => $togglerlabel,
+                'deselectall' => $togglerlabel,
                 'labelclasses' => 'accesshide',
             ]);
 
-            $mastercheckbox = $OUTPUT->render($mastercheckbox);
+            $togglercheckbox = $OUTPUT->render($togglercheckbox);
         }
 
         $moveaction = isset($params['moveaction']) ? $params['moveaction'] : '';
         $categorycell = parent::get_category_cell($category, $levelclass, $params);
         $categorycell->colspan = ($this->deepest_level + 2) - $params['level'];
         $rowtitle = html_writer::div($params['name'], 'rowtitle');
-        $categorycell->text = html_writer::div($mastercheckbox . $visibilitytoggle . $moveaction . $rowtitle, 'font-weight-bold');
+        $categorycell->text = html_writer::div($togglercheckbox . $visibilitytoggle . $moveaction . $rowtitle, 'fw-bold');
         return $categorycell;
     }
 
@@ -1161,133 +1169,5 @@ class grade_edit_tree_column_actions extends grade_edit_tree_column {
         $itemcell = parent::get_item_cell($item, $params);
         $itemcell->text = $params['actions'];
         return $itemcell;
-    }
-}
-
-/**
- * Class grade_edit_tree_column_select
- *
- * @deprecated Since Moodle 4.3.
- * @todo Final deprecation on Moodle 4.7 MDL-77668
- *
- * @package   core_grades
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-class grade_edit_tree_column_select extends grade_edit_tree_column {
-
-    /**
-     * @deprecated Since Moodle 4.3.
-     * @todo Final deprecation on Moodle 4.7 MDL-77668
-     */
-    public function get_header_cell() {
-        debugging('Method grade_edit_tree_column_select::get_header_cell() is deprecated, ' .
-            'please do not use it anymore.', DEBUG_DEVELOPER);
-
-        $headercell = clone($this->headercell);
-        $headercell->text = get_string('select');
-        return $headercell;
-    }
-
-    /**
-     * @deprecated Since Moodle 4.3.
-     * @todo Final deprecation on Moodle 4.7 MDL-77668
-     */
-    public function get_category_cell($category, $levelclass, $params) {
-        global $OUTPUT;
-
-        debugging('Method grade_edit_tree_column_select::get_category_cell() is deprecated, ' .
-            'please do not use it anymore.', DEBUG_DEVELOPER);
-
-        if (empty($params['eid'])) {
-            throw new Exception('Array key (eid) missing from 3rd param of grade_edit_tree_column_select::get_category_cell($category, $levelclass, $params)');
-        }
-
-        // Get toggle group for this master checkbox.
-        $togglegroup = $this->get_checkbox_togglegroup($category);
-        // Set label for this master checkbox.
-        $masterlabel = get_string('all');
-        // Use category name if available.
-        if ($category->fullname !== '?') {
-            $masterlabel = format_string($category->fullname, true, ['escape' => false]);
-            // Limit the displayed category name to prevent the Select column from getting too wide.
-            if (core_text::strlen($masterlabel) > 20) {
-                $masterlabel = get_string('textellipsis', 'core', core_text::substr($masterlabel, 0, 12));
-            }
-        }
-        // Build the master checkbox.
-        $mastercheckbox = new \core\output\checkbox_toggleall($togglegroup, true, [
-            'id' => 'select_category_' . $category->id,
-            'name' => $togglegroup,
-            'value' => 1,
-            'classes' => 'itemselect ignoredirty',
-            'label' => $masterlabel,
-            // Consistent label to prevent the select column from resizing.
-            'selectall' => $masterlabel,
-            'deselectall' => $masterlabel,
-            'labelclasses' => 'm-0',
-        ]);
-
-        $categorycell = parent::get_category_cell($category, $levelclass, $params);
-        $categorycell->text = $OUTPUT->render($mastercheckbox);
-        return $categorycell;
-    }
-
-    /**
-     * @deprecated Since Moodle 4.3.
-     * @todo Final deprecation on Moodle 4.7 MDL-77668
-     */
-    public function get_item_cell($item, $params) {
-        debugging('Method grade_edit_tree_column_select::get_item_cell() is deprecated, ' .
-            'please do not use it anymore.', DEBUG_DEVELOPER);
-
-        if (empty($params['itemtype']) || empty($params['eid'])) {
-            throw new \moodle_exception('missingitemtypeoreid', 'core_grades');
-        }
-        $itemcell = parent::get_item_cell($item, $params);
-
-        if ($params['itemtype'] != 'course' && $params['itemtype'] != 'category') {
-            global $OUTPUT;
-
-            // Fetch the grade item's category.
-            $category = grade_category::fetch(['id' => $item->categoryid]);
-            $togglegroup = $this->get_checkbox_togglegroup($category);
-
-            $checkboxid = 'select_' . $params['eid'];
-            $checkbox = new \core\output\checkbox_toggleall($togglegroup, false, [
-                'id' => $checkboxid,
-                'name' => $checkboxid,
-                'label' => get_string('select', 'grades', $item->itemname),
-                'labelclasses' => 'accesshide',
-                'classes' => 'itemselect ignoredirty',
-            ]);
-            $itemcell->text = $OUTPUT->render($checkbox);
-        }
-        return $itemcell;
-    }
-
-    /**
-     * Generates a toggle group name for a bulk-action checkbox based on the given grade category.
-     *
-     * @deprecated Since Moodle 4.3.
-     * @todo Final deprecation on Moodle 4.7 MDL-77668
-     *
-     * @param grade_category $category The grade category.
-     * @return string
-     */
-    protected function get_checkbox_togglegroup(grade_category $category): string {
-        debugging('Method grade_edit_tree_column_select::get_checkbox_togglegroup() is deprecated, ' .
-            'please do not use it anymore.', DEBUG_DEVELOPER);
-
-        $levels = [];
-        $categories = explode('/', $category->path);
-        foreach ($categories as $categoryid) {
-            $level = 'category' . $categoryid;
-            if (!in_array($level, $levels)) {
-                $levels[] = 'category' . $categoryid;
-            }
-        }
-        $togglegroup = implode(' ', $levels);
-
-        return $togglegroup;
     }
 }

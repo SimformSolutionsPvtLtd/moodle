@@ -24,19 +24,20 @@
                 "bulkactionitems": "<input value='Move to'>",
                 "actionname": "Move to",
                 "actionkey": "deleteselected",
-                "actionurl": "/question/bank/bulkmove/move.php?courseid=2"
+                "actionurl": "/question/bank/bulkmove/move.php?courseid=2",
+                "actionclasses": "text-danger"
           }
         ]
     }
 }}
 
 <div class="btn-group dropup mt-2" id="bulkactionsui-container">
-    <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" id="bulkactionsui-selector">
+    <button type="button" class="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" id="bulkactionsui-selector">
         {{#str}} withselected, question{{/str}}
     </button>
     <div class="dropdown-menu" aria-labelledby="bulkactionsui-selector">
         {{#bulkactionitems}}
-            <input type="submit" value="{{actionname}}" class="dropdown-item" name="{{actionkey}}" data-action="toggle" data-togglegroup="qbank"
+            <input type="submit" value="{{actionname}}" class="dropdown-item {{actionclasses}}" name="{{actionkey}}" data-action="toggle" data-togglegroup="qbank"
                    data-toggle="action" form="questionsubmit" formaction="{{{actionurl}}}" disabled="disabled">
         {{/bulkactionitems}}
     </div>

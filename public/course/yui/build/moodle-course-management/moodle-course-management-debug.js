@@ -652,8 +652,8 @@ DragDrop.prototype = {
             container = managementconsole.get('element'),
             categorylisting = container.one('#category-listing'),
             courselisting = container.one('#course-listing > .course-listing'),
-            categoryul = (categorylisting) ? categorylisting.one('ul.ml') : null,
-            courseul = (courselisting) ? courselisting.one('ul.ml') : null,
+            categoryul = (categorylisting) ? categorylisting.one('ul.category-list') : null,
+            courseul = (courselisting) ? courselisting.one('ul.course-list') : null,
             canmoveoutof = (courselisting) ? courselisting.getData('canmoveoutof') : false,
             contstraint = (canmoveoutof) ? container : courseul;
 
@@ -1306,7 +1306,28 @@ Category.prototype = {
                 break;
             case 'hide':
                 e.preventDefault();
-                this.get('console').performAjaxAction('hidecategory', catarg, this.hide, this);
+                var courseCount = this.get('node').getData('course-count');
+                if (courseCount === '0') {
+                    this.get('console').performAjaxAction('hidecategory', catarg, this.hide, this);
+                    break;
+                }
+                var warningStr = courseCount === '1' ? 'hidecategoryone' : 'hidecategorymany';
+                var warningParams = {
+                    category: this.get('node').getData('category-name'),
+                    coursecount: courseCount,
+                };
+                require(['core/notification', 'core/str'], function(Notification, Str) {
+                    Notification.saveCancelPromise(
+                        Str.get_string('hidecategory'),
+                        Str.get_string(warningStr, 'core', warningParams),
+                        Str.get_string('hide')
+                    ).then(function() {
+                        this.get('console').performAjaxAction('hidecategory', catarg, this.hide, this);
+                    }.bind(this)
+                    ).catch(function() {
+                        // User cancelled, no action needed.
+                    });
+                }.bind(this));
                 break;
             case 'expand':
                 e.preventDefault();

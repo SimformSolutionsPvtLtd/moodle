@@ -21,7 +21,7 @@ Feature: To be able to see and save user message preferences as admin
     And I click on "Preferences" "link" in the "#region-main-box" "css_element"
     And I click on "Message preferences" "link" in the "#region-main-box" "css_element"
     And I should not see "Enabled" in the "Email" "table_row"
-    And I click on "//div[@class='preference-state']" "xpath_element"
+    And I click on "//div[@class='preference-state']//input" "xpath_element"
     And I log out
     And I log in as "student1"
     And I follow "Preferences" in the user menu
@@ -54,7 +54,6 @@ Feature: To be able to see and save user message preferences as admin
       | mod_feedback_submission_enabled[email]        | 1 |
       | mod_feedback_submission_locked[email]         | 1 |
       | mod_feedback_message_disable                  | 0 |
-    And I press "Save changes"
     And the "region-main" "region" should meet accessibility standards with "best-practice" extra tests
     And I log in as "student1"
     And I follow "Preferences" in the user menu

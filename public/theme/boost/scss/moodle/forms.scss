@@ -31,6 +31,15 @@
         width: 100%;
         margin-right: 0;
     }
+    // It can be a tight fit to fit the Date time selector with an "enable" checkbox present,
+    // especially in languages with longer text.
+    // Reduce any horizontal spacing we can around the Date time selector elements.
+    .fdate_time_selector {
+        .fitem {
+            margin-left: 0 !important; /* stylelint-disable-line declaration-no-important */
+            margin-right: 0 !important; /* stylelint-disable-line declaration-no-important */
+        }
+    }
 }
 
 // Override the default bootstrap form-control width.
@@ -44,13 +53,20 @@
     }
 }
 
-// Override the default bootstrap custom-select width.
-.custom-select {
+// Override the default bootstrap form-select width.
+.form-select {
     width: auto;
     max-width: 100%;
+    // Remove the default caret from the dropdown toggle button.
+    // This is needed to avoid the double caret when using alongside form-select.
+    &.dropdown-toggle {
+        &::after {
+            content: none;
+        }
+    }
 }
 
-#jump-to-activity.custom-select {
+#jump-to-activity.form-select {
     width: 100%;
 }
 
@@ -278,6 +294,9 @@ div#dateselector-calendar-panel {
     z-index: 3;
 }
 
+$form-select-disabled-color: $gray-600 !default;
+$form-select-disabled-bg: $gray-200 !default;
+
 .form-autocomplete-suggestions li {
     list-style-type: none;
     padding: $dropdown-item-padding-y $dropdown-item-padding-x;
@@ -295,8 +314,8 @@ div#dateselector-calendar-panel {
     }
     &[aria-disabled="true"] {
         pointer-events: none;
-        color: $custom-select-disabled-color;
-        background-color: $custom-select-disabled-bg;
+        color: $form-select-disabled-color;
+        background-color: $form-select-disabled-bg;
     }
     &.suggestions-heading {
         pointer-events: none;
@@ -394,6 +413,10 @@ textarea[data-auto-rows] {
 
 [data-fieldtype="modgrade"] .fitem {
     padding-bottom: $input-padding-y;
+}
+
+[data-fieldtype="modgrade"] .form-select {
+    width: 100%;
 }
 
 // We dont' use the mixin because it's expensive.
@@ -502,8 +525,19 @@ textarea[data-auto-rows] {
         .form-control-lg:not(:last-child) {
             @include border-radius($input-border-radius-lg);
         }
-        .input-group-append .toggle-sensitive-btn {
+        .toggle-sensitive-btn {
             display: none;
         }
     }
+}
+
+// Readonly inputs should have visual distinction from editable inputs.
+// Apply the same styling as disabled inputs to make them clearly readonly.
+.form-control[readonly] {
+    color: $input-disabled-color;
+    background-color: $input-disabled-bg;
+    border-color: $input-disabled-border-color;
+    // Follows disabled styles in bootstrap/forms/_form-control.scss.
+    // iOS fix for unreadable content.
+    opacity: 1;
 }

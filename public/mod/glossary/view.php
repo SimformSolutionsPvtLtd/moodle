@@ -59,8 +59,7 @@ $headinglevel = $PAGE->activityheader->get_heading_level();
 $fmtoptions = array(
     'context' => $context);
 
-require_once($CFG->dirroot . '/comment/lib.php');
-comment::init();
+\core_comment\manager::init();
 
 /// redirecting if adding a new entry
 if ($tab == GLOSSARY_ADDENTRY_VIEW ) {
@@ -420,7 +419,7 @@ if ($allentries) {
 
         // Setting the pivot for the current entry
         if ($printpivot) {
-            $pivot = $entry->{$pivotkey};
+            $pivot = format_string($entry->{$pivotkey}, false, ["context" => $context]);
             $upperpivot = core_text::strtoupper($pivot);
             $pivottoshow = core_text::strtoupper(format_string($pivot, true, $fmtoptions));
 

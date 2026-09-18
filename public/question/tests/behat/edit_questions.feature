@@ -14,13 +14,17 @@ Feature: A teacher can edit questions in the question bank
     And the following "course enrolments" exist:
       | user | course | role |
       | teacher1 | C1 | editingteacher |
+    And the following "activities" exist:
+      | activity   | name    | intro              | course | idnumber |
+      | qbank      | Qbank 1 | Question bank 1    | C1     | qbank1   |
     And the following "question categories" exist:
-      | contextlevel | reference | name           |
-      | Course       | C1        | Test questions |
+      | contextlevel    | reference | name           |
+      | Activity module | qbank1    | Test questions |
     And the following "questions" exist:
       | questioncategory | qtype | name                       | questiontext                  |
       | Test questions   | essay | Test question to be edited | Write about whatever you want |
-    And I am on the "Course 1" "core_question > course question bank" page logged in as "teacher1"
+    And I am on the "Qbank 1" "core_question > question bank" page logged in as "teacher1"
+    And I apply question bank filter "Category" with value "Test questions"
 
   @javascript
   Scenario: Edit a previously created question
@@ -65,6 +69,7 @@ Feature: A teacher can edit questions in the question bank
     When I am on the "Test question to be edited" "core_question > edit" page logged in as "teacher1"
     And I set the field "Question name" to "Edited question name"
     And I press "Cancel"
+    And I apply question bank filter "Category" with value "Test questions"
     Then I should see "Test question to be edited"
     And I should see "Admin User"
 
@@ -72,7 +77,8 @@ Feature: A teacher can edit questions in the question bank
     Given the following "questions" exist:
       | questioncategory | qtype | name                   | idnumber |
       | Test questions   | essay | Question with idnumber | frog     |
-    When I am on the "Course 1" "core_question > course question bank" page logged in as "teacher1"
+    When I am on the "Qbank 1" "core_question > question bank" page logged in as "teacher1"
+    And I apply question bank filter "Category" with value "Test questions"
     Then I should see "frog" in the "Question with idnumber" "table_row"
     When I choose "Edit question" action for "Question with idnumber" in the question bank
     And I set the field "ID number" to ""
@@ -83,7 +89,8 @@ Feature: A teacher can edit questions in the question bank
     Given the following "questions" exist:
       | questioncategory | qtype       | name            | questiontext    |
       | Test questions   | missingtype | Broken question | Write something |
-    When I am on the "Course 1" "core_question > course question bank" page logged in as "teacher1"
+    When I am on the "Qbank 1" "core_question > question bank" page logged in as "teacher1"
+    And I apply question bank filter "Category" with value "Test questions"
     Then the "Edit question" item should not exist in the "Edit" action menu of the "Broken question" "table_row"
     And the "Duplicate" item should not exist in the "Edit" action menu of the "Broken question" "table_row"
     And the "Preview" item should not exist in the "Edit" action menu of the "Broken question" "table_row"

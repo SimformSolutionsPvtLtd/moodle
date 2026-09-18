@@ -188,7 +188,7 @@ abstract class moodle_database {
      *
      * The loaded class is within lib/dml directory and of the form: $type.'_'.$library.'_moodle_database'
      *
-     * @param string $type Database driver's type. (eg: mysqli, pgsql, mssql, sqldrv, oci, etc.)
+     * @param string $type Database driver's type. (eg: mysqli, pgsql, mssql, sqldrv, etc.)
      * @param string $library Database driver's library (native, pdo, etc.)
      * @param bool $external True if this is an external database.
      * @return ?moodle_database driver object or null if error, for example of driver object see {@see mysqli_native_moodle_database}
@@ -219,14 +219,14 @@ abstract class moodle_database {
     /**
      * Returns the database family type. (This sort of describes the SQL 'dialect')
      * Note: can be used before connect()
-     * @return string The db family name (mysql, postgres, mssql, oracle, etc.)
+     * @return string The db family name (mysql, postgres, mssql, etc.)
      */
     abstract public function get_dbfamily();
 
     /**
      * Returns a more specific database driver type
      * Note: can be used before connect()
-     * @return string The db type mysqli, pgsql, oci, mssql, sqlsrv
+     * @return string The db type mysqli, pgsql, mssql, sqlsrv
      */
     abstract protected function get_dbtype();
 
@@ -884,7 +884,7 @@ abstract class moodle_database {
      */
     protected function detect_objects($value) {
         if (is_object($value)) {
-            throw new coding_exception('Invalid database query parameter value', 'Objects are are not allowed: '.get_class($value));
+            throw new coding_exception('Invalid database query parameter value', 'Objects are not allowed: ' . get_class($value));
         }
     }
 
@@ -1289,15 +1289,6 @@ abstract class moodle_database {
      */
     public function get_debug() {
         return $this->debug;
-    }
-
-    /**
-     * Enable/disable detailed sql logging
-     *
-     * @deprecated since Moodle 2.9
-     */
-    public function set_logging($state) {
-        throw new coding_exception('set_logging() can not be used any more.');
     }
 
     /**
@@ -2879,16 +2870,52 @@ abstract class moodle_database {
     /**
      * Returns whether we want to connect to slave database for read queries.
      * @return bool Want read only connection
+     * @deprecated Since Moodle 5.0. See MDL-71257.
+     * @todo Final deprecation in Moodle 6.0. See MDL-83171.
      */
+    #[\core\attribute\deprecated(
+        replacement: 'want_read_replica',
+        since: '5.0',
+        mdl: 'MDL-71257',
+        reason: 'Renamed'
+    )]
     public function want_read_slave(): bool {
+        \core\deprecation::emit_deprecation(__FUNCTION__);
+        return false;
+    }
+
+    /**
+     * Returns whether we want to connect to replica database for read queries.
+     *
+     * @return bool Want read only connection.
+     */
+    public function want_read_replica(): bool {
         return false;
     }
 
     /**
      * Returns the number of reads before first write done by this database.
      * @return int Number of reads.
+     * @deprecated Since Moodle 5.0
+     * @todo Final deprecation in Moodle 6.0. See MDL-83171.
      */
+    #[\core\attribute\deprecated(
+        replacement: 'perf_get_reads_replica',
+        since: '5.0',
+        mdl: 'MDL-71257',
+        reason: 'Renamed'
+    )]
     public function perf_get_reads_slave(): int {
+        \core\deprecation::emit_deprecation(__FUNCTION__);
+        return 0;
+    }
+
+    /**
+     * Returns the number of reads before first write done by this database.
+     *
+     * @return int Number of reads.
+     */
+    public function perf_get_reads_replica(): int {
         return 0;
     }
 

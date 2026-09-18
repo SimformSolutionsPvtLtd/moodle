@@ -675,6 +675,58 @@ abstract class moodleform_mod extends moodleform {
         $this->standard_hidden_coursemodule_elements();
 
         $this->plugin_extend_coursemodule_standard_elements();
+
+        $aimanager = \core\di::get(core_ai\manager::class);
+        $availableactions = [];
+        $availableactions = $aimanager::get_placement_actions_available($this->get_context(), false);
+
+        // Current set of enabled AI actions.
+        $enabledaiactions = ($this->_cm && $this->_cm->enabledaiactions)
+                            ? (array) json_decode($this->_cm->enabledaiactions)
+                            : true;
+
+        // Show AI tools in activity settings if AI course assist is available.
+        if (!empty($availableactions) && $aimanager->get_provider_instances(['enabled' => 1])) {
+            $mform->addElement('header', 'aitoolshdr', get_string('aitools', 'ai'));
+
+            // Check if AI tools is enabled in the course.
+            if (is_null($COURSE->enableaitools) || $COURSE->enableaitools) {
+                $mform->addElement('selectyesno', 'enableaitools', get_string('enableaitoolsincourseactivity', 'ai'));
+                $mform->setDefault('enableaitools', $this->_cm->enableaitools ?? 1);
+                $mform->addElement('static', 'aitoolsincourseactivitydesc', '', get_string('aitoolsincourseactivitydesc', 'ai'));
+
+                $mform->addElement('static', 'aiactionshdr', get_string('aiactionshdr', 'core_ai'), '');
+                $mform->hideIf('aiactionshdr', 'enableaitools', 'eq', 0);
+
+                // Get enabled AI actions.
+                if (is_array($enabledaiactions)) {
+                    $filteredenabledaiactions = array_filter($enabledaiactions, function ($value): bool {
+                        return $value === 1;
+                    });
+                }
+
+                foreach ($availableactions as $action) {
+                    $actionname = 'action-' . $action['action'];
+                    $actiontext = 'action_' . $action['action'];
+
+                    // Set actions option's default value.
+                    $defaultvalue = $this->_cm ? 0 : 1; // Default to 'On' for new activities.
+                    if ($enabledaiactions === true || array_key_exists($action['action'], $filteredenabledaiactions)) {
+                        $defaultvalue = 1;
+                    }
+
+                    $mform->addElement('select', $actionname, $action['buttontext'], [
+                        1 => get_string('on', 'core_ai'),
+                        0 => get_string('off', 'core_ai'),
+                    ]);
+                    $mform->addHelpButton($actionname, $actiontext, 'core_ai');
+                    $mform->setDefault($actionname, $defaultvalue);
+                    $mform->hideIf($actionname, 'enableaitools', 'eq', 0);
+                }
+            } else {
+                $mform->addElement('static', 'aiactionshdr', '', get_string('aitoolsnotenabled', 'ai'));
+            }
+        }
     }
 
     /**
@@ -1009,8 +1061,7 @@ abstract class moodleform_mod extends moodleform {
         }
 
         // If the 'show description' feature is enabled, this checkbox appears below the intro.
-        // We want to hide that when using the singleactivity course format because it is confusing.
-        if ($this->_features->showdescription  && $this->courseformat->has_view_page()) {
+        if ($this->_features->showdescription) {
             $mform->addElement('advcheckbox', 'showdescription', get_string('showdescription'));
             $mform->addHelpButton('showdescription', 'showdescription');
         }
@@ -1043,8 +1094,7 @@ abstract class moodleform_mod extends moodleform {
         $buttonarray = array();
 
         // Label for the submit button to return to the course.
-        // Ignore this button in single activity format because it is confusing.
-        if ($submit2label !== false && $this->courseformat->has_view_page()) {
+        if ($submit2label !== false) {
             $buttonarray[] = &$mform->createElement('submit', 'submitbutton2', $submit2label);
         }
 

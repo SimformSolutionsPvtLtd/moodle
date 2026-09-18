@@ -112,6 +112,32 @@ Feature: Configure access to reports based on intended audience
     And "Add audience 'Member of cohort'" "link" should not exist
     And the "title" attribute of "//div[@data-region='sidebar-menu']/descendant::div[normalize-space(.)='Member of cohort']" "xpath_element" should contain "Not available"
 
+  Scenario: Configure and filter report audience with multiple types
+    Given the following "core_reportbuilder > Audiences" exist:
+      | report    | classname                                           | configdata |
+      | My report | \core_reportbuilder\reportbuilder\audience\admins   |            |
+      | My report | \core_reportbuilder\reportbuilder\audience\allusers |            |
+    When I am on the "My report" "reportbuilder > Editor" page logged in as "admin"
+    And I click on the "Access" dynamic tab
+    Then the following should exist in the "Report access list" table:
+      | -1-        |
+      | Admin User |
+      | User 1     |
+      | User 2     |
+      | User 3     |
+    # Now let's filter them.
+    And I click on "Filters" "button"
+    And I set the field "Audience value" in the "Audience" "core_reportbuilder > Filter" to "Site administrators"
+    And I click on "Apply" "button" in the "[data-region='report-filters']" "css_element"
+    And the following should exist in the "Report access list" table:
+      | -1-        |
+      | Admin User |
+    And the following should not exist in the "Report access list" table:
+      | -1-        |
+      | User 1     |
+      | User 2     |
+      | User 3     |
+
   Scenario: Configure report audience as user who cannot use specific audience
     Given the following "users" exist:
       | username  | firstname | lastname |
@@ -178,6 +204,7 @@ Feature: Configure access to reports based on intended audience
     And I am on the "My report" "reportbuilder > Editor" page logged in as "admin"
     And I click on the "Schedules" dynamic tab
     And I press "New schedule"
+    And I click on "Schedule an email" "link" in the ".dropdown" "css_element"
     And I set the following fields in the "New schedule" "dialogue" to these values:
       | Name          | My schedule                     |
       | Starting from | ##tomorrow 11:00##              |

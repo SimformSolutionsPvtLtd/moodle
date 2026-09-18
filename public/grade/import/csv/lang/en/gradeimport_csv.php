@@ -23,6 +23,8 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+$string['badgrade'] = 'The grade \'{$a->badgrade}\' on line {$a->linenumber} is incorrect.';
 $string['csv:view'] = 'Import grades from CSV';
+$string['gradepenalties'] = 'Grade penalties will not be applied to imported grades.';
 $string['pluginname'] = 'CSV file';
 $string['privacy:metadata'] = 'The import grades from CSV plugin does not store any personal data.';

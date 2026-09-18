@@ -16,7 +16,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Strings for component 'lesson', language 'en', branch 'MOODLE_20_STABLE'
+ * Strings for component 'mod_lesson', language 'en', branch 'MOODLE_20_STABLE'
  *
  * @package mod_lesson
  * @copyright  1999 onwards Martin Dougiamas  {@link http://moodle.com}
@@ -61,6 +61,7 @@ $string['addtruefalse'] = 'Create a True/false question page';
 $string['allotheranswers'] = 'All other answers';
 $string['allotheranswersjump'] = 'All other answers jump';
 $string['allotheranswersscore'] = 'All other answers score';
+$string['allowedattempts'] = 'Allowed attempts per student';
 $string['allowofflineattempts'] = 'Allow lesson to be attempted offline using the mobile app';
 $string['allowofflineattempts_help'] = 'If enabled, a mobile app user can download the lesson and attempt it offline.
 All the possible answers and correct responses will be downloaded as well.
@@ -79,6 +80,7 @@ $string['attempts'] = 'Attempts';
 $string['attemptsdeleted'] = 'Deleted attempts';
 $string['attemptsremaining'] = 'You have {$a} attempt(s) remaining';
 $string['available'] = 'Available from';
+$string['averageattempts'] = 'Average attempts per student';
 $string['averagescore'] = 'Average score';
 $string['averagetime'] = 'Average time';
 $string['branch'] = 'Content';
@@ -175,6 +177,7 @@ $string['displayscorewithessays'] = '<p>You earned {$a->score} out of {$a->tempm
 <p>Your {$a->essayquestions} essay question(s) will be graded and added into your final score at a later date.</p>
 <p>Your current grade without the essay question(s) is {$a->score} out of {$a->grade}.</p>';
 $string['displayscorewithoutessays'] = 'Your score is {$a->score} (out of {$a->grade}).';
+$string['duedate'] = 'Due date';
 $string['duplicatepagenamed'] = 'Duplicate page: {$a}';
 $string['edit'] = 'Edit';
 $string['editbranchtable'] = 'Editing a content page';
@@ -254,9 +257,12 @@ $string['gradeessay'] = 'Grade essay questions ({$a->notgradedcount} not graded 
 $string['gradeis'] = 'Grade is {$a}';
 $string['gradeoptions'] = 'Grade options';
 $string['groupoverrides'] = 'Group overrides';
-$string['groupsnone'] = 'No groups you can access.';
-$string['handlingofretakes'] = 'Handling of re-takes';
-$string['handlingofretakes_help'] = 'If re-takes are allowed, this setting specifies whether the grade for the lesson is the mean or maximum of all attempts.';
+$string['groupsnone'] = 'There are no groups in this course.';
+$string['handlingofretakes'] = 'Grading method';
+$string['handlingofretakes_help'] = 'How the grade is calculated when students attempt the lesson more than once:
+
+* Highest grade from all attempts
+* Mean grade of all attempts';
 $string['havenotgradedyet'] = 'Have not graded yet.';
 $string['here'] = 'here';
 $string['highscore'] = 'High score';
@@ -325,9 +331,9 @@ $string['maxgrade'] = 'Maximum grade';
 $string['maxgrade_help'] = 'This setting specifies the maximum grade for the lesson. If set to 0, the lesson does not appear in the grades pages.';
 $string['maximumnumberofanswersbranches'] = 'Maximum number of answers';
 $string['maximumnumberofanswersbranches_help'] = 'This setting specifies the maximum number of answers that may be used in the lesson. If only true/false questions are used, it can be set to 2. The setting may be changed at any time, since it only affects what the teacher sees, not the data.';
-$string['maximumnumberofattempts'] = 'Maximum number of attempts per question';
-$string['maximumnumberofattempts_help'] = 'This setting specifies the maximum number of attempts allowed for each question. If answered incorrectly repeatedly, when the maximum is reached, the next page of the lesson is displayed.';
-$string['maximumnumberofattemptsreached'] = 'Maximum number of attempts reached - Moving to next page';
+$string['maximumnumberofattempts'] = 'Maximum number of tries per question';
+$string['maximumnumberofattempts_help'] = 'How many times a student can try to answer each question. If they reach the limit without a correct answer, the lesson continues to the next page.';
+$string['maximumnumberofattemptsreached'] = 'You have reached the maximum number of tries for this question. The lesson will now move to the next page.';
 $string['mediaclose'] = 'Show close button';
 $string['mediafile'] = 'Linked media';
 $string['mediafile_help'] = 'A media file may be uploaded for use in the lesson. A \'Click here to view\' link will then be displayed in a block called \'Linked media\' on each page of the lesson.';
@@ -456,8 +462,6 @@ $string['practice_help'] = 'A practice lesson does not appear in the gradebook.'
 $string['preprocesserror'] = 'Error occurred during pre-processing!';
 $string['prerequisiteisobsolete'] = 'The prerequisite lesson option is due to be removed. Please use access restrictions instead.';
 $string['prerequisitelesson'] = 'Prerequisite lesson';
-$string['preview'] = 'Preview';
-$string['previewlesson'] = 'Preview {$a}';
 $string['previewpagenamed'] = 'Preview page: {$a}';
 $string['previouspage'] = 'Previous page';
 $string['privacy:metadata:attempts:userid'] = 'The user ID';
@@ -519,8 +523,9 @@ $string['removealluseroverrides'] = 'All user overrides';
 $string['report'] = 'Report';
 $string['reports'] = 'Reports';
 $string['response'] = 'Response';
-$string['retakesallowed'] = 'Re-takes allowed';
-$string['retakesallowed_help'] = 'If enabled, students can attempt the lesson more than once.';
+$string['retakesallowed'] = 'Allow multiple attempts';
+$string['retakesallowed_help'] = 'Allow students to attempt the lesson more than once.';
+$string['retakesallowedinfo'] = 'This lesson allows students to attempt it more than once.';
 $string['returnto'] = 'Return to {$a}';
 $string['returntocourse'] = 'Return to the course';
 $string['reverttodefaults'] = 'Revert to lesson defaults';
@@ -559,6 +564,7 @@ $string['studentname'] = '{$a} Name';
 $string['studentoneminwarning'] = 'Warning: You have 1 minute or less to finish the lesson.';
 $string['studentoutoftimeforreview'] = 'Attention: You ran out of time for reviewing this lesson';
 $string['studentresponse'] = '{$a}\'s response';
+$string['studentswhoattempted'] = 'Students who attempted';
 $string['submit'] = 'Submit';
 $string['submitname'] = 'Submit name';
 $string['teacherjumpwarning'] = 'A {$a->cluster} jump or an {$a->unseen} jump is being used in this lesson.  The next page jump will be used instead. Log in as a student to test these jumps.';
@@ -576,6 +582,7 @@ $string['timeremaining'] = 'Time remaining';
 $string['timespenterror'] = 'Spend at least {$a} minutes in the lesson';
 $string['timespentminutes'] = 'Time spent (minutes)';
 $string['timetaken'] = 'Time taken';
+$string['totalattepmts'] = 'Total attempts';
 $string['totalpagesviewedheader'] = 'Number of pages viewed';
 $string['true'] = 'True';
 $string['truefalse'] = 'True/false';
@@ -586,16 +593,16 @@ $string['unsupportedqtype'] = 'Unsupported question type ({$a})!';
 $string['updatepagenamed'] = 'Update page: {$a}';
 $string['updatedpage'] = 'Updated page';
 $string['updatefailed'] = 'Update failed';
-$string['usemaximum'] = 'Use maximum';
-$string['usemean'] = 'Use mean';
+$string['usemaximum'] = 'Highest grade from all attempts';
+$string['usemean'] = 'Mean grade of all attempts';
 $string['usepassword'] = 'Password protected lesson';
 $string['usepassword_help'] = 'If enabled, a password is required in order to access the lesson.';
 $string['useroverrides'] = 'User overrides';
-$string['usersnone'] = 'No students have access to this lesson';
+$string['usersnone'] = 'There are no users enrolled in this course or no users can access the lesson.';
+$string['view'] = 'View';
 $string['viewessayanswers'] = 'View essay answers';
 $string['viewgrades'] = 'View grades';
 $string['viewreports'] = 'View {$a->attempts} completed {$a->student} attempts';
-$string['viewreports2'] = 'View {$a} completed attempts';
 $string['warning'] = 'Warning';
 $string['welldone'] = 'Well done!';
 $string['whatdofirst'] = 'What would you like to do first?';
@@ -609,12 +616,11 @@ $string['yourcurrentgradeis'] = 'Your current grade is {$a}';
 $string['yourcurrentgradeisoutof'] = 'Your current grade is {$a->grade} out of {$a->total}';
 $string['youshouldview'] = 'You should answer at least: {$a}';
 
-// Deprecated since 4.3.
-$string['completiontimespent'] = 'Student must do this activity at least for';
-
-// Deprecated since Moodle 4.4.
-$string['grade'] = 'Grade';
-
 // Deprecated since Moodle 4.5.
 $string['useroverridesdeleted'] = 'User overrides deleted';
 $string['groupoverridesdeleted'] = 'Group overrides deleted';
+
+// Deprecated since Moodle 5.0.
+$string['preview'] = 'Preview';
+$string['previewlesson'] = 'Preview {$a}';
+$string['viewreports2'] = 'View {$a} completed attempts';

@@ -18,9 +18,8 @@ declare(strict_types=1);
 
 namespace core_badges\reportbuilder\local\entities;
 
-use context_course;
-use context_helper;
-use context_system;
+use core\{context, context_helper};
+use core\context\system;
 use html_writer;
 use lang_string;
 use moodle_url;
@@ -95,8 +94,6 @@ class badge extends base {
      * @return column[]
      */
     protected function get_all_columns(): array {
-        global $DB;
-
         $badgealias = $this->get_table_alias('badge');
         $contextalias = $this->get_table_alias('context');
 
@@ -141,9 +138,8 @@ class badge extends base {
                     ON {$contextalias}.contextlevel = " . CONTEXT_COURSE . "
                    AND {$contextalias}.instanceid = {$badgealias}.courseid")
             ->add_fields(
-                "{$badgealias}.name, {$badgealias}.id, {$badgealias}.type, {$badgealias}.courseid"
+                "{$badgealias}.name, {$badgealias}.id, {$badgealias}.type, {$badgealias}.courseid, {$badgealias}.imagecaption"
             )
-            ->add_field($DB->sql_cast_to_char("{$badgealias}.imagecaption"), 'imagecaption')
             ->add_fields(context_helper::get_preload_record_columns_sql($contextalias))
             ->set_is_sortable(true)
             ->add_callback(static function ($value, stdClass $badge): string {
@@ -151,10 +147,10 @@ class badge extends base {
                     return '';
                 }
                 if ($badge->type == BADGE_TYPE_SITE) {
-                    $context = context_system::instance();
+                    $context = system::instance();
                 } else {
-                    context_helper::preload_from_record($badge);
-                    $context = context_course::instance($badge->courseid);
+                    context_helper::preload_from_record(clone $badge);
+                    $context = context::instance_by_id($badge->ctxid);
                 }
 
                 $badgeimage = moodle_url::make_pluginfile_url($context->id, 'badges', 'badgeimage', $badge->id, '/', 'f2');
@@ -163,10 +159,6 @@ class badge extends base {
             });
 
         // Description (note, this column contains plaintext so requires no post-processing).
-        $descriptionfieldsql = "{$badgealias}.description";
-        if ($DB->get_dbfamily() === 'oracle') {
-            $descriptionfieldsql = $DB->sql_order_by_text($descriptionfieldsql, 1024);
-        }
         $columns[] = (new column(
             'description',
             new lang_string('description', 'core_badges'),
@@ -174,7 +166,8 @@ class badge extends base {
         ))
             ->add_joins($this->get_joins())
             ->set_type(column::TYPE_LONGTEXT)
-            ->add_field($descriptionfieldsql, 'description');
+            ->add_field("{$badgealias}.description")
+            ->set_is_sortable(true);
 
         // Criteria.
         $columns[] = (new column(
@@ -192,7 +185,11 @@ class badge extends base {
                     return '';
                 }
                 $badge = new \core_badges\badge($badgeid);
+                if (empty($badge->criteria)) {
+                    return '<span class="no-criteria-set d-none"></span>';
+                }
 
+                /** @var \core_badges_renderer $renderer */
                 $renderer = $PAGE->get_renderer('core_badges');
                 return $renderer->print_badge_criteria($badge, 'short');
             });
@@ -207,18 +204,17 @@ class badge extends base {
             ->add_join("LEFT JOIN {context} {$contextalias}
                     ON {$contextalias}.contextlevel = " . CONTEXT_COURSE . "
                    AND {$contextalias}.instanceid = {$badgealias}.courseid")
-            ->add_fields("{$badgealias}.id, {$badgealias}.type, {$badgealias}.courseid")
-            ->add_field($DB->sql_cast_to_char("{$badgealias}.imagecaption"), 'imagecaption')
+            ->add_fields("{$badgealias}.id, {$badgealias}.type, {$badgealias}.imagecaption")
             ->add_fields(context_helper::get_preload_record_columns_sql($contextalias))
             ->add_callback(static function($value, stdClass $badge): string {
-                if ($badge->id === null) {
+                if ($value === null) {
                     return '';
                 }
                 if ($badge->type == BADGE_TYPE_SITE) {
-                    $context = context_system::instance();
+                    $context = system::instance();
                 } else {
-                    context_helper::preload_from_record($badge);
-                    $context = context_course::instance($badge->courseid);
+                    context_helper::preload_from_record(clone $badge);
+                    $context = context::instance_by_id($badge->ctxid);
                 }
 
                 $badgeimage = moodle_url::make_pluginfile_url($context->id, 'badges', 'badgeimage', $badge->id, '/', 'f2');
@@ -292,19 +288,6 @@ class badge extends base {
                 }
             });
 
-        // Image author details.
-        foreach (['imageauthorname', 'imageauthoremail', 'imageauthorurl'] as $imageauthorfield) {
-            $columns[] = (new column(
-                $imageauthorfield,
-                new lang_string($imageauthorfield, 'core_badges'),
-                $this->get_entity_name()
-            ))
-                ->add_joins($this->get_joins())
-                ->set_type(column::TYPE_TEXT)
-                ->add_field("{$badgealias}.{$imageauthorfield}")
-                ->set_is_sortable(true);
-        }
-
         return $columns;
     }
 
@@ -314,8 +297,6 @@ class badge extends base {
      * @return filter[]
      */
     protected function get_all_filters(): array {
-        global $DB;
-
         $badgealias = $this->get_table_alias('badge');
 
         // Name.
@@ -327,6 +308,19 @@ class badge extends base {
             "{$badgealias}.name"
         ))
             ->add_joins($this->get_joins());
+
+        // Language.
+        $filters[] = (new filter(
+            select::class,
+            'language',
+            new lang_string('language'),
+            $this->get_entity_name(),
+            "{$badgealias}.language",
+        ))
+            ->add_joins($this->get_joins())
+            ->set_options_callback(
+                fn() => get_string_manager()->get_list_of_translations(),
+            );
 
         // Version.
         $filters[] = (new filter(

@@ -34,4 +34,4 @@ Feature: Marketplace activity chooser footer
     Then "modules" "core_course > Activity chooser screen" should be visible
     And "help" "core_course > Activity chooser screen" should not be visible
     And "Marketplace" "link" should exist in the "Add an activity or resource" "dialogue"
-    And "Back" "button" should not exist in the "Add an activity or resource" "dialogue"
+    And "Back" "button" should not be visible

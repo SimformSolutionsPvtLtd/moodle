@@ -92,62 +92,37 @@ class core_question_bank_renderer extends plugin_renderer_base {
     }
 
     /**
-     * @deprecated since Moodle 4.0
-     */
-    public function render_qbank_chooser() {
-        throw new coding_exception(__FUNCTION__ . '() has been removed.');
-    }
-
-    /**
-     * Render category condition.
-     *
-     * @param array $displaydata
-     * @return bool|string
      * @deprecated since Moodle 4.3
-     * @todo Final deprecation on Moodle 4.7 MDL-78090
      */
+    #[\core\attribute\deprecated(
+        'qbank_managecategories\output\renderer::render_category_condition()',
+        since: '4.3',
+        mdl: 'MDL-72321',
+        final: true
+    )]
     public function render_category_condition($displaydata) {
-        debugging(
-            'Function render_category_condition() has been deprecated and moved to qbank_managecategories plugin, ' .
-                'Please use qbank_managecategories\output\renderer::render_category_condition() instead.',
-            DEBUG_DEVELOPER
-        );
-        return $this->render_from_template('qbank_managecategories/category_condition', $displaydata);
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
     }
 
     /**
-     * Render category condition advanced.
-     *
-     * @param array $displaydata
-     * @return bool|string
      * @deprecated since Moodle 4.3
-     * @todo Final deprecation on Moodle 4.7 MDL-78090
      */
+    #[\core\attribute\deprecated(null, since: '4.3', mdl: 'MDL-72321', final: true)]
     public function render_category_condition_advanced($displaydata) {
-        debugging(
-            'Function render_category_condition_advanced() has been deprecated',
-            DEBUG_DEVELOPER
-        );
-        // The template category_condition_advanced should also be deleted with this function.
-        return $this->render_from_template('qbank_managecategories/category_condition_advanced', $displaydata);
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
     }
 
     /**
-     * Render hidden condition advanced.
-     *
-     * @param array $displaydata
-     * @return bool|string
-     * @see qbank_deletequestion\output\renderer
      * @deprecated since Moodle 4.3
-     * @todo Final deprecation on Moodle 4.7 MDL-78090
      */
+    #[\core\attribute\deprecated(
+        'qbank_deletequestion\output\renderer::render_hidden_condition_advanced()',
+        since: '4.3',
+        mdl: 'MDL-72321',
+        final: true
+    )]
     public function render_hidden_condition_advanced($displaydata) {
-        debugging(
-            'Function render_hidden_condition_advanced() has been deprecated and moved to qbank_deletequestion plugin, ' .
-                'Please use qbank_deletequestion\output\renderer::render_hidden_condition_advanced() instead.',
-            DEBUG_DEVELOPER
-        );
-        return $this->render_from_template('qbank_deletequestion/hidden_condition_advanced', $displaydata);
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
     }
 
     /**
@@ -155,8 +130,13 @@ class core_question_bank_renderer extends plugin_renderer_base {
      *
      * @param array $displaydata
      * @return bool|string
+     * @deprecated since Moodle 5.1 MDL-78091
+     * @todo MDL-84648 Final deprecation on Moodle 6.0
      */
+    #[\core\attribute\deprecated(null, since: '5.1', mdl: 'MDL-78091')]
     public function render_question_pagination($displaydata) {
+        \core\deprecation::emit_deprecation([$this, __FUNCTION__]);
+        // The template question_pagination should also be deleted with this function.
         return $this->render_from_template('core_question/question_pagination', $displaydata);
     }
 
@@ -182,33 +162,4 @@ class core_question_bank_renderer extends plugin_renderer_base {
     public function render_bulk_actions_ui($displaydata) {
         return $this->render_from_template('core_question/bulk_actions_ui', $displaydata);
     }
-
-    /**
-     * @deprecated since Moodle 4.0
-     */
-    public function qbank_chooser() {
-        throw new coding_exception(__FUNCTION__ . '() has been removed.');
-    }
-
-    /**
-     * @deprecated since Moodle 4.0
-     */
-    protected function qbank_chooser_types() {
-        throw new coding_exception(__FUNCTION__ . '() has been removed.');
-    }
-
-    /**
-     * @deprecated since Moodle 4.0
-     */
-    protected function qbank_chooser_qtype() {
-        throw new coding_exception(__FUNCTION__ . '() has been removed.');
-    }
-
-    /**
-     * @deprecated since Moodle 4.0
-     */
-    protected function qbank_chooser_title() {
-        throw new coding_exception(__FUNCTION__ . '() has been removed.');
-    }
-
 }

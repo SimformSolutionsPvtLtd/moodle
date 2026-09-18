@@ -21,7 +21,7 @@
  * needed during the very first steps of installation. This file was
  * generated automatically by export-installer.php (which is part of AMOS
  * {@link https://moodledev.io/general/projects/api/amos}) using the
- * list of strings defined in install/stringnames.txt file.
+ * list of strings defined in public/install/stringnames.txt file.
  *
  * @package   installer
  * @license   https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -36,7 +36,7 @@ $string['chooselanguagesub'] = 'Trieu un idioma per a la instal·lació. S\'util
 $string['clialreadyconfigured'] = 'El fitxer config.php ja existeix; feu servir admin/cli/install_database.php si voleu instal·lar Moodle en aquest lloc web.';
 $string['clialreadyinstalled'] = 'El fitxer de configuració config.php ja existeix. Feu servir admin/cli/upgrade.php si voleu actualitzar Moodle per a aquest lloc web.';
 $string['cliinstallheader'] = 'Programa d\'instal·lació de línia d\'ordres de Moodle {$a}';
-$string['clitablesexist'] = 'Les taules de la base de dades ja existeixen. La instal·lació per línia d\'ordres no pot continuar.';
+$string['clitablesexist'] = 'Les taules de la base de dades ja existeixen. La instal·lació per línia de comandes no pot continuar.';
 $string['databasehost'] = 'Servidor de base de dades';
 $string['databasename'] = 'Nom de la base de dades';
 $string['databasetypehead'] = 'Trieu el controlador de la base de dades';
@@ -50,18 +50,6 @@ Abans de cada instal·lació o actualització es realitza una comprovació exhau
 $string['errorsinenvironment'] = 'La comprovació de l\'entorn ha fallat.';
 $string['installation'] = 'Instal·lació';
 $string['langdownloaderror'] = 'Dissortadament l\'idioma "{$a}" no es pot baixar. La instal·lació prosseguirà en anglès.';
-$string['memorylimithelp'] = '<p>El límit de memòria del PHP del vostre servidor actualment està definit en {$a}.</p>
-
-<p>Això pot causar que Moodle tingui problemes de memòria més endavant, especialment, si teniu molts mòduls habilitats i/o molts usuaris.</p>
-
-<p>És recomanable que configureu el PHP amb un límit superior, com ara 40 MB, sempre que sigui possible. Hi ha diverses maneres de fer això:</p>
-<ol>
-<li>Si podeu, recompileu el PHP amb <i>--enable-memory-limit</i>. Això permetrà que Moodle defineixi el límit de memòria per si mateix.</li>
-<li>Si teniu accés al fitxer php.ini, podeu canviar el paràmetre <b>memory_limit</b> a 40 MB. Si no hi teniu accés, podeu demanar al vostre administrador que us ho faci.</li>
-<li>En alguns servidors PHP podeu crear un fitxer .htaccess dins el directori de Moodle amb aquesta línia:
-<p><blockquote>php_value memory_limit 40M</blockquote></p>
-<p>Tanmateix, en alguns servidors això farà que no funcioni <b>cap</b> pàgina PHP (es visualitzaran errors); en aquest cas, hauríeu de suprimir el fitxer .htaccess.</p></li>
-</ol>';
 $string['paths'] = 'Camins';
 $string['pathserrcreatedataroot'] = 'L\'instal·lador no pot crear el directori de dades ({$a->dataroot}).';
 $string['pathshead'] = 'Confirmeu els camins';
@@ -79,9 +67,8 @@ $string['pathsunsecuredataroot'] = 'La ubicació del dataroot no és segura.';
 $string['pathswrongadmindir'] = 'No existeix el directori d\'administració';
 $string['phpextension'] = 'Extensió PHP {$a}';
 $string['phpversion'] = 'Versió PHP';
-$string['phpversionhelp'] = '<p>El Moodle requereix una versió de PHP almenys 5.6.5 o 7.1 (7.0.x té algunes limitacions del motor).</p>
-<p>Actualment esteu executant la versió {$a}.</p>
-<p>Heu d\'actualitzar el PHP o canviar a un servidor amb una versió més nova del PHP.</p>';
+$string['webserverconfigproblemdescription'] = 'El vostre servidor web no està configurat per impedir l\'accés a fitxers fora del directori /public. Per obtenir més informació sobre com configurar correctament el vostre servidor web, consulteu la documentació <a href="https://docs.moodle.org/en/Upgrading#Code_directories_restructure">Actualització - Reestructuració de directoris de codi</a>. Una vegada reconfigurat, <a href="{$a}">revisiteu l\'arrel web</a>.';
+$string['webservernotconfigured'] = 'El servidor web no està configurat';
 $string['welcomep10'] = '{$a->installername} ({$a->installerversion})';
 $string['welcomep20'] = 'Esteu veient aquesta pàgina perquè heu instal·lat amb èxit i heu executat el paquet <strong>{$a->packname} {$a->packversion}</strong>. Felicitacions.';
 $string['welcomep30'] = 'Aquesta versió de <strong>{$a->installername}</strong> inclou les aplicacions necessàries per crear un entorn en el qual funcioni <strong>Moodle</strong>, concretament:';

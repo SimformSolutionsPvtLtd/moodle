@@ -30,9 +30,6 @@
 function xmldb_assign_upgrade($oldversion) {
     global $DB;
 
-    // Automatically generated Moodle v4.1.0 release upgrade line.
-    // Put any upgrade step following this.
-
     // Automatically generated Moodle v4.2.0 release upgrade line.
     // Put any upgrade step following this.
 
@@ -111,6 +108,56 @@ function xmldb_assign_upgrade($oldversion) {
 
     // Automatically generated Moodle v4.5.0 release upgrade line.
     // Put any upgrade step following this.
+
+    if ($oldversion < 2024121801) {
+
+        // Define field gradepenalty to be added to assign.
+        $table = new xmldb_table('assign');
+        $field = new xmldb_field('gradepenalty', XMLDB_TYPE_INTEGER, '2', null, XMLDB_NOTNULL, null, '0', 'submissionattachments');
+
+        // Conditionally launch add field gradepenalty.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Define index gradepenalty (not unique) to be added to assign.
+        $index = new xmldb_index('gradepenalty', XMLDB_INDEX_NOTUNIQUE, ['gradepenalty']);
+
+        // Conditionally launch add index gradepenalty.
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Define field penalty to be added to assign_grades.
+        $table = new xmldb_table('assign_grades');
+        $field = new xmldb_field('penalty', XMLDB_TYPE_NUMBER, '10, 5', null, XMLDB_NOTNULL, null, '0', 'grade');
+
+        // Conditionally launch add field penalty.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Assign savepoint reached.
+        upgrade_mod_savepoint(true, 2024121801, 'assign');
+    }
+
+    // Automatically generated Moodle v5.0.0 release upgrade line.
+    // Put any upgrade step following this.
+
+    // Automatically generated Moodle v5.1.0 release upgrade line.
+    // Put any upgrade step following this.
+
+    if ($oldversion < 2025100601) {
+        // Changing precision of field name on table assign to (1333).
+        $table = new xmldb_table('assign');
+        $field = new xmldb_field('name', XMLDB_TYPE_CHAR, '1333', null, XMLDB_NOTNULL, null, null, 'course');
+
+        // Launch change of precision for field name.
+        $dbman->change_field_precision($table, $field);
+
+        // Assign savepoint reached.
+        upgrade_mod_savepoint(true, 2025100601, 'assign');
+    }
 
     return true;
 }

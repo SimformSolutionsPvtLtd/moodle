@@ -56,47 +56,6 @@ require_once("$CFG->libdir/filestorage/zip_packer.php");
 require_once("$CFG->libdir/filebrowser/file_browser.php");
 
 /**
- * Encodes file serving url
- *
- * @deprecated use moodle_url factory methods instead
- *
- * @todo MDL-31071 deprecate this function
- * @global stdClass $CFG
- * @param string $urlbase
- * @param string $path /filearea/itemid/dir/dir/file.exe
- * @param bool $forcedownload
- * @param bool $https https url required
- * @return string encoded file url
- */
-function file_encode_url($urlbase, $path, $forcedownload=false, $https=false) {
-    global $CFG;
-
-//TODO: deprecate this
-
-    if ($CFG->slasharguments) {
-        $parts = explode('/', $path);
-        $parts = array_map('rawurlencode', $parts);
-        $path  = implode('/', $parts);
-        $return = $urlbase.$path;
-        if ($forcedownload) {
-            $return .= '?forcedownload=1';
-        }
-    } else {
-        $path = rawurlencode($path);
-        $return = $urlbase.'?file='.$path;
-        if ($forcedownload) {
-            $return .= '&amp;forcedownload=1';
-        }
-    }
-
-    if ($https) {
-        $return = str_replace('http://', 'https://', $return);
-    }
-
-    return $return;
-}
-
-/**
  * Detects if area contains subdirs,
  * this is intended for file areas that are attached to content
  * migrated from 1.x where subdirs were allowed everywhere.
@@ -1121,6 +1080,7 @@ function file_save_draft_area_files($draftitemid, $contextid, $component, $filea
 
     $usercontext = context_user::instance($USER->id);
     $fs = get_file_storage();
+    $isdraftdestination = $component === 'user' && $filearea === 'draft';
 
     $options = (array)$options;
     if (!isset($options['subdirs'])) {
@@ -1241,8 +1201,9 @@ function file_save_draft_area_files($draftitemid, $contextid, $component, $filea
             // Field files.source for draftarea files contains serialised object with source and original information.
             // We only store the source part of it for non-draft file area.
             $newsource = $newfile->get_source();
-            if ($source = unserialize_object($newfile->get_source() ?? '')) {
-                if (isset($source->source)) {
+            if (!$isdraftdestination) {
+                $source = unserialize_object($newfile->get_source() ?? '');
+                if ($source && isset($source->source)) {
                     $newsource = $source->source;
                 }
             }
@@ -1277,10 +1238,11 @@ function file_save_draft_area_files($draftitemid, $contextid, $component, $filea
         // the size and subdirectory tests are extra safety only, the UI should prevent it
         foreach ($newhashes as $file) {
             $file_record = array('contextid'=>$contextid, 'component'=>$component, 'filearea'=>$filearea, 'itemid'=>$itemid, 'timemodified'=>time());
-            if ($source = unserialize_object($file->get_source() ?? '')) {
+            if (!$isdraftdestination) {
+                $source = unserialize_object($file->get_source() ?? '');
                 // Field files.source for draftarea files contains serialised object with source and original information.
                 // We only store the source part of it for non-draft file area.
-                if (isset($source->source)) {
+                if ($source && isset($source->source)) {
                     $file_record['source'] = $source->source;
                 }
             }
@@ -3383,6 +3345,33 @@ class curl {
     }
 
     /**
+     * Remove options previously set with setopt.
+     *
+     * @param array $options List of options to remove.
+     */
+    public function removeopt(
+        array $options = [],
+    ): void {
+        foreach ($options as $name) {
+            if (!is_string($name)) {
+                throw new coding_exception('Curl options should be defined using strings, not constant values.');
+            }
+            if (!str_contains(strtoupper($name), 'CURLOPT_')) {
+                // Only prefix with CURLOPT_ if the option doesn't contain CURLINFO_,
+                // which is a valid prefix for at least one option CURLINFO_HEADER_OUT.
+                if (!str_contains(strtoupper($name), 'CURLINFO_')) {
+                    $name = strtoupper('CURLOPT_' . $name);
+                }
+            } else {
+                $name = strtoupper($name);
+            }
+            if (isset($this->options[$name])) {
+                unset($this->options[$name]);
+            }
+        }
+    }
+
+    /**
      * Reset http method
      */
     public function cleanopt() {
@@ -3684,6 +3673,10 @@ class curl {
                 $options[$n] = $v;
             }
             $handles[$i] = curl_init($requests[$i]['url']);
+
+            // Set the URL as a curl option.
+            $this->setopt(['CURLOPT_URL' => $requests[$i]['url']]);
+
             $this->apply_opt($handles[$i], $options);
             curl_multi_add_handle($main, $handles[$i]);
         }
@@ -3754,6 +3747,15 @@ class curl {
             return null;
         }
 
+        // Check if the URL is blocked in core curl_security_helper or
+        // curl security helper that passed to curl class constructor.
+        // Note, we purposely check the configured helper first,
+        // as this may be being mocked for unit testing.
+        if ($this->securityhelper->url_is_blocked($url)) {
+            $this->error = $this->securityhelper->get_blocked_url_string();
+            return $this->error;
+        }
+
         // Augment all installed plugin's security helpers if there is any.
         // The plugin's function has to be defined as plugintype_pluginname_curl_security_helper in pluginname/lib.php.
         $plugintypes = get_plugins_with_function('curl_security_helper');
@@ -3770,13 +3772,6 @@ class curl {
                     }
                 }
             }
-        }
-
-        // Check if the URL is blocked in core curl_security_helper or
-        // curl security helper that passed to curl class constructor.
-        if ($this->securityhelper->url_is_blocked($url)) {
-            $this->error = $this->securityhelper->get_blocked_url_string();
-            return $this->error;
         }
 
         // Set allowed resolve info if the URL is not blocked.
@@ -4172,7 +4167,7 @@ class curl {
      * @param array $options
      * @return ?string
      */
-    public function put($url, $params = array(), $options = array()) {
+    public function put($url, $params = [], $options = []) {
         $file = '';
         $fp = false;
         if (isset($params['file'])) {
@@ -4186,8 +4181,12 @@ class curl {
             } else {
                 return null;
             }
-            if (!isset($this->options['CURLOPT_USERPWD'])) {
+            if (!isset($options['CURLOPT_USERPWD']) && !isset($this->options['CURLOPT_USERPWD'])) {
                 $this->setopt(array('CURLOPT_USERPWD' => 'anonymous: noreply@moodle.org'));
+            }
+            if (isset($options['CURLOPT_USERPWD']) && $options['CURLOPT_USERPWD'] === false) {
+                $this->removeopt(['CURLOPT_USERPWD']);
+                unset($options['CURLOPT_USERPWD']);
             }
         } else {
             $options['CURLOPT_CUSTOMREQUEST'] = 'PUT';

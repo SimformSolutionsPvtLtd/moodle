@@ -351,7 +351,7 @@ class mod_feedback_complete_form extends moodleform {
                 'title' => $requiredlabel,
             ];
             $required = $OUTPUT->pix_icon('req', '', 'moodle', $pixparams)
-                . \core\output\html_writer::span("($requiredlabel)", 'sr-only');
+                . \core\output\html_writer::span("($requiredlabel)", 'visually-hidden');
             $element->setLabel($element->getLabel() . $required);
             $this->hasrequired = true;
         }

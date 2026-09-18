@@ -20,6 +20,8 @@ use core\http_client;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Middleware;
+use PHPUnit\Framework\Attributes\After;
+use PHPUnit\Framework\Attributes\Before;
 
 /**
  * Advanced PHPUnit test case customised for Moodle.
@@ -46,21 +48,16 @@ abstract class advanced_testcase extends base_testcase {
      * Note: use setUp() or setUpBeforeClass() in your test cases.
      *
      * @param string $name
-     * @param array  $data
-     * @param string $dataName
      */
-    final public function __construct($name = null, array $data = [], $dataname = '') {
-        parent::__construct($name, $data, $dataname);
+    final public function __construct(string $name) {
+        parent::__construct($name);
 
         $this->setBackupGlobals(false);
-        $this->setBackupStaticAttributes(false);
         $this->setPreserveGlobalState(false);
     }
 
-    /**
-     * Runs the bare test sequence.
-     */
-    final public function runBare(): void {
+    #[Before]
+    final public function setup_test_environment(): void {
         global $CFG, $DB;
 
         if (phpunit_util::$lastdbwrites != $DB->perf_get_writes()) {
@@ -71,28 +68,18 @@ abstract class advanced_testcase extends base_testcase {
             $this->testdbtransaction = $DB->start_delegated_transaction();
         }
 
-        try {
-            $this->setCurrentTimeStart();
-            parent::runBare();
-        } catch (Exception $ex) {
-            $e = $ex;
-        } catch (Throwable $ex) {
-            // Engine errors in PHP7 throw exceptions of type Throwable (this "catch" will be ignored in PHP5).
-            $e = $ex;
-        } finally {
-            // Reset global state after test and test failure.
-            $CFG = phpunit_util::get_global_backup('CFG');
-            $DB = phpunit_util::get_global_backup('DB');
+        $this->setCurrentTimeStart();
+    }
 
-            // We need to reset the autoloader.
-            \core_component::reset();
-        }
+    #[After]
+    final public function teardown_test_environment(): void {
+        global $CFG, $DB;
+        // Reset global state after test and test failure.
+        $CFG = phpunit_util::get_global_backup('CFG');
+        $DB = phpunit_util::get_global_backup('DB');
 
-        if (isset($e)) {
-            // Cleanup after failed expectation.
-            self::resetAllData();
-            throw $e;
-        }
+        // We need to reset the autoloader.
+        \core_component::reset();
 
         // Deal with any debugging messages.
         $debugerror = phpunit_util::display_debugging_messages(true);
@@ -144,34 +131,6 @@ abstract class advanced_testcase extends base_testcase {
                 throw new coding_exception('Test ' . $this->getName() . ' did not close database transaction');
             }
         }
-    }
-
-    /**
-     * @deprecated since Moodle 3.10 - See MDL-67673 and MDL-64600 for more info.
-     */
-    protected function createXMLDataSet() {
-        throw new coding_exception(__FUNCTION__ . '() is deprecated. Please use dataset_from_files() instead.');
-    }
-
-    /**
-     * @deprecated since Moodle 3.10 - See MDL-67673 and MDL-64600 for more info.
-     */
-    protected function createCsvDataSet() {
-        throw new coding_exception(__FUNCTION__ . '() is deprecated. Please use dataset_from_files() instead.');
-    }
-
-    /**
-     * @deprecated since Moodle 3.10 - See MDL-67673 and MDL-64600 for more info.
-     */
-    protected function createArrayDataSet() {
-        throw new coding_exception(__FUNCTION__ . '() is deprecated. Please use dataset_from_array() instead.');
-    }
-
-    /**
-     * @deprecated since Moodle 3.10 - See MDL-67673 and MDL-64600 for more info.
-     */
-    protected function loadDataSet() {
-        throw new coding_exception(__FUNCTION__ . '() is deprecated. Please use dataset->to_database() instead.');
     }
 
     /**
@@ -698,8 +657,8 @@ abstract class advanced_testcase extends base_testcase {
             $params['userid'] = $matchuserid;
         }
 
-        $lock = $this->createMock(\core\lock\lock::class);
-        $cronlock = $this->createMock(\core\lock\lock::class);
+        $lock = $this->createStub(\core\lock\lock::class);
+        $cronlock = $this->createStub(\core\lock\lock::class);
 
         $tasks = $DB->get_recordset('task_adhoc', $params);
         foreach ($tasks as $record) {
@@ -785,22 +744,25 @@ abstract class advanced_testcase extends base_testcase {
      *
      * @param string $plugintype The name of the plugintype
      * @param string $path The path to the plugintype's root
+     * @param bool $deprecated whether to add the plugintype as a deprecated plugin type.
      */
     protected function add_mocked_plugintype(
         string $plugintype,
         string $path,
+        bool $deprecated = false,
     ): void {
         require_phpunit_isolation();
 
         $mockedcomponent = new \ReflectionClass(\core_component::class);
-        $plugintypes = $mockedcomponent->getStaticPropertyValue('plugintypes');
+        $propertyname = $deprecated ? 'deprecatedplugintypes' : 'plugintypes';
+        $plugintypes = $mockedcomponent->getStaticPropertyValue($propertyname);
 
         if (array_key_exists($plugintype, $plugintypes)) {
             throw new \coding_exception("The plugintype '{$plugintype}' already exists.");
         }
 
         $plugintypes[$plugintype] = $path;
-        $mockedcomponent->setStaticPropertyValue('plugintypes', $plugintypes);
+        $mockedcomponent->setStaticPropertyValue($propertyname, $plugintypes);
 
         $this->resetDebugging();
     }
@@ -835,55 +797,6 @@ abstract class advanced_testcase extends base_testcase {
         $plugins[$plugintype][$pluginname] = $path;
         $mockedcomponent->setStaticPropertyValue('plugins', $plugins);
         $this->resetDebugging();
-    }
-
-    /**
-     * Convenience method to get the path to a fixture.
-     *
-     * @param string $component
-     * @param string $path
-     * @throws coding_exception
-     */
-    protected static function get_fixture_path(
-        string $component,
-        string $path,
-    ): string {
-        return sprintf(
-            "%s/tests/fixtures/%s",
-            \core_component::get_component_directory($component),
-            $path,
-        );
-    }
-
-    /**
-     * Convenience method to load a fixture from a component's fixture directory.
-     *
-     * @param string $component
-     * @param string $path
-     * @throws coding_exception
-     */
-    protected static function load_fixture(
-        string $component,
-        string $path,
-    ): void {
-        global $ADMIN;
-        global $CFG;
-        global $DB;
-        global $SITE;
-        global $USER;
-        global $OUTPUT;
-        global $PAGE;
-        global $SESSION;
-        global $COURSE;
-        global $SITE;
-
-        $fullpath = static::get_fixture_path($component, $path);
-
-        if (!file_exists($fullpath)) {
-            throw new \coding_exception("Fixture file not found: $fullpath");
-        }
-
-        require_once($fullpath);
     }
 
     /**

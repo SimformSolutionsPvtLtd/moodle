@@ -18,9 +18,9 @@ namespace qbank_comment\event;
 
 use advanced_testcase;
 use cache;
-use comment;
 use context;
 use context_course;
+use context_module;
 use core_question_generator;
 use stdClass;
 
@@ -50,8 +50,6 @@ final class comment_created_deleted_test extends advanced_testcase {
      * Setup test data.
      */
     public function setUp(): void {
-        global $CFG;
-        require_once($CFG->dirroot . '/comment/lib.php');
         parent::setUp();
 
         $this->resetAfterTest();
@@ -63,11 +61,12 @@ final class comment_created_deleted_test extends advanced_testcase {
 
         // Create a course.
         $this->course = $generator->create_course();
-        $this->context = context_course::instance($this->course->id);
+        $qbank = self::getDataGenerator()->create_module('qbank', ['course' => $this->course->id]);
+        $this->context = context_module::instance($qbank->cmid);
 
         // Create a question in the default category.
         $contexts = new \core_question\local\bank\question_edit_contexts($this->context);
-        $cat = question_make_default_categories($contexts->all());
+        $cat = question_get_default_category($contexts->lowest()->id, true);
         $this->questiondata = $questiongenerator->create_question('numerical', null,
                 ['name' => 'Example question', 'category' => $cat->id]);
 
@@ -86,7 +85,7 @@ final class comment_created_deleted_test extends advanced_testcase {
         $args->notoggle = true;
         $args->autostart = true;
         $args->displaycancel = false;
-        $this->comment = new comment($args);
+        $this->comment = new \core_comment\manager($args);
     }
 
     /**

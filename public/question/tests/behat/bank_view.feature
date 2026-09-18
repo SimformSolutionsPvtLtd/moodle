@@ -14,9 +14,12 @@ Feature: A bank view with questions can be managed
     And the following "course enrolments" exist:
       | user | course | role |
       | teacher1 | C1 | editingteacher |
+    And the following "activities" exist:
+      | activity | name    | course | idnumber |
+      | qbank    | Qbank 1 | C1     | qbank1   |
     And the following "question categories" exist:
-      | contextlevel | reference | name           |
-      | Course       | C1        | Test questions |
+      | contextlevel    | reference | name           |
+      | Activity module | qbank1    | Test questions |
 
   @javascript
   Scenario: Viewing question bank should not load individual questions
@@ -24,8 +27,8 @@ Feature: A bank view with questions can be managed
     | questioncategory | qtype       | name                    | questiontext                  | idnumber |
     | Test questions   | essay       | Essay test question     | Write about whatever you want | qid      |
     | Test questions   | numerical   | Numerical test question | Write about whatever you want | qid      |
-    And I am on the "C1" "Course" page logged in as "teacher1"
-    And I navigate to "Question bank" in current page administration
+    And I am on the "Qbank 1" "core_question > question bank" page logged in as "teacher1"
+    And I apply question bank filter "Category" with value "Test questions"
     And I should see "Essay test question"
     And I should see "Numerical test question"
     And I choose "Delete" action for "Essay test question" in the question bank
@@ -41,8 +44,8 @@ Feature: A bank view with questions can be managed
     | Test questions   | missingtype   | Unknown type question   | Write about whatever you want |
     | Test questions   | truefalse     | Truefalse type question | Write about whatever you want |
     | Test questions   | essay         | Essay type question     | Write about whatever you want |
-    And I am on the "C1" "Course" page logged in as "teacher1"
-    And I navigate to "Question bank" in current page administration
+    And I am on the "Qbank 1" "core_question > question bank" page logged in as "teacher1"
+    And I apply question bank filter "Category" with value "Test questions"
     And I should see "Unknown type question"
     And I should see "Truefalse type question"
     And I should see "Essay type question"

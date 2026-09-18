@@ -21,7 +21,7 @@
  * needed during the very first steps of installation. This file was
  * generated automatically by export-installer.php (which is part of AMOS
  * {@link https://moodledev.io/general/projects/api/amos}) using the
- * list of strings defined in install/stringnames.txt file.
+ * list of strings defined in public/install/stringnames.txt file.
  *
  * @package   installer
  * @license   https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -36,7 +36,7 @@ $string['chooselanguagesub'] = 'インストールに使用する言語を選択
 $string['clialreadyconfigured'] = '設定ファイルconfig.phpはすでに登録されています。このサイトをインストールする場合、admin/cli/install_database.phpを使用してください。';
 $string['clialreadyinstalled'] = '設定ファイルconfig.phpはすでに登録されています。このサイトをアップグレードする場合、admin/cli/upgrade.phpを使用してください。';
 $string['cliinstallheader'] = 'Moodle {$a} コマンドラインインストレーションプログラム';
-$string['clitablesexist'] = 'データベーステーブルがすでに存在するため、CLIインストールを継続できません。';
+$string['clitablesexist'] = 'データベーステーブルがすでに存在するため、コマンドラインインタフェース (CLI) インストールを継続できません。';
 $string['databasehost'] = 'データベースホスト';
 $string['databasename'] = 'データベース名';
 $string['databasetypehead'] = 'データベースドライバを選択する';
@@ -49,18 +49,6 @@ $string['environmentsub2'] = 'それぞれのMoodleリリースにはPHPバー�
 $string['errorsinenvironment'] = '環境チェックに失敗しました!';
 $string['installation'] = 'インストレーション';
 $string['langdownloaderror'] = '残念ですが、言語「 {$a} 」をダウンロードできませんでした。インストール処理は英語で継続されます。';
-$string['memorylimithelp'] = '<p>現在、サーバのPHPメモリ制限が {$a} に設定されています。</p>
-
-<p>この設定ではMoodleのメモリに関わるトラブルが発生する可能性があります。 特に多くのモジュールを使用したり、多くのユーザがMoodleを使用する場合にトラブルが発生します。</p>
-
-<p>可能でしたら、PHPのメモリ制限上限を40M以上に設定されることをお勧めします。この設定を実現するために、いくつかの方法があります:
-<ol>
-<li>あなたがリコンパイル可能な場合、PHPを<i>--enable-memory-limit</i>オプションでコンパイルしてください。これでMoodle自身がメモリ制限を設定することが可能になります。</li>
-<li>あなたがphp.iniファイルにアクセスできる場合、<b>memory_limit</b>設定を40Mのように変更することができます。php.iniファイルにアクセスできない場合、管理者に変更を依頼してください。</li>
-<li>いくつかのPHPサーバでは以下の行を含む.htaccessファイルをMoodleディレクトリに作成することができます:
-<blockquote><div>php_value memory_limit 40M</div></blockquote>
-<p>しかし、この設定が<b>すべての</b>PHPページの動作を妨げる場合もあります。ページ閲覧中にエラーが表示される場合、.htaccessファイルを削除してください。</p></li>
-</ol>';
 $string['paths'] = 'パス';
 $string['pathserrcreatedataroot'] = 'データディレクトリ ({$a->dataroot}) をインストーラで作成できません。';
 $string['pathshead'] = 'パスを確認する';
@@ -80,9 +68,8 @@ $string['pathsunsecuredataroot'] = 'datarootの場所が安全ではありませ
 $string['pathswrongadmindir'] = 'adminディレクトリが存在しません。';
 $string['phpextension'] = '{$a} PHP拡張モジュール';
 $string['phpversion'] = 'PHPバージョン';
-$string['phpversionhelp'] = '<p>Moodleには少なくとも5.6.5または7.1のPHPバージョンが必要です (7.0.x にはエンジンの制限があります)。</p>
-<p>現在、あなたはバージョン {$a} を動作させています。</p>
-<p>PHPをアップグレードするか新しいバージョンのPHPがインストールされているホストに移動する必要があります。</p>';
+$string['webserverconfigproblemdescription'] = 'あなたのウェブサーバは「/public」ディレクトリ外のファイルへのアクセスを防止するよう設定されていません。あなたのウェブサーバを正しく設定する方法の詳細に関して<a href="https://docs.moodle.org/ja/Moodleをアップグレードする#コードディレクトリの再構成">Moodleをアップグレードする - コードディレクトリの再構成</a>ドキュメンテーションをご覧ください。再設定後、<a href="{$a}">ウェブルートに再度アクセス</a>してください。';
+$string['webservernotconfigured'] = 'ウェブサーバが設定されていません。';
 $string['welcomep10'] = '{$a->installername} ({$a->installerversion})';
 $string['welcomep20'] = 'インストール正常完了後、あなたのコンピュータで<strong>{$a->packname} {$a->packversion}</strong>パッケージが起動されたため、このページが表示されています。おめでとうございます!';
 $string['welcomep30'] = 'このリリース<strong>{$a->installername}</strong>には<strong>Moodle</strong>で環境を作成するアプリケーションが含まれています。すなわち:';

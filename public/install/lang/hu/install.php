@@ -21,7 +21,7 @@
  * needed during the very first steps of installation. This file was
  * generated automatically by export-installer.php (which is part of AMOS
  * {@link https://moodledev.io/general/projects/api/amos}) using the
- * list of strings defined in install/stringnames.txt file.
+ * list of strings defined in public/install/stringnames.txt file.
  *
  * @package   installer
  * @license   https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -50,7 +50,6 @@ $string['errorsinenvironment'] = 'A környezet ellenőrzése nem sikerült!';
 $string['installation'] = 'Telepítés';
 $string['langdownloaderror'] = 'A(z) "{$a}" nyelvet nem lehet letölteni. A telepítés angolul folytatódik.
 ';
-$string['memorylimithelp'] = '<p>Szerverén a PHP memóriakorlátja jelenleg {$a}. </p><p>Ez a Moodle számára a későbbiekben gondot okozhat, különösen akkor, ha sok modulja és/vagy sok felhasználója van bekapcsolva.</p><p> Ha lehet, állítsa be a PHP-t magasabb korláttal, pl. 40M-tal. Többféleképpen próbálkozhat:</p><ol><li> Ha lehet, fordítsa újra a PHP-t <i>--enable-memory-limit</i>-tel. Így a Moodle maga állíthatja be a memóriakorlátot.</li><li>Ha elérhető a php.ini állomány, módosítsa a <b>memory_limit</b> beállítását pl. 40M-ra. Ha nem éri el az állományt, kérje meg a rendszergazdát a módosítás elvégzésére.</li><li>Egyes PHP-szervereken létrehozhat egy .htaccess állományt a Moodle-könyvtárban az alábbi sorral: <blockquote><div>php_value memory_limit 40M.</div></blockquote>    <p> Vannak szerverek, ahol ez az összes PHP-oldal működését megakadályozza (az oldalak hibát jeleznek), ezért el kell távolítania a .htaccess állományt.</p></li></ol>';
 $string['paths'] = 'Útvonalak';
 $string['pathserrcreatedataroot'] = 'A telepítő nem tudja létrehozni az adatkönyvtárat ({$a->dataroot}).';
 $string['pathshead'] = 'Útvonalak megerősítése';
@@ -67,12 +66,8 @@ $string['pathsunsecuredataroot'] = 'Az adatok gyökérkönyvtára nem biztonság
 $string['pathswrongadmindir'] = 'Nem létezik az admin könyvtár.';
 $string['phpextension'] = '{$a} PHP-bővítmény';
 $string['phpversion'] = 'PHP-verzió';
-$string['phpversionhelp'] = 'A Moodle használatához legalább a PHP 5.6.5 vagy 7.1 verziója szükséges
- (a 7.0.x bizonyos korlátokkal rendelkezik).</p>
-<p> Az Ön által használt
-verzió {$a}. </p>
-<p>Frissítse a PHP-verziót, vagy térjen át újabb PHP-verziót
-működtető gazdagépre!</p>';
+$string['webserverconfigproblemdescription'] = 'A webszerver nincs úgy konfigurálva, hogy megakadályozza a /public könyvtáron kívüli fájlokhoz való hozzáférést. A webszerver helyes konfigurálásával kapcsolatos részletekért tekintse meg a <a href="https://docs.moodle.org/en/Upgrading#Code_directories_restructure">Frissítés – Kódkönyvtár-átalakítás</a> dokumentációt. Az újrakonfigurálás után <a href="{$a}"> keresse fel újra az oldalt</a>.';
+$string['webservernotconfigured'] = 'A webszerver nincs beállítva';
 $string['welcomep10'] = '{$a->installername} ({$a->installerversion})';
 $string['welcomep20'] = 'Azért látja ezt az oldalt, mert sikeresen telepítette és futtatja a(z) {$a->packname} {$a->packversion} csomagot számítógépén. Gratulálunk!';
 $string['welcomep30'] = 'A(z) {$a->installername} tartalmazza azokat az alkalmazásokat, amelyekkel a Moodle számára kialakítható a működési környezet, azaz:';

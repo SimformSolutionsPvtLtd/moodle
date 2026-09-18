@@ -31,7 +31,7 @@ function glossary_show_entry_encyclopedia(
     if ($entry) {
         $user = $DB->get_record('user', ['id' => $entry->userid]);
 
-        echo '<table class="glossarypost encyclopedia" cellspacing="0" role="presentation">';
+        echo '<table class="glossarypost encyclopedia table-reboot" cellspacing="0" role="presentation">';
         echo '<tr valign="top">';
         echo '<td class="left picture">';
 

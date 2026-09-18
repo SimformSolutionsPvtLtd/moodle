@@ -31,12 +31,6 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-/// Add required files
-/**
- * Include the necessary
- */
-    require_once($CFG->libdir.'/xmlize.php');
-
 /// Define a bunch of XML processing errors
     /** XML Processing Error */
     define('NO_ERROR',                           0);
@@ -311,7 +305,7 @@ function load_environment_xml($env_select=ENV_SELECT_NEWER) {
     }
     // XML the whole file.
     if ($contents !== false) {
-        $contents = xmlize($contents);
+        $contents = (new \core\xml_parser())->parse($contents);
     }
 
     $data[$env_select] = $contents;
@@ -481,6 +475,23 @@ function environment_check($version, $env_select) {
 
     $custom_results = environment_custom_checks($version, $env_select);
     $results = array_merge($results, $custom_results);
+
+    // Locate any installed plugins belonging to deleted plugin types and block the install/upgrade process until they are removed.
+    // Plugins on disk which aren't installed and which are either deprecated or deleted will be ignored by install/upgrade anyway,
+    // so are not checked here.
+    $pluginman = \core_plugin_manager::instance();
+    foreach (core_component::get_deleted_plugin_types() as $plugintype => $dir) {
+        foreach ($pluginman->get_installed_plugins($plugintype) as $name => $version) {
+            $plugin = $plugintype . '_' . $name;
+
+            $result = new environment_results('custom_check');
+            $result->setInfo('Deleted plugin detected');
+            $result->setFeedbackStr(['deletedplugintypesdetected', 'admin', $plugin]);
+            $result->setStatus(false);
+            $result->plugin = $plugin;
+            $results[] = $result;
+        }
+    }
 
     // Always use the plugin directory version of environment.xml,
     // add-on developers need to keep those up-to-date with future info.

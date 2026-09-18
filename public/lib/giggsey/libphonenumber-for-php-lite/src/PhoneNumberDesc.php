@@ -6,8 +6,7 @@ namespace libphonenumber;
 
 /**
  * Phone Number Description
- * @interal
- * @phpstan-type PhoneNumberDescArray array{NationalNumberPattern?:string,ExampleNumber?:string,PossibleLength?:int[],PossibleLengthLocalOnly?:int[]}
+ * @internal
  */
 class PhoneNumberDesc
 {
@@ -24,21 +23,6 @@ class PhoneNumberDesc
      */
     protected array $possibleLengthLocalOnly = [];
 
-    public function __construct()
-    {
-        $this->clear();
-    }
-
-    public function clear(): PhoneNumberDesc
-    {
-        $this->clearNationalNumberPattern();
-        $this->clearPossibleLength();
-        $this->clearPossibleLengthLocalOnly();
-        $this->clearExampleNumber();
-
-        return $this;
-    }
-
     /**
      * @return int[]
      */
@@ -50,14 +34,15 @@ class PhoneNumberDesc
     /**
      * @param int[] $possibleLength
      */
-    public function setPossibleLength(array $possibleLength): void
+    public function setPossibleLength(array $possibleLength): static
     {
         $this->possibleLength = $possibleLength;
+        return $this;
     }
 
     public function addPossibleLength(int $possibleLength): void
     {
-        if (!in_array($possibleLength, $this->possibleLength)) {
+        if (!in_array($possibleLength, $this->possibleLength, true)) {
             $this->possibleLength[] = $possibleLength;
         }
     }
@@ -78,14 +63,16 @@ class PhoneNumberDesc
     /**
      * @param int[] $possibleLengthLocalOnly
      */
-    public function setPossibleLengthLocalOnly(array $possibleLengthLocalOnly): void
+    public function setPossibleLengthLocalOnly(array $possibleLengthLocalOnly): static
     {
         $this->possibleLengthLocalOnly = $possibleLengthLocalOnly;
+
+        return $this;
     }
 
     public function addPossibleLengthLocalOnly(int $possibleLengthLocalOnly): void
     {
-        if (!in_array($possibleLengthLocalOnly, $this->possibleLengthLocalOnly)) {
+        if (!in_array($possibleLengthLocalOnly, $this->possibleLengthLocalOnly, true)) {
             $this->possibleLengthLocalOnly[] = $possibleLengthLocalOnly;
         }
     }
@@ -95,6 +82,9 @@ class PhoneNumberDesc
         $this->possibleLengthLocalOnly = [];
     }
 
+    /**
+     * @return boolean
+     */
     public function hasNationalNumberPattern(): bool
     {
         return $this->hasNationalNumberPattern;
@@ -105,18 +95,11 @@ class PhoneNumberDesc
         return $this->nationalNumberPattern;
     }
 
-    public function setNationalNumberPattern(string $value): PhoneNumberDesc
+    public function setNationalNumberPattern(string $value): static
     {
         $this->hasNationalNumberPattern = true;
         $this->nationalNumberPattern = $value;
 
-        return $this;
-    }
-
-    public function clearNationalNumberPattern(): PhoneNumberDesc
-    {
-        $this->hasNationalNumberPattern = false;
-        $this->nationalNumberPattern = '';
         return $this;
     }
 
@@ -130,7 +113,7 @@ class PhoneNumberDesc
         return $this->exampleNumber;
     }
 
-    public function setExampleNumber(string $value): PhoneNumberDesc
+    public function setExampleNumber(string $value): static
     {
         $this->hasExampleNumber = true;
         $this->exampleNumber = $value;
@@ -138,79 +121,20 @@ class PhoneNumberDesc
         return $this;
     }
 
-    public function clearExampleNumber(): self
-    {
-        $this->hasExampleNumber = false;
-        $this->exampleNumber = '';
-
-        return $this;
-    }
-
-    public function mergeFrom(PhoneNumberDesc $other): self
-    {
-        if ($other->hasNationalNumberPattern()) {
-            $this->setNationalNumberPattern($other->getNationalNumberPattern());
-        }
-        if ($other->hasExampleNumber()) {
-            $this->setExampleNumber($other->getExampleNumber());
-        }
-        $this->setPossibleLength($other->getPossibleLength());
-        $this->setPossibleLengthLocalOnly($other->getPossibleLengthLocalOnly());
-
-        return $this;
-    }
-
-    public function exactlySameAs(PhoneNumberDesc $other): bool
-    {
-        return $this->nationalNumberPattern === $other->nationalNumberPattern &&
-        $this->exampleNumber === $other->exampleNumber;
-    }
+    private static self $emptyObject;
 
     /**
-     * @return PhoneNumberDescArray
+     * Used for metadata as a shortcut to an empty object
+     * Use the same object to reduce load further
+     * @internal
      */
-    public function toArray(): array
+    public static function empty(): self
     {
-        $data = [];
-        if ($this->hasNationalNumberPattern()) {
-            $data['NationalNumberPattern'] = $this->getNationalNumberPattern();
-        }
-        if ($this->hasExampleNumber()) {
-            $data['ExampleNumber'] = $this->getExampleNumber();
+        if (!isset(self::$emptyObject)) {
+            self::$emptyObject = (new self())
+                ->setPossibleLength([-1]);
         }
 
-        $possibleLength = $this->getPossibleLength();
-        if (!empty($possibleLength)) {
-            $data['PossibleLength'] = $possibleLength;
-        }
-
-        $possibleLengthLocalOnly = $this->getPossibleLengthLocalOnly();
-        if (!empty($possibleLengthLocalOnly)) {
-            $data['PossibleLengthLocalOnly'] = $possibleLengthLocalOnly;
-        }
-
-        return $data;
-    }
-
-    /**
-     * @param PhoneNumberDescArray $input
-     * @return $this
-     */
-    public function fromArray(array $input): static
-    {
-        if (isset($input['NationalNumberPattern']) && $input['NationalNumberPattern'] !== '') {
-            $this->setNationalNumberPattern($input['NationalNumberPattern']);
-        }
-        if (isset($input['ExampleNumber']) && $input['ExampleNumber'] !== '') {
-            $this->setExampleNumber($input['ExampleNumber']);
-        }
-        if (isset($input['PossibleLength'])) {
-            $this->setPossibleLength($input['PossibleLength']);
-        }
-        if (isset($input['PossibleLengthLocalOnly'])) {
-            $this->setPossibleLengthLocalOnly($input['PossibleLengthLocalOnly']);
-        }
-
-        return $this;
+        return self::$emptyObject;
     }
 }

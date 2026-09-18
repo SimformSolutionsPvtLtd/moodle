@@ -74,7 +74,7 @@ class issued_badge implements renderable {
         $this->hash = $hash;
         $assertion = new \core_badges_assertion($hash, badges_open_badges_backpack_api());
         $this->issued = $assertion->get_badge_assertion();
-        if (!is_numeric($this->issued['issuedOn'])) {
+        if (array_key_exists('issuedOn', $this->issued) && !is_numeric($this->issued['issuedOn'])) {
             $this->issued['issuedOn'] = strtotime($this->issued['issuedOn']);
         }
         $this->badgeclass = $assertion->get_badge_class();
@@ -174,18 +174,6 @@ class issued_badge implements renderable {
         if (!empty($badge->version)) {
             $data->hasotherfields = true;
             $data->version = $badge->version;
-        }
-        if (!empty($badge->imageauthorname)) {
-            $data->hasotherfields = true;
-            $data->imageauthorname = $badge->imageauthorname;
-        }
-        if (!empty($badge->imageauthoremail)) {
-            $data->hasotherfields = true;
-            $data->imageauthoremail = obfuscate_mailto($badge->imageauthoremail, $badge->imageauthoremail);
-        }
-        if (!empty($badge->imageauthorurl)) {
-            $data->hasotherfields = true;
-            $data->imageauthorurl = $badge->imageauthorurl;
         }
         if (!empty($badge->imagecaption)) {
             $data->hasotherfields = true;

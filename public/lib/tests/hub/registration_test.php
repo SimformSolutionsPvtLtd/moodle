@@ -76,6 +76,7 @@ final class registration_test extends \advanced_testcase {
 
         // Disabled a plugin.
         $DB->set_field('modules', 'visible', 0, ['name' => 'feedback']);
+        \core_plugin_manager::reset_caches();
 
         // Check our plugin usage counts and enabled states are correct.
         $pluginusage = registration::get_plugin_usage_data();
@@ -92,7 +93,6 @@ final class registration_test extends \advanced_testcase {
     public function test_get_ai_usage(): void {
         $this->resetAfterTest();
 
-        // Let's generate some data first.
         $clock = $this->mock_clock_with_frozen(1700000000);
         $this->generate_ai_usage_data();
 
@@ -110,10 +110,16 @@ final class registration_test extends \advanced_testcase {
         // Check time range is set correctly.
         $this->assertEquals($clock->time() - WEEKSECS, $aisuage->time_range->timefrom);
         $this->assertEquals($clock->time(), $aisuage->time_range->timeto);
+        // Check model counts.
+        $gpt4omodel = 'gpt-4o';
+        $dalle3model = 'dall-e-3';
+        $this->assertEquals(1, $aisuage->aiprovider_openai->generate_text->models->{$gpt4omodel}->count);
+        $this->assertEquals(2, $aisuage->aiprovider_openai->generate_image->models->{$dalle3model}->count);
+        $this->assertEquals(3, $aisuage->aiprovider_openai->generate_image->models->unknown->count);
     }
 
     /**
-     * Create some AI usage data.
+     * Create some dummy AI usage data.
      */
     private function generate_ai_usage_data(): void {
         global $DB;
@@ -130,12 +136,14 @@ final class registration_test extends \advanced_testcase {
         $record->success = true;
         $record->timecreated = $clock->time() - 5;
         $record->timecompleted = $clock->time();
+        $record->model = 'gpt-4o';
         $DB->insert_record('ai_action_register', $record);
 
         // Record a generated image.
         $record->actionname = 'generate_image';
         $record->actionid = 111;
         $record->timecreated = $clock->time() - 20;
+        $record->model = 'dall-e-3';
         $DB->insert_record('ai_action_register', $record);
         // Record another image.
         $record->actionid = 222;
@@ -147,6 +155,7 @@ final class registration_test extends \advanced_testcase {
         $record->actionid = 4;
         $record->success = false;
         $record->errorcode = 403;
+        $record->model = null;
         $DB->insert_record('ai_action_register', $record);
         $record->actionid = 5;
         $record->errorcode = 403;

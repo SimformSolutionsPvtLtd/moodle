@@ -5,8 +5,7 @@ Feature: The module menu replaces the delegated section menu
   I need to see the delegated section action menu instead of module menu.
 
   Background:
-    Given I enable "subsection" "mod" plugin
-    And the following "users" exist:
+    Given the following "users" exist:
       | username | firstname | lastname | email                |
       | teacher1 | Teacher   | 1        | teacher1@example.com |
     And the following "courses" exist:
@@ -104,12 +103,17 @@ Feature: The module menu replaces the delegated section menu
     And I click on "Edit" "button" in the "[data-region='header-actions-container']" "css_element"
     And I choose "Edit settings" in the open action menu
     And the field "Section name" matches value "Subsection1"
+    And I should see "Subsection descriptions will be discontinued in Moodle 5.2"
     And I click on "Cancel" "button"
     And I am on the "C1 > Section 1" "course > section" page
     # Section page. Open Subsection1 module action menu.
     And I open "Subsection1" actions menu
     And I choose "Edit settings" in the open action menu
     And the field "Section name" matches value "Subsection1"
+    # But subsection description warning is not shown in section edit form.
+    And I am on "Course 1" course homepage
+    And I edit the section "0"
+    And I should not see "Subsection descriptions will be discontinued in Moodle 5.2"
 
   @javascript
   Scenario: Permalink option in subsection action menu

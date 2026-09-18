@@ -1,4 +1,5 @@
 <?php
+
 /**
  * libphonenumber-for-php-lite data file
  * This file has been @generated from libphonenumber data
@@ -6,133 +7,84 @@
  * @internal
  */
 
-return  [
-  'generalDesc' =>
-   [
-    'NationalNumberPattern' => '(?:[3469]\\d|52|[78]0)\\d{6}',
-    'PossibleLength' =>
-     [
-      0 => 8,
-    ],
-  ],
-  'fixedLine' =>
-   [
-    'NationalNumberPattern' => '(?:3[1478]|4[124-6]|52)\\d{6}',
-    'ExampleNumber' => '31234567',
-  ],
-  'mobile' =>
-   [
-    'NationalNumberPattern' => '6\\d{7}',
-    'ExampleNumber' => '61234567',
-  ],
-  'tollFree' =>
-   [
-    'NationalNumberPattern' => '80[02]\\d{5}',
-    'ExampleNumber' => '80012345',
-  ],
-  'premiumRate' =>
-   [
-    'NationalNumberPattern' => '9(?:0[0239]|10)\\d{5}',
-    'ExampleNumber' => '90012345',
-  ],
-  'sharedCost' =>
-   [
-    'NationalNumberPattern' => '808\\d{5}',
-    'ExampleNumber' => '80812345',
-  ],
-  'personalNumber' =>
-   [
-    'NationalNumberPattern' => '70[05]\\d{5}',
-    'ExampleNumber' => '70012345',
-  ],
-  'voip' =>
-   [
-    'NationalNumberPattern' => '[89]01\\d{5}',
-    'ExampleNumber' => '80123456',
-  ],
-  'pager' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'uan' =>
-   [
-    'NationalNumberPattern' => '70[67]\\d{5}',
-    'ExampleNumber' => '70712345',
-  ],
-  'voicemail' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'noInternationalDialling' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'id' => 'LT',
-  'countryCode' => 370,
-  'internationalPrefix' => '00',
-  'nationalPrefix' => '8',
-  'nationalPrefixForParsing' => '[08]',
-  'sameMobileAndFixedLinePattern' => false,
-  'numberFormat' =>
-   [
-    0 =>
-     [
-      'pattern' => '(\\d)(\\d{3})(\\d{4})',
-      'format' => '$1 $2 $3',
-      'leadingDigitsPatterns' =>
-       [
-        0 => '52[0-7]',
-      ],
-      'nationalPrefixFormattingRule' => '(8-$1)',
-      'domesticCarrierCodeFormattingRule' => '',
-      'nationalPrefixOptionalWhenFormatting' => true,
-    ],
-    1 =>
-     [
-      'pattern' => '(\\d{3})(\\d{2})(\\d{3})',
-      'format' => '$1 $2 $3',
-      'leadingDigitsPatterns' =>
-       [
-        0 => '[7-9]',
-      ],
-      'nationalPrefixFormattingRule' => '8 $1',
-      'domesticCarrierCodeFormattingRule' => '',
-      'nationalPrefixOptionalWhenFormatting' => true,
-    ],
-    2 =>
-     [
-      'pattern' => '(\\d{2})(\\d{6})',
-      'format' => '$1 $2',
-      'leadingDigitsPatterns' =>
-       [
-        0 => '37|4(?:[15]|6[1-8])',
-      ],
-      'nationalPrefixFormattingRule' => '(8-$1)',
-      'domesticCarrierCodeFormattingRule' => '',
-      'nationalPrefixOptionalWhenFormatting' => true,
-    ],
-    3 =>
-     [
-      'pattern' => '(\\d{3})(\\d{5})',
-      'format' => '$1 $2',
-      'leadingDigitsPatterns' =>
-       [
-        0 => '[3-6]',
-      ],
-      'nationalPrefixFormattingRule' => '(8-$1)',
-      'domesticCarrierCodeFormattingRule' => '',
-      'nationalPrefixOptionalWhenFormatting' => true,
-    ],
-  ],
-  'mainCountryForCode' => false,
-  'mobileNumberPortableRegion' => true,
-];
+declare(strict_types=1);
+
+namespace libphonenumber\data;
+
+use libphonenumber\NumberFormat;
+use libphonenumber\PhoneMetadata;
+use libphonenumber\PhoneNumberDesc;
+
+/**
+ * @internal
+ */
+class PhoneNumberMetadata_LT extends PhoneMetadata
+{
+    protected const ID = 'LT';
+    protected const COUNTRY_CODE = 370;
+    protected const NATIONAL_PREFIX = '0';
+
+    protected ?string $nationalPrefixForParsing = '[08]';
+    protected ?string $internationalPrefix = '00';
+    protected bool $mobileNumberPortableRegion = true;
+
+    public function __construct()
+    {
+        $this->generalDesc = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('(?:[3469]\d|52|[78]0)\d{6}')
+            ->setPossibleLength([8]);
+        $this->mobile = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('6\d{7}')
+            ->setExampleNumber('61234567');
+        $this->premiumRate = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('9(?:0[0239]|10)\d{5}')
+            ->setExampleNumber('90012345');
+        $this->fixedLine = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('(?:3[1478]|4[124-6]|52)\d{6}')
+            ->setExampleNumber('31234567');
+        $this->numberFormat = [
+            (new NumberFormat())
+                ->setPattern('(\d)(\d{3})(\d{4})')
+                ->setFormat('$1 $2 $3')
+                ->setLeadingDigitsPattern(['52[0-7]'])
+                ->setNationalPrefixFormattingRule('(0-$1)')
+                ->setNationalPrefixOptionalWhenFormatting(true),
+            (new NumberFormat())
+                ->setPattern('(\d{3})(\d{2})(\d{3})')
+                ->setFormat('$1 $2 $3')
+                ->setLeadingDigitsPattern(['[7-9]'])
+                ->setNationalPrefixFormattingRule('0 $1')
+                ->setNationalPrefixOptionalWhenFormatting(true),
+            (new NumberFormat())
+                ->setPattern('(\d{2})(\d{6})')
+                ->setFormat('$1 $2')
+                ->setLeadingDigitsPattern(['37|4(?:[15]|6[1-8])'])
+                ->setNationalPrefixFormattingRule('(0-$1)')
+                ->setNationalPrefixOptionalWhenFormatting(true),
+            (new NumberFormat())
+                ->setPattern('(\d{3})(\d{5})')
+                ->setFormat('$1 $2')
+                ->setLeadingDigitsPattern(['[3-6]'])
+                ->setNationalPrefixFormattingRule('(0-$1)')
+                ->setNationalPrefixOptionalWhenFormatting(true),
+        ];
+        $this->tollFree = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('80[02]\d{5}')
+            ->setExampleNumber('80012345');
+        $this->sharedCost = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('808\d{5}')
+            ->setExampleNumber('80812345');
+        $this->personalNumber = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('70[05]\d{5}')
+            ->setExampleNumber('70012345');
+        $this->voip = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('[89]01\d{5}')
+            ->setExampleNumber('80123456');
+        $this->pager = PhoneNumberDesc::empty();
+        $this->uan = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('70[67]\d{5}')
+            ->setExampleNumber('70712345');
+        $this->voicemail = PhoneNumberDesc::empty();
+        $this->noInternationalDialling = PhoneNumberDesc::empty();
+    }
+}

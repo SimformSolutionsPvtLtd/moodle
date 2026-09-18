@@ -30,12 +30,15 @@ use core_courseformat\base as course_format;
  * @package    core_courseformat
  * @copyright  2024 Mikel Martín <mikel@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @deprecated since Moodle 5.0
+ * @todo Remove this class in Moodle 6.0 MDL-83851
  */
 class create_module extends external_api {
 
     /**
      * Webservice parameters.
      *
+     * @deprecated since Moodle 5.0
      * @return external_function_parameters
      */
     public static function execute_parameters(): external_function_parameters {
@@ -60,6 +63,7 @@ class create_module extends external_api {
      * on cms, sections and the general course data. However, if some plugin needs adhoc messages for
      * its own mutation module, extend this class in format_XXX\course.
      *
+     * @deprecated since Moodle 5.0
      * @param int $courseid the course id
      * @param string $modname the module name
      * @param int $targetsectionnum the target section number
@@ -127,8 +131,11 @@ class create_module extends external_api {
         // Execute the action.
         $actions->$action($updates, $course, $modname, $targetsectionnum, $targetcmid);
 
-        // Any state action mark the state cache as dirty.
-        course_format::session_cache_reset($course);
+        // Dispatch the hook for post course content update.
+        $hook = new \core_courseformat\hook\after_course_content_updated(
+            course: $course
+        );
+        \core\di::get(\core\hook\manager::class)->dispatch($hook);
 
         return json_encode($updates);
     }
@@ -136,9 +143,18 @@ class create_module extends external_api {
     /**
      * Webservice returns.
      *
+     * @deprecated since Moodle 5.0
      * @return external_value
      */
     public static function execute_returns(): external_value {
         return new external_value(PARAM_RAW, 'Encoded course update JSON');
+    }
+
+    /**
+     * Mark the function as deprecated.
+     * @return bool
+     */
+    public static function execute_is_deprecated() {
+        return true;
     }
 }

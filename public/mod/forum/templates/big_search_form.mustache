@@ -52,41 +52,39 @@
 </div>
 <div class="box generalbox boxaligncenter">
     <form id="searchform" class="mform" action="{{actionurl}}" method="get">
-        <div class="form-group row">
+        <div class="mb-3 row">
             <label for="words" class="col-sm-4 col-form-label">{{#str}}searchwords, forum{{/str}}</label>
             <div class="col-sm-8">
                 <input type="hidden" value="{{courseid}}" name="id">
                 <input type="text" class="form-control" name="words" id="words" value="{{words}}">
             </div>
         </div>
-        <div class="form-group row">
+        <div class="mb-3 row">
             <label for="phrase" class="col-sm-4 col-form-label">{{#str}}searchphrase, forum{{/str}}</label>
             <div class="col-sm-8">
                 <input type="text" class="form-control" name="phrase" id="phrase" value="{{phrase}}">
             </div>
         </div>
-        <div class="form-group row">
+        <div class="mb-3 row">
             <label for="notwords" class="col-sm-4 col-form-label">{{#str}}searchnotwords, forum{{/str}}</label>
             <div class="col-sm-8">
                 <input type="text" class="form-control" name="notwords" id="notwords" value="{{notwords}}">
             </div>
         </div>
         {{#showfullwords}}
-        <div class="form-group row">
+        <div class="mb-3 row">
             <label for="fullwords" class="col-sm-4 col-form-label">{{#str}}searchfullwords, forum{{/str}}</label>
             <div class="col-sm-8">
                 <input type="text" class="form-control" name="fullwords" id="fullwords" value="{{fullwords}}">
             </div>
         </div>
         {{/showfullwords}}
-        <div class="form-group row" role="group" aria-labelledby="searchdatefromlabel">
-            <div class="col-sm-4 col-form-label" id="searchdatefromlabel">{{#str}}searchdatefrom, forum{{/str}}</div>
+        <fieldset class="mb-3 row border-0">
+            <legend class="col-sm-4 col-form-label">{{#str}}searchdatefrom, forum{{/str}}</legend>
             <div class="col-sm-8 fdate_time_selector d-flex flex-wrap align-items-center">
-                <div class="form-check">
-                    <label class="form-check-label me-1">
-                        <input type="checkbox" name="timefromrestrict" value="1" {{#datefromchecked}}checked{{/datefromchecked}} class="form-check-input"> {{#str}}enable{{/str}}
-                    </label>
-                </div>
+                <label class="form-check-label me-1">
+                    <input type="checkbox" name="timefromrestrict" value="1" {{#datefromchecked}}checked{{/datefromchecked}} class="form-check-input"> {{#str}}enable{{/str}}
+                </label>
                 {{{datefromfields}}}
                 <input type="hidden" name="hfromday" value="0">
                 <input type="hidden" name="hfrommonth" value="0">
@@ -94,15 +92,13 @@
                 <input type="hidden" name="hfromhour" value="0">
                 <input type="hidden" name="hfromminute" value="0">
             </div>
-        </div>
-        <div class="form-group row" role="group" aria-labelledby="searchdatetolabel">
-            <div class="col-sm-4 col-form-label" id="searchdatetolabel">{{#str}}searchdateto, forum{{/str}}</div>
+        </fieldset>
+        <fieldset class="mb-3 row border-0">
+            <legend class="col-sm-4 col-form-label">{{#str}}searchdateto, forum{{/str}}</legend>
             <div class="col-sm-8 fdate_time_selector d-flex flex-wrap align-items-center">
-                <div class="form-check">
-                    <label class="form-check-label me-1">
-                        <input type="checkbox" name="timetorestrict" value="1" {{#datetochecked}}checked{{/datetochecked}} class="form-check-input"> {{#str}}enable{{/str}}
-                    </label>
-                </div>
+                <label class="form-check-label me-1">
+                    <input type="checkbox" name="timetorestrict" value="1" {{#datetochecked}}checked{{/datetochecked}} class="form-check-input"> {{#str}}enable{{/str}}
+                </label>
                 {{{datetofields}}}
                 <input type="hidden" name="htoday" value="0">
                 <input type="hidden" name="htomonth" value="0">
@@ -110,31 +106,31 @@
                 <input type="hidden" name="htohour" value="0">
                 <input type="hidden" name="htominute" value="0">
             </div>
-        </div>
-        <div class="form-group row">
+        </fieldset>
+        <div class="mb-3 row">
             <label for="menuforumid" class="col-sm-4 col-form-label">{{#str}}searchwhichforums, forum{{/str}}</label>
             <div class="col-sm-8">
-                <select name="forumid" id="menuforumid" class="custom-select">
+                <select name="forumid" id="menuforumid" class="form-select">
                     {{#forumoptions}}
                         <option value="{{value}}" {{#selected}}selected{{/selected}}>{{name}}</option>
                     {{/forumoptions}}
                 </select>
             </div>
         </div>
-        <div class="form-group row">
+        <div class="mb-3 row">
             <label for="subject" class="col-sm-4 col-form-label">{{#str}}searchsubject, forum{{/str}}</label>
             <div class="col-sm-8">
                 <input type="text" class="form-control" name="subject" id="subject" value="{{subject}}">
             </div>
         </div>
-        <div class="form-group row">
+        <div class="mb-3 row">
             <label for="user" class="col-sm-4 col-form-label">{{#str}}searchuser, forum{{/str}}</label>
             <div class="col-sm-8">
                 <input type="text" class="form-control" name="user" id="user" value="{{user}}">
             </div>
         </div>
         {{^guestuser}}
-        <div class="form-group row">
+        <div class="mb-3 row">
             <div class="col-sm-4"></div>
             <div class="col-sm-8">
                 <div class="form-check">
@@ -145,7 +141,7 @@
         </div>
         {{/guestuser}}
         {{#tagsenabled}}
-        <div class="form-group row">
+        <div class="mb-3 row">
             <label for="tags" class="col-sm-4 col-form-label">{{#str}}searchtags, forum{{/str}}</label>
             <div class="col-sm-8">
                 <select class="form-select" name="tags[]" id="tags" multiple>
@@ -156,7 +152,7 @@
             </div>
         </div>
         {{/tagsenabled}}
-        <div class="form-group row">
+        <div class="mb-3 row">
             <div class="col-sm-4"></div>
             <div class="col-sm-8">
                 <button type="submit" class="btn btn-primary">{{#str}}searchforums, forum{{/str}}</button>

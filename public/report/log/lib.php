@@ -36,11 +36,16 @@ defined('MOODLE_INTERNAL') || die;
  * @param stdClass $context The context of the course
  */
 function report_log_extend_navigation_course($navigation, $course, $context) {
+    global $SITE;
     if (
         has_capability('report/log:view', $context)
         && report_helper::has_valid_group($context)
     ) {
-        $url = new moodle_url('/report/log/index.php', array('id'=>$course->id));
+        $params = [
+            'id' => $course->id,
+            'iscoursepage' => ($course->id && ($course->id != $SITE->id)),
+        ];
+        $url = new moodle_url('/report/log/index.php', $params);
         $navigation->add(get_string('pluginname', 'report_log'), $url, navigation_node::TYPE_SETTING, null, null, new pix_icon('i/report', ''));
     }
 }
@@ -133,7 +138,12 @@ function report_log_extend_navigation_module($navigation, $cm) {
         has_capability('report/log:view', context_course::instance($cm->course))
         && report_helper::has_valid_group(context_module::instance($cm->id))
     ) {
-        $url = new moodle_url('/report/log/index.php', array('chooselog'=>'1','id'=>$cm->course,'modid'=>$cm->id));
+        $url = new moodle_url('/report/log/index.php', [
+            'chooselog' => '1',
+            'id' => $cm->course,
+            'modid' => $cm->id,
+            'isactivitypage' => '1',
+        ]);
         $navigation->add(get_string('logs'), $url, navigation_node::TYPE_SETTING, null, 'logreport', new pix_icon('i/report', ''));
     }
 }

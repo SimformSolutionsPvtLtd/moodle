@@ -18,10 +18,8 @@ declare(strict_types=1);
 
 namespace core_reportbuilder\local\entities;
 
-use context_helper;
-use context_system;
-use context_user;
-use core\context;
+use core\{context, context_helper};
+use core\context\system;
 use core_component;
 use core_date;
 use core_user;
@@ -178,8 +176,6 @@ class user extends base {
      * @return column[]
      */
     protected function get_all_columns(): array {
-        global $DB;
-
         $usertablealias = $this->get_table_alias('user');
         $contexttablealias = $this->get_table_alias('context');
 
@@ -187,7 +183,7 @@ class user extends base {
         $fullnamesort = explode(', ', $fullnameselect);
 
         $userpictureselect = fields::for_userpic()->get_sql($usertablealias, false, '', '', false)->selects;
-        $viewfullnames = has_capability('moodle/site:viewfullnames', context_system::instance());
+        $viewfullnames = has_capability('moodle/site:viewfullnames', system::instance());
 
         // Fullname column.
         $columns[] = (new column(
@@ -197,7 +193,7 @@ class user extends base {
         ))
             ->add_joins($this->get_joins())
             ->add_fields($fullnameselect)
-            ->set_is_sortable($this->is_sortable('fullname'), $fullnamesort)
+            ->set_is_sortable(true, $fullnamesort)
             ->add_callback(static function($value, stdClass $row) use ($viewfullnames): string {
 
                 // Ensure we have at least one field present.
@@ -229,7 +225,7 @@ class user extends base {
                 ->add_joins($this->get_joins())
                 ->add_fields($fullnameselect)
                 ->add_field("{$usertablealias}.id")
-                ->set_is_sortable($this->is_sortable($fullnamefield), $fullnamesort)
+                ->set_is_sortable(true, $fullnamesort)
                 ->add_callback(static function($value, stdClass $row) use ($fullnamefield, $viewfullnames): string {
                     global $OUTPUT;
 
@@ -272,12 +268,11 @@ class user extends base {
         // Picture column.
         $columns[] = (new column(
             'picture',
-            new lang_string('userpicture', 'core_reportbuilder'),
+            new lang_string('picture'),
             $this->get_entity_name()
         ))
             ->add_joins($this->get_joins())
             ->add_fields($userpictureselect)
-            ->set_is_sortable($this->is_sortable('picture'))
             ->add_callback(static function($value, stdClass $row): string {
                 global $OUTPUT;
 
@@ -289,11 +284,6 @@ class user extends base {
         foreach ($userfields as $userfield => $userfieldlang) {
             $columntype = $this->get_user_field_type($userfield);
 
-            $columnfieldsql = "{$usertablealias}.{$userfield}";
-            if ($columntype === column::TYPE_LONGTEXT && $DB->get_dbfamily() === 'oracle') {
-                $columnfieldsql = $DB->sql_order_by_text($columnfieldsql, 1024);
-            }
-
             $column = (new column(
                 $userfield,
                 $userfieldlang,
@@ -301,8 +291,8 @@ class user extends base {
             ))
                 ->add_joins($this->get_joins())
                 ->set_type($columntype)
-                ->add_field($columnfieldsql, $userfield)
-                ->set_is_sortable($this->is_sortable($userfield))
+                ->add_field("{$usertablealias}.{$userfield}")
+                ->set_is_sortable(true)
                 ->add_callback([$this, 'format'], $userfield);
 
             // Join on the context table so that we can use it for formatting these columns later.
@@ -311,7 +301,7 @@ class user extends base {
                     ->add_join("LEFT JOIN {context} {$contexttablealias}
                            ON {$contexttablealias}.contextlevel = " . CONTEXT_USER . "
                           AND {$contexttablealias}.instanceid = {$usertablealias}.id")
-                    ->add_fields("{$usertablealias}.descriptionformat, {$usertablealias}.id")
+                    ->add_field("{$usertablealias}.descriptionformat")
                     ->add_fields(context_helper::get_preload_record_columns_sql($contexttablealias));
             }
 
@@ -319,22 +309,6 @@ class user extends base {
         }
 
         return $columns;
-    }
-
-    /**
-     * Check if this field is sortable
-     *
-     * @param string $fieldname
-     * @return bool
-     */
-    protected function is_sortable(string $fieldname): bool {
-        // Some columns can't be sorted, like longtext or images.
-        $nonsortable = [
-            'description',
-            'picture',
-        ];
-
-        return !in_array($fieldname, $nonsortable);
     }
 
     /**
@@ -358,22 +332,22 @@ class user extends base {
 
         // If the column has corresponding filter, determine the value from its options.
         $options = $this->get_options_for($fieldname);
-        if ($options !== null && array_key_exists($value, $options)) {
+        if ($options !== null && $value !== null && array_key_exists($value, $options)) {
             return $options[$value];
         }
 
         if ($fieldname === 'description') {
-            if (empty($row->id)) {
+            if ($value === null || $row->ctxid === null) {
                 return '';
             }
 
             require_once("{$CFG->libdir}/filelib.php");
 
-            context_helper::preload_from_record($row);
-            $context = context_user::instance($row->id);
+            context_helper::preload_from_record(clone $row);
+            $context = context::instance_by_id($row->ctxid);
 
             $description = file_rewrite_pluginfile_urls($value, 'pluginfile.php', $context->id, 'user', 'profile', null);
-            return format_text($description, $row->descriptionformat, ['context' => $context->id]);
+            return format_text($description, $row->descriptionformat, ['context' => $context]);
         }
 
         return s($value);
@@ -391,7 +365,7 @@ class user extends base {
 
         $namefields = fields::get_name_fields(true);
 
-        $viewfullnames = has_capability('moodle/site:viewfullnames', context_system::instance());
+        $viewfullnames = has_capability('moodle/site:viewfullnames', system::instance());
         $dummyfullname = core_user::get_dummy_fullname(null, ['override' => $viewfullnames]);
 
         // Extract any name fields from the fullname format in the order that they appear.
@@ -434,6 +408,7 @@ class user extends base {
             'phone1' => new lang_string('phone1'),
             'phone2' => new lang_string('phone2'),
             'address' => new lang_string('address'),
+            'firstaccess' => new lang_string('firstaccess'),
             'lastaccess' => new lang_string('lastaccess'),
             'suspended' => new lang_string('suspended'),
             'confirmed' => new lang_string('confirmed', 'admin'),
@@ -461,6 +436,7 @@ class user extends base {
             case 'suspended':
                 $fieldtype = column::TYPE_BOOLEAN;
                 break;
+            case 'firstaccess':
             case 'lastaccess':
             case 'timecreated':
             case 'timemodified':
@@ -480,13 +456,10 @@ class user extends base {
      * @return filter[]
      */
     protected function get_all_filters(): array {
-        global $DB;
-
-        $filters = [];
         $tablealias = $this->get_table_alias('user');
 
         // Fullname filter.
-        $canviewfullnames = has_capability('moodle/site:viewfullnames', context_system::instance());
+        $canviewfullnames = has_capability('moodle/site:viewfullnames', system::instance());
         [$fullnamesql, $fullnameparams] = fields::get_sql_fullname($tablealias, $canviewfullnames);
         $filters[] = (new filter(
             text::class,
@@ -498,14 +471,19 @@ class user extends base {
         ))
             ->add_joins($this->get_joins());
 
+        // Picture filter.
+        $filters[] = (new filter(
+            boolean_select::class,
+            'picture',
+            new lang_string('picture'),
+            $this->get_entity_name(),
+            "CASE WHEN {$tablealias}.picture > 0 THEN 1 ELSE 0 END",
+        ))
+            ->add_joins($this->get_joins());
+
         // User fields filters.
         $fields = $this->get_user_fields();
         foreach ($fields as $field => $name) {
-            $filterfieldsql = "{$tablealias}.{$field}";
-            if ($this->get_user_field_type($field) === column::TYPE_LONGTEXT) {
-                $filterfieldsql = $DB->sql_cast_to_char($filterfieldsql);
-            }
-
             $optionscallback = [static::class, 'get_options_for_' . $field];
             if (is_callable($optionscallback)) {
                 $classname = select::class;
@@ -522,7 +500,7 @@ class user extends base {
                 $field,
                 $name,
                 $this->get_entity_name(),
-                $filterfieldsql
+                "{$tablealias}.{$field}"
             ))
                 ->add_joins($this->get_joins());
 
@@ -533,6 +511,16 @@ class user extends base {
 
             $filters[] = $filter;
         }
+
+        // Never accessed filter.
+        $filters[] = (new filter(
+            boolean_select::class,
+            'neveraccessed',
+            new lang_string('neveraccessed', 'core_reportbuilder'),
+            $this->get_entity_name(),
+            "CASE WHEN {$tablealias}.firstaccess = {$tablealias}.lastaccess OR {$tablealias}.lastaccess = 0 THEN 1 ELSE 0 END",
+        ))
+            ->add_joins($this->get_joins());
 
         // User select filter.
         $filters[] = (new filter(
@@ -613,7 +601,7 @@ class user extends base {
      * @return string[]
      */
     public static function get_options_for_theme(): array {
-        return array_map(
+        return ['' => get_string('default')] + array_map(
             fn(theme_config $theme) => $theme->get_theme_name(),
             get_list_of_themes(),
         );

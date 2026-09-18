@@ -14,13 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * Privacy provider tests.
- *
- * @package    core_question
- * @copyright  2018 Andrew Nicols <andrew@nicols.co.uk>
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
 namespace core_question\privacy;
 
 use core_privacy\local\metadata\collection;
@@ -31,7 +24,6 @@ use core_question\privacy\provider;
 defined('MOODLE_INTERNAL') || die();
 
 global $CFG;
-require_once($CFG->libdir . '/xmlize.php');
 require_once(__DIR__ . '/../privacy_helper.php');
 require_once(__DIR__ . '/../../engine/tests/helpers.php');
 
@@ -39,6 +31,7 @@ require_once(__DIR__ . '/../../engine/tests/helpers.php');
  * Privacy provider tests class.
  *
  * @package    core_question
+ * @covers     \core_question\privacy\provider
  * @copyright  2018 Andrew Nicols <andrew@nicols.co.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -197,15 +190,15 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
         // Create one question as each user in diferent contexts.
         $this->setUser($user);
         $userdata = $questiongenerator->setup_course_and_questions();
-        $expectedcontext = \context_course::instance($userdata[1]->id);
+        $expectedcontext = \context_module::instance($userdata[4]->cmid);
 
         $this->setUser($otheruser);
         $otheruserdata = $questiongenerator->setup_course_and_questions();
-        $unexpectedcontext = \context_course::instance($otheruserdata[1]->id);
+        $unexpectedcontext = \context_module::instance($otheruserdata[4]->cmid);
 
         // And create another one where we'll update a question as the test user.
         $moreotheruserdata = $questiongenerator->setup_course_and_questions();
-        $otherexpectedcontext = \context_course::instance($moreotheruserdata[1]->id);
+        $otherexpectedcontext = \context_module::instance($moreotheruserdata[4]->cmid);
         $morequestions = $moreotheruserdata[3];
 
         // Update the third set of questions.
@@ -226,7 +219,11 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
                 $expectedcontext->id,
                 $otherexpectedcontext->id,
             ];
-        $this->assertEqualsCanonicalizing($expectedcontexts, $contextlist->get_contextids(), 'Contexts not equal');
+        $this->assertEqualsCanonicalizing(
+            $expectedcontexts,
+            array_values($contextlist->get_contextids()),
+            'Contexts not equal',
+        );
 
         // Run the export_user_Data as the test user.
         $this->setUser($user);
@@ -257,7 +254,7 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
         $exportfile = $writer->get_custom_file($subcontext, 'questions.xml');
         $this->assertNotEmpty($exportfile);
 
-        $xmlized = xmlize($exportfile);
+        $xmlized = (new \core\xml_parser())->parse($exportfile);
         $xmlquestions = $xmlized['quiz']['#']['question'];
 
         $this->assertCount(2, $xmlquestions);
@@ -289,17 +286,18 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
         $otheruser = $this->getDataGenerator()->create_user();
 
         $course = $this->getDataGenerator()->create_course();
-        $context = \context_course::instance($course->id);
-        $othercourse = $this->getDataGenerator()->create_course();
-        $othercontext = \context_course::instance($othercourse->id);
+        $qbank1 = self::getDataGenerator()->create_module('qbank', ['course' => $course->id]);
+        $qbank1context = \context_module::instance($qbank1->cmid);
+        $qbank2 = self::getDataGenerator()->create_module('qbank', ['course' => $course->id]);
+        $qbank2context = \context_module::instance($qbank2->cmid);
 
         // Create a couple of questions.
         $questiongenerator = $this->getDataGenerator()->get_plugin_generator('core_question');
         $cat = $questiongenerator->create_question_category([
-            'contextid' => $context->id,
+            'contextid' => $qbank1context->id,
         ]);
         $othercat = $questiongenerator->create_question_category([
-            'contextid' => $othercontext->id,
+            'contextid' => $qbank2context->id,
         ]);
 
         // Create questions:
@@ -326,7 +324,7 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
         $approvedcontextlist = new \core_privacy\tests\request\approved_contextlist(
             $user,
             'core_question',
-            [$context->id]
+            [$qbank1context->id]
         );
 
         // Find out how many questions are in the question bank to start with.
@@ -370,17 +368,18 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
         $otheruser = $this->getDataGenerator()->create_user();
 
         $course = $this->getDataGenerator()->create_course();
-        $context = \context_course::instance($course->id);
-        $othercourse = $this->getDataGenerator()->create_course();
-        $othercontext = \context_course::instance($othercourse->id);
+        $qbank1 = self::getDataGenerator()->create_module('qbank', ['course' => $course->id]);
+        $qbank1context = \context_module::instance($qbank1->cmid);
+        $qbank2 = self::getDataGenerator()->create_module('qbank', ['course' => $course->id]);
+        $qbank2context = \context_module::instance($qbank2->cmid);
 
         // Create a couple of questions.
         $questiongenerator = $this->getDataGenerator()->get_plugin_generator('core_question');
         $cat = $questiongenerator->create_question_category([
-            'contextid' => $context->id,
+            'contextid' => $qbank1context->id,
         ]);
         $othercat = $questiongenerator->create_question_category([
-            'contextid' => $othercontext->id,
+            'contextid' => $qbank2context->id,
         ]);
 
         // Create questions:
@@ -407,7 +406,7 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
 
         // Delete the data and check it is removed.
         $this->setUser();
-        provider::delete_data_for_all_users_in_context($context);
+        provider::delete_data_for_all_users_in_context($qbank1context);
 
         $this->assertEquals($questioncount, $DB->count_records('question'));
 
@@ -451,17 +450,17 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
         $this->setUser($user2);
         $user2data = $questiongenerator->setup_course_and_questions();
 
-        $course1context = \context_course::instance($user1data[1]->id);
-        $course1questions = $user1data[3];
+        $qbankcontext = \context_module::instance($user1data[4]->cmid);
+        $questions = $user1data[3];
 
         // Log in as user3 and update the questions in course1.
         $this->setUser($user3);
 
-        foreach ($course1questions as $question) {
+        foreach ($questions as $question) {
             $questiongenerator->update_question($question);
         }
 
-        $userlist = new \core_privacy\local\request\userlist($course1context, 'core_question');
+        $userlist = new \core_privacy\local\request\userlist($qbankcontext, 'core_question');
         provider::get_users_in_context($userlist);
 
         // User1 has created questions and user3 has edited them.
@@ -486,16 +485,16 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
 
         // Create one question as each user in different contexts.
         $this->setUser($user1);
-        $course1data = $questiongenerator->setup_course_and_questions();
-        $course1 = $course1data[1];
-        $course1qcat = $course1data[2];
-        $course1questions = $course1data[3];
-        $course1context = \context_course::instance($course1->id);
+        $coursedata = $questiongenerator->setup_course_and_questions();
+        $qbank = $coursedata[4];
+        $course1qcat = $coursedata[2];
+        $questions = $coursedata[3];
+        $qbankcontext = \context_module::instance($qbank->cmid);
 
         // Log in as user2 and update the questions in course1.
         $this->setUser($user2);
 
-        foreach ($course1questions as $question) {
+        foreach ($questions as $question) {
             $questiongenerator->update_question($question);
         }
 
@@ -508,7 +507,7 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
         $this->setUser($user1);
         $questiongenerator->setup_course_and_questions();
 
-        $approveduserlist = new \core_privacy\local\request\approved_userlist($course1context, 'core_question',
+        $approveduserlist = new \core_privacy\local\request\approved_userlist($qbankcontext, 'core_question',
                 [$user1->id, $user2->id]);
         provider::delete_data_for_users($approveduserlist);
 
@@ -521,7 +520,7 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
                                           JOIN {question_categories} qc ON qc.id = qbe.questioncategoryid
                                          WHERE qc.contextid = ?
                                            AND (q.createdby = ? OR q.modifiedby = ? OR q.createdby = ? OR q.modifiedby = ?)",
-                        [$course1context->id, $user1->id, $user1->id, $user2->id, $user2->id])
+                        [$qbankcontext->id, $user1->id, $user1->id, $user2->id, $user2->id])
         );
 
         // User3 data in course1 should not change.
@@ -532,7 +531,7 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
                                           JOIN {question_bank_entries} qbe ON qbe.id = qv.questionbankentryid
                                           JOIN {question_categories} qc ON qc.id = qbe.questioncategoryid
                                          WHERE qc.contextid = ? AND (q.createdby = ? OR q.modifiedby = ?)",
-                        [$course1context->id, $user3->id, $user3->id])
+                        [$qbankcontext->id, $user3->id, $user3->id])
         );
 
         // User1 has authored 2 questions in another course.

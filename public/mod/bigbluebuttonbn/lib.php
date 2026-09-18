@@ -61,10 +61,7 @@ global $CFG;
  * @uses FEATURE_SHOW_DESCRIPTION
  */
 function bigbluebuttonbn_supports($feature) {
-    if (!$feature) {
-        return null;
-    }
-    $features = [
+    return match ($feature) {
         FEATURE_IDNUMBER => true,
         FEATURE_GROUPS => true,
         FEATURE_GROUPINGS => true,
@@ -72,15 +69,12 @@ function bigbluebuttonbn_supports($feature) {
         FEATURE_BACKUP_MOODLE2 => true,
         FEATURE_COMPLETION_TRACKS_VIEWS => true,
         FEATURE_COMPLETION_HAS_RULES => true,
-        FEATURE_GRADE_HAS_GRADE => false,
+        FEATURE_GRADE_HAS_GRADE => true,
         FEATURE_GRADE_OUTCOMES => false,
         FEATURE_SHOW_DESCRIPTION => true,
         FEATURE_MOD_PURPOSE => MOD_PURPOSE_COMMUNICATION,
-    ];
-    if (isset($features[(string) $feature])) {
-        return $features[$feature];
-    }
-    return null;
+        default => null,
+    };
 }
 
 /**
@@ -111,6 +105,10 @@ function bigbluebuttonbn_add_instance($bigbluebuttonbn) {
 
     // Call any active subplugin so to signal a new creation.
     extension::add_instance($bigbluebuttonbn);
+
+    // Create new grade item.
+    bigbluebuttonbn_grade_item_update($bigbluebuttonbn);
+
     return $bigbluebuttonbn->id;
 }
 
@@ -137,6 +135,8 @@ function bigbluebuttonbn_update_instance($bigbluebuttonbn) {
     }
     // Update a record.
     $DB->update_record('bigbluebuttonbn', $bigbluebuttonbn);
+
+    bigbluebuttonbn_grade_item_update($bigbluebuttonbn);
 
     // Get the meetingid column in the bigbluebuttonbn table.
     $bigbluebuttonbn->meetingid = (string) $DB->get_field('bigbluebuttonbn', 'meetingid', ['id' => $bigbluebuttonbn->id]);
@@ -199,6 +199,10 @@ function bigbluebuttonbn_delete_instance($id) {
     }
 
     $result = true;
+
+    // Delete grades.
+    $bigbluebuttonbn = $DB->get_record('bigbluebuttonbn', ['id' => $id]);
+    bigbluebuttonbn_grade_item_delete($bigbluebuttonbn);
 
     // Call any active subplugin so to signal deletion.
     extension::delete_instance($id);
@@ -325,8 +329,24 @@ function bigbluebuttonbn_reset_userdata(stdClass $data) {
     $items = reset::reset_course_items();
     $status = [];
 
-    // Any changes to the list of dates that needs to be rolled should be same during course restore and course reset.
-    // See MDL-9367.
+    $componentstr = get_string('modulenameplural', 'bigbluebuttonbn');
+
+    // Updating dates - shift may be negative too.
+    if (!empty($data->timeshift)) {
+        // Any changes to the list of dates that needs to be rolled should be same during course restore and course reset.
+        // See MDL-9367.
+        shift_course_mod_dates('bigbluebuttonbn', [
+            'openingtime',
+            'closingtime',
+        ], $data->timeshift, $data->courseid);
+
+        $status[] = [
+            'component' => $componentstr,
+            'item' => get_string('date'),
+            'error' => false,
+        ];
+    }
+
     if (array_key_exists('recordings', $items) && !empty($data->reset_bigbluebuttonbn_recordings)) {
         // Remove all the recordings from a BBB server that are linked to the room/activities in this course.
         reset::reset_recordings($data->courseid);
@@ -346,6 +366,10 @@ function bigbluebuttonbn_reset_userdata(stdClass $data) {
         reset::reset_logs($data->courseid);
         unset($items['logs']);
         $status[] = reset::reset_getstatus('logs');
+    }
+    // Remove all grades from gradebook.
+    if (!empty($data->reset_gradebook_grades)) {
+        bigbluebuttonbn_reset_gradebook($data->courseid);
     }
     return $status;
 }
@@ -560,19 +584,30 @@ function mod_bigbluebuttonbn_core_calendar_is_event_visible(calendar_event $even
  * @param navigation_node $nodenav The node to add module settings to
  */
 function bigbluebuttonbn_extend_settings_navigation(settings_navigation $settingsnav, navigation_node $nodenav) {
+    // Check for overrides.
+    $overriden = extension::override_settings_navigation($settingsnav, $nodenav);
+    if ($overriden) {
+        return;
+    }
+
+    // Run core/default logic here.
     global $USER;
-    // Don't add validate completion if the callback for meetingevents is NOT enabled.
-    if (!(boolean) \mod_bigbluebuttonbn\local\config::get('meetingevents_enabled')) {
-        return;
-    }
-    // Don't add validate completion if user is not allowed to edit the activity.
     $context = context_module::instance($settingsnav->get_page()->cm->id);
-    if (!has_capability('moodle/course:manageactivities', $context, $USER->id)) {
-        return;
+    // Add validate completion if the callback for meetingevents is enabled and user is allowed to edit the activity.
+    if (
+        (bool) \mod_bigbluebuttonbn\local\config::get('meetingevents_enabled') &&
+        has_capability('moodle/course:manageactivities', $context, $USER->id)
+    ) {
+        $completionvalidate = '#action=completion_validate&bigbluebuttonbn=' . $settingsnav->get_page()->cm->instance;
+        $nodenav->add(
+            get_string('completionvalidatestate', 'bigbluebuttonbn'),
+            $completionvalidate,
+            navigation_node::TYPE_CONTAINER
+        );
     }
-    $completionvalidate = '#action=completion_validate&bigbluebuttonbn=' . $settingsnav->get_page()->cm->instance;
-    $nodenav->add(get_string('completionvalidatestate', 'bigbluebuttonbn'),
-        $completionvalidate, navigation_node::TYPE_CONTAINER);
+
+    // Call all appends.
+    extension::append_settings_navigation($settingsnav, $nodenav);
 }
 
 /**
@@ -757,4 +792,91 @@ function bigbluebuttonbn_course_backend_generator_create_activity(tool_generator
  */
 function bigbluebuttonbn_is_branded(): bool {
     return true;
+}
+
+/**
+ * Update/create grade item for given BigBlueButtonBN activity
+ *
+ * @category grade
+ * @param stdClass $bigbluebuttonbn instance object
+ * @param array|object|string|null $grades Optional array/object of grade(s); 'reset' means reset grades in gradebook
+ * @return int 0 if ok, error code otherwise
+ */
+function bigbluebuttonbn_grade_item_update(stdClass $bigbluebuttonbn, array|object|string|null $grades=null): int {
+    global $CFG;
+    require_once($CFG->libdir.'/gradelib.php');
+    $params = ['itemname' => $bigbluebuttonbn->name];
+    if ($bigbluebuttonbn->grade == 0) {
+        $params['gradetype'] = GRADE_TYPE_NONE;
+    } else if ($bigbluebuttonbn->grade > 0) {
+        $params['gradetype'] = GRADE_TYPE_VALUE;
+        $params['grademax'] = $bigbluebuttonbn->grade;
+        $params['grademin'] = 0;
+    } else if ($bigbluebuttonbn->grade < 0) {
+        $params['gradetype'] = GRADE_TYPE_SCALE;
+        $params['scaleid'] = -$bigbluebuttonbn->grade;
+    }
+    if ($grades === 'reset') {
+        $params['reset'] = true;
+        $grades = null;
+    }
+    return grade_update(
+        source: 'mod/bigbluebuttonbn',
+        courseid: $bigbluebuttonbn->course,
+        itemtype: 'mod',
+        itemmodule: 'bigbluebuttonbn',
+        iteminstance: $bigbluebuttonbn->id,
+        itemnumber: 0,
+        grades: $grades,
+        itemdetails: $params
+    );
+}
+
+/**
+ * Update activity grades.
+ *
+ * @param stdClass $bigbluebuttonbn instance object
+ */
+function bigbluebuttonbn_update_grades(stdClass $bigbluebuttonbn): void {
+    // BigBlueButtonBN does not have a grades table, so we will only update grade item.
+    bigbluebuttonbn_grade_item_update($bigbluebuttonbn);
+}
+
+/**
+ * Removes all grades from gradebook
+ *
+ * @param int $courseid
+ */
+function bigbluebuttonbn_reset_gradebook(int $courseid): void {
+    global $DB;
+    $sql = "SELECT b.*, cm.idnumber as cmidnumber, b.course as courseid
+              FROM {bigbluebuttonbn} b, {course_modules} cm, {modules} m
+             WHERE m.name='bigbluebuttonbn' AND m.id=cm.module AND cm.instance=b.id AND b.course=?";
+
+    if ($bigbluebuttonbns = $DB->get_records_sql($sql, [$courseid])) {
+        foreach ($bigbluebuttonbns as $bigbluebuttonbn) {
+            bigbluebuttonbn_grade_item_update($bigbluebuttonbn, 'reset');
+        }
+    }
+}
+
+/**
+ * Delete grade item for given activity
+ *
+ * @param stdClass $bigbluebuttonbn instance object
+ * @return int Returns GRADE_UPDATE_OK, GRADE_UPDATE_FAILED, GRADE_UPDATE_MULTIPLE or GRADE_UPDATE_ITEM_LOCKED
+ */
+function bigbluebuttonbn_grade_item_delete(stdClass $bigbluebuttonbn): int {
+    global $CFG;
+    require_once($CFG->libdir.'/gradelib.php');
+    return grade_update(
+        source: 'mod/bigbluebuttonbn',
+        courseid: $bigbluebuttonbn->course,
+        itemtype: 'mod',
+        itemmodule: 'bigbluebuttonbn',
+        iteminstance: $bigbluebuttonbn->id,
+        itemnumber: 0,
+        grades: null,
+        itemdetails: ['deleted' => 1]
+    );
 }

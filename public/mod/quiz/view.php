@@ -23,6 +23,7 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+use core\output\notification;
 use mod_quiz\access_manager;
 use mod_quiz\output\list_of_attempts;
 use mod_quiz\output\renderer;
@@ -38,6 +39,7 @@ require_once($CFG->dirroot . '/course/format/lib.php');
 
 $id = optional_param('id', 0, PARAM_INT); // Course Module ID, or ...
 $q = optional_param('q',  0, PARAM_INT);  // Quiz ID.
+$preloginuserid = $USER->id;
 
 if ($id) {
     $quizobj = quiz_settings::create_for_cmid($id, $USER->id);
@@ -53,6 +55,10 @@ require_login($course, false, $cm);
 $context = $quizobj->get_context();
 require_capability('mod/quiz:view', $context);
 
+// Apply overrides.
+if ($USER->id !== $preloginuserid) {
+    $quiz = quiz_update_effective_access($quiz, $USER->id);
+}
 // Cache some other capabilities we use several times.
 $canattempt = has_capability('mod/quiz:attempt', $context);
 $canreviewmine = has_capability('mod/quiz:reviewmyattempts', $context);
@@ -261,6 +267,13 @@ if (!$viewobj->quizhasquestions) {
             }
         }
     }
+
+    // If the quiz has any invalid questions, we cannot attempt it.
+    if (in_array('missingtype', $quizobj->get_all_question_types_used())) {
+        $viewobj->preventmessages[] = $OUTPUT->notification(
+            get_string('quizinvalidquestions', 'mod_quiz'), notification::NOTIFY_ERROR, false);
+        $viewobj->buttontext = '';
+    }
 }
 
 $viewobj->showbacktocourse = ($viewobj->buttontext === '' &&
@@ -270,7 +283,7 @@ echo $OUTPUT->header();
 
 if (!empty($gradinginfo->errors)) {
     foreach ($gradinginfo->errors as $error) {
-        $errortext = new \core\output\notification($error, \core\output\notification::NOTIFY_ERROR);
+        $errortext = new notification($error, notification::NOTIFY_ERROR);
         echo $OUTPUT->render($errortext);
     }
 }

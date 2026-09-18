@@ -14,6 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+use core\di;
+use core\hook\manager;
+use core_backup\hook\copy_helper_process_formdata;
+
 defined('MOODLE_INTERNAL') || die();
 require_once($CFG->dirroot . '/backup/util/includes/restore_includes.php');
 
@@ -45,6 +49,11 @@ final class copy_helper {
             'idnumber', // ID of the destination course.
             'userdata', // Integer to determine if the copied course will contain user data.
         ];
+
+        // Use hook to expand field list.
+        $hook = new copy_helper_process_formdata();
+        di::get(manager::class)->dispatch($hook);
+        $requiredfields = array_merge($requiredfields, $hook->get_extrafields());
 
         $missingfields = array_diff($requiredfields, array_keys((array)$formdata));
         if ($missingfields) {
@@ -224,11 +233,6 @@ final class copy_helper {
      * @return array An array of mappings between backup ids and restore controllers
      */
     private static function map_backupids_to_restore_controller(array $backuprecords): array {
-        // Needed for PHP 7.3 - array_merge only accepts 0 parameters in PHP >= 7.4.
-        if (empty($backuprecords)) {
-            return [];
-        }
-
         return array_merge(
             ...array_map(
                 function (\stdClass $backuprecord): array {

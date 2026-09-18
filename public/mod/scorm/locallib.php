@@ -1010,7 +1010,7 @@ function scorm_print_launch($user, $scorm, $action, $cm) {
         $haspopup = !empty($scorm->popup);
         $popuphtml = '';
         if ($haspopup) {
-            $popuphtml = html_writer::span(get_string('opensinnewwindowbracketed'), 'sr-only')
+            $popuphtml = html_writer::span(get_string('opensinnewwindowbracketed'), 'visually-hidden')
                 . $OUTPUT->pix_icon('i/externallink', '', 'moodle', ['class' => 'ms-1 me-0']);
         }
         if ($scorm->hidebrowse == 0) {

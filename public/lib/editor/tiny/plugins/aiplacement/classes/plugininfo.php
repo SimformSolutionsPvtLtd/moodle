@@ -16,7 +16,6 @@
 
 namespace tiny_aiplacement;
 
-use aiplacement_editor\utils;
 use core\context;
 use core_ai\aiactions\generate_image;
 use core_ai\aiactions\generate_text;
@@ -25,6 +24,7 @@ use editor_tiny\editor;
 use editor_tiny\plugin;
 use editor_tiny\plugin_with_buttons;
 use editor_tiny\plugin_with_configuration;
+use editor_tiny\plugin_with_configuration_for_external;
 use editor_tiny\plugin_with_menuitems;
 
 /**
@@ -34,7 +34,12 @@ use editor_tiny\plugin_with_menuitems;
  * @copyright  2024 Matt Porritt <matt.porritt@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class plugininfo extends plugin implements plugin_with_buttons, plugin_with_menuitems, plugin_with_configuration {
+class plugininfo extends plugin implements
+    plugin_with_buttons,
+    plugin_with_menuitems,
+    plugin_with_configuration,
+    plugin_with_configuration_for_external {
+
     /**
      * @var array|string[] The possible actions for the plugin.
      */
@@ -51,6 +56,13 @@ class plugininfo extends plugin implements plugin_with_buttons, plugin_with_menu
         ?editor $editor = null
     ): bool {
         return in_array(true, self::get_allowed_actions($context, $options));
+    }
+
+    #[\Override]
+    public static function is_enabled_for_external(context $context, array $options): bool {
+        // Assume files are allowed. Otherwise, the generate_image action is ignored.
+        $options['maxfiles'] = 1;
+        return self::is_enabled($context, $options, []);
     }
 
     #[\Override]
@@ -82,21 +94,38 @@ class plugininfo extends plugin implements plugin_with_buttons, plugin_with_menu
         ], $allowedactions);
     }
 
+    #[\Override]
+    public static function get_plugin_configuration_for_external(context $context): array {
+        // Assume files are allowed. Otherwise, the generate_image action is ignored.
+        $options = ['maxfiles' => 1];
+        $settings = self::get_plugin_configuration_for_context($context, $options, []);
+        unset($settings['contextid']);
+        unset($settings['userid']);
+        return array_map(fn($value) =>  is_bool($value) ? ($value ? '1' : '0') : $value, $settings);
+    }
+
     /**
      * Get the allowed actions for the plugin.
+     *
+     * Available actions are discovered through the component-neutral core AI manager API rather
+     * than a direct call to a specific AI placement plugin. This lets any AI placement plugin
+     * offer actions through this editor entry point, and keeps this plugin working when a
+     * specific placement plugin, such as aiplacement_editor, is not installed.
      *
      * @param context $context The context that the editor is used within
      * @param array $options The options passed in when requesting the editor
      * @return array The allowed actions.
      */
     private static function get_allowed_actions(context $context, array $options): array {
+        $availableactions = array_column(
+            manager::get_placement_actions_available($context),
+            null,
+            'action',
+        );
+
         $allowedactions = [];
-        foreach (self::$possibleactions as $action => $actionclass) {
-            $allowedactions[$action] = utils::is_html_editor_placement_action_available(
-                context: $context,
-                actionname: $action,
-                actionclass: $actionclass,
-            );
+        foreach (array_keys(self::$possibleactions) as $action) {
+            $allowedactions[$action] = array_key_exists($action, $availableactions);
 
             if ($allowedactions[$action] && $action == 'generate_image') {
                 // For generate image, we need to check if the user has the capability to upload files.

@@ -25,6 +25,9 @@ use core_reportbuilder\local\report\column;
 /**
  * Column group concatenation aggregation type
  *
+ * The value used for the separator between aggregated items can be specified by passing the 'separator' option
+ * via {@see column::set_aggregation} or {@see column::set_aggregation_options} methods
+ *
  * @package     core_reportbuilder
  * @copyright   2021 Paul Holden <paulh@moodle.com>
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -100,10 +103,10 @@ class groupconcat extends base {
      * @param int $columntype
      * @return mixed
      */
-    public static function format_value($value, array $values, array $callbacks, int $columntype) {
-        $firstvalue = reset($values);
-        if ($firstvalue === null) {
-            return '';
+    public function format_value($value, array $values, array $callbacks, int $columntype) {
+        $concatenation = reset($values);
+        if ($concatenation === null) {
+            return null;
         }
 
         $formattedvalues = [];
@@ -113,7 +116,7 @@ class groupconcat extends base {
         $valuenamescount = count($valuenames);
 
         // Loop over each extracted value from the concatenated string.
-        $values = explode(self::FIELD_VALUE_DELIMETER, (string)$firstvalue);
+        $values = explode(self::FIELD_VALUE_DELIMETER, $concatenation);
         foreach ($values as $value) {
 
             // Ensure we have equal number of value names/data, account for truncation by DB.
@@ -133,7 +136,11 @@ class groupconcat extends base {
             $formattedvalues[] = parent::format_value($originalvalue, $originalvalues, $callbacks, $columntype);
         }
 
-        $listseparator = get_string('listsep', 'langconfig') . ' ';
-        return implode($listseparator, $formattedvalues);
+        // Determine separator based on passed options, defaulting to language pack list separator.
+        $separator = array_key_exists('separator', $this->options)
+            ? (string) $this->options['separator']
+            : get_string('listsep', 'langconfig') . ' ';
+
+        return implode($separator, $formattedvalues);
     }
 }

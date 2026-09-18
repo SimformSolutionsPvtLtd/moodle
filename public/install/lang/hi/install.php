@@ -21,7 +21,7 @@
  * needed during the very first steps of installation. This file was
  * generated automatically by export-installer.php (which is part of AMOS
  * {@link https://moodledev.io/general/projects/api/amos}) using the
- * list of strings defined in install/stringnames.txt file.
+ * list of strings defined in public/install/stringnames.txt file.
  *
  * @package   installer
  * @license   https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -49,30 +49,6 @@ $string['environmentsub2'] = 'प्रत्येक मूडल रिली
 $string['errorsinenvironment'] = 'पर्यावरण जांच विफल रही!';
 $string['installation'] = 'अधिष्ठापन';
 $string['langdownloaderror'] = 'दुर्भाग्य से "{$a}" भाषा डाउनलोड नहीं की जा सकी। अधिष्ठापन प्रक्रम अंग्रेजी में जारी रहेगी।';
-$string['memorylimithelp'] = '<p>आपके सर्वर के लिए PHP मेमोरी सीमा वर्तमान में {$a} पर सेट है।</p>
-
-<p>इससे Moodle को बाद में मेमोरी संबंधी समस्याएँ हो सकती हैं, विशेष रूप से
-
-यदि आपने कई मॉड्यूल सक्रिय किए हैं और/या कई उपयोगकर्ता हैं।</p>
-
-<p>हमारा सुझाव है कि यदि संभव हो तो आप PHP को उच्च सीमा, जैसे 40M, पर कॉन्फ़िगर करें।
-
-ऐसा करने के कई तरीके हैं जिन्हें आप आज़मा सकते हैं:</p>
-<ol>
-<li>यदि संभव हो, तो PHP को <i>--enable-memory-limit</i> के साथ पुनः संकलित करें।
-
-इससे Moodle स्वयं मेमोरी सीमा निर्धारित कर सकेगा।</li>
-<li>यदि आपके पास अपनी php.ini फ़ाइल तक पहुँच है, तो आप उसमें <b>memory_limit</b>
-सेटिंग को 40M जैसी किसी मान पर बदल सकते हैं।</li> यदि आपके पास पहुँच नहीं है, तो आप
-अपने व्यवस्थापक से यह करने के लिए कह सकते हैं।</li>
-<li>कुछ PHP सर्वरों पर, आप Moodle निर्देशिका में एक .htaccess फ़ाइल बना सकते हैं,
-
-जिसमें यह पंक्ति हो:
-
-<blockquote><div>php_value memory_limit 40M</div></blockquote>
-<p>हालाँकि, कुछ सर्वरों पर यह सभी PHP पृष्ठों को काम करने से रोक देगा
-(पृष्ठों को देखते समय आपको त्रुटियाँ दिखाई देंगी), इसलिए आपको .htaccess फ़ाइल को हटाना होगा।</p></li>
-</ol>';
 $string['paths'] = 'रास्ते';
 $string['pathserrcreatedataroot'] = 'डेटा निर्देशिका ({$a-> dataroot}) इंस्टॉलर द्वारा नहीं बनाई जा सकती है।';
 $string['pathshead'] = 'रास्तों की पुष्टि';
@@ -86,9 +62,6 @@ $string['pathsunsecuredataroot'] = 'डेटारूट स्थान सु
 $string['pathswrongadmindir'] = 'प्रशासक निर्देशिका मौजूद नहीं है';
 $string['phpextension'] = '{$a} PHP विस्तार';
 $string['phpversion'] = 'PHP संस्करण';
-$string['phpversionhelp'] = '<p>Moodle के लिए PHP का कम से कम 5.6.5 या 7.1 संस्करण आवश्यक है (7.0.x में कुछ इंजन संबंधी सीमाएँ हैं)।</p>
-<p>आप वर्तमान में {$a} संस्करण चला रहे हैं।</p>
-<p>आपको PHP को अपग्रेड करना होगा या PHP के नए संस्करण वाले होस्ट पर जाना होगा।</p>';
 $string['welcomep20'] = 'आप इस पृष्ठ को इसलिए देख रहे हैं क्योंकि आपने अपने कंप्यूटर में <strong>{$a->packname} {$a->packversion}</strong> पैकेज को सफलतापूर्वक स्थापित और लॉन्च कर लिया है।
 बधाई हो!';
 $string['welcomep30'] = 'इस <strong>{$a->installername}</strong> रिलीज़ में निम्नलिखित एप्लिकेशन शामिल हैं:

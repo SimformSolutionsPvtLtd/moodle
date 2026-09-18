@@ -31,6 +31,7 @@ define([
     'core/aria',
     'core_form/changechecker',
     'core/popper2',
+    'theme_boost/bootstrap/dom/event-handler',
 ], function(
     $,
     log,
@@ -40,7 +41,8 @@ define([
     LoadingIcon,
     Aria,
     FormChangeChecker,
-    Popper
+    Popper,
+    EventHandler,
 ) {
     // Private functions and variables.
     /** @var {Object} KEYS - List of keycode constants. */
@@ -491,6 +493,8 @@ define([
 
     /**
      * Rebuild the list of suggestions based on the current values in the select list, and the query.
+     * Any options in the original select with [data-enabled=disabled] will not be included
+     * as a suggestion option in the enhanced field.
      *
      * @method updateSuggestions
      * @private
@@ -511,7 +515,7 @@ define([
         // Used to track if we found any visible suggestions.
         var matchingElements = false;
         // Options is used by the context when rendering the suggestions from a template.
-        var suggestions = rebuildOptions(originalSelect.children('option:not(:selected)'), true);
+        var suggestions = rebuildOptions(originalSelect.children('option:not(:selected, [data-enabled="disabled"])'), true);
 
         // Re-render the list of suggestions.
         var searchquery = state.caseSensitive ? query : query.toLocaleLowerCase();
@@ -972,7 +976,7 @@ define([
                 case KEYS.ENTER:
                     // Get the item that is currently selected.
                     var selectedItem = $(document.getElementById(state.selectionId)).children('[data-active-selection]');
-                    if (selectedItem) {
+                    if (selectedItem.length > 0) {
                         e.preventDefault();
 
                         // Unselect this item.
@@ -1077,6 +1081,16 @@ define([
                 });
             }
         }
+
+        // Add a Bootstrap keydown handler to close the suggestions list preventing the whole Dropdown close.
+        EventHandler.on(document, 'keydown.bs.dropdown.data-api', '.dropdown-menu', (event) => {
+            const pendingPromise = addPendingJSPromise('addNavigation-' + state.inputId + '-' + event.key);
+            if (event.key === "Escape" && inputElement.attr('aria-expanded') === "true") {
+                event.stopImmediatePropagation();
+                return pendingPromise.resolve(closeSuggestions(state));
+            }
+            return pendingPromise.resolve();
+        });
     };
 
     /**

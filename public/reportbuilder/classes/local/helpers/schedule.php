@@ -19,9 +19,9 @@ declare(strict_types=1);
 namespace core_reportbuilder\local\helpers;
 
 use context_user;
-use core\{clock, di};
+use core\{component, clock, di};
+use core\exception\{coding_exception, invalid_parameter_exception};
 use core_user;
-use invalid_parameter_exception;
 use stdClass;
 use stored_file;
 use table_dataformat_export_format;
@@ -29,6 +29,7 @@ use core\message\message;
 use core\plugininfo\dataformat;
 use core_reportbuilder\local\models\audience as audience_model;
 use core_reportbuilder\local\models\schedule as model;
+use core_reportbuilder\local\schedules\base;
 use core_reportbuilder\table\custom_report_table_view;
 
 /**
@@ -39,6 +40,26 @@ use core_reportbuilder\table\custom_report_table_view;
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class schedule {
+    /**
+     * Determine whether given class is a valid schedule type
+     *
+     * @param string $scheduleclass
+     * @return bool
+     */
+    public static function valid(string $scheduleclass): bool {
+        return class_exists($scheduleclass) && is_subclass_of($scheduleclass, base::class);
+    }
+
+    /**
+     * Return list of all available/valid schedule types
+     *
+     * @return base[]
+     */
+    public static function get_schedules(): array {
+        $classes = component::get_component_classes_in_namespace(null, 'reportbuilder\\schedule');
+
+        return array_filter(array_keys($classes), [static::class, 'valid']);
+    }
 
     /**
      * Create report schedule, calculate when it should be next sent
@@ -46,18 +67,18 @@ class schedule {
      * @param stdClass $data
      * @param int|null $timenow Deprecated since Moodle 4.5 - please use {@see clock} dependency injection
      * @return model
+     *
+     * @deprecated since Moodle 5.1 - please do not use this function any more, {@see base::create}
      */
+    #[\core\attribute\deprecated(base::class . '::create', since: '5.1', mdl: 'MDL-86066')]
     public static function create_schedule(stdClass $data, ?int $timenow = null): model {
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
+
         if ($timenow !== null) {
             debugging('Passing $timenow is deprecated, please use \core\clock dependency injection', DEBUG_DEVELOPER);
         }
 
-        $data->name = trim($data->name);
-
-        $schedule = (new model(0, $data));
-        $schedule->set('timenextsend', self::calculate_next_send_time($schedule));
-
-        return $schedule->create();
+        return base::create($data)->get_persistent();
     }
 
     /**
@@ -113,7 +134,7 @@ class schedule {
     public static function get_schedule_report_users(model $schedule): array {
         global $DB;
 
-        $audienceids = (array) json_decode($schedule->get('audiences'));
+        $audienceids = (array) json_decode((string) $schedule->get('audiences'));
 
         // Retrieve all selected audience records for the schedule.
         [$audienceselect, $audienceparams] = $DB->get_in_or_equal($audienceids, SQL_PARAMS_NAMED, 'aid', true, null);
@@ -141,14 +162,14 @@ class schedule {
      *
      * @param model $schedule
      * @return int
+     *
+     * @deprecated since Moodle 5.0 - please do not use this function any more, {@see report::get_report_row_count}
      */
+    #[\core\attribute\deprecated('report::get_report_row_count', since: '5.0', mdl: 'MDL-74488')]
     public static function get_schedule_report_count(model $schedule): int {
-        global $DB;
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
 
-        $table = custom_report_table_view::create($schedule->get('reportid'));
-        $table->setup();
-
-        return $DB->count_records_sql($table->countsql, $table->countparams);
+        return report::get_report_row_count($schedule->get('reportid'));
     }
 
     /**
@@ -163,7 +184,6 @@ class schedule {
         require_once("{$CFG->libdir}/filelib.php");
 
         $table = custom_report_table_view::create($schedule->get('reportid'));
-
         $table->setup();
         $table->query_db(0, false);
 
@@ -238,6 +258,7 @@ class schedule {
      * @param model $schedule
      * @param int|null $timenow Deprecated since Moodle 4.5 - please use {@see clock} dependency injection
      * @return int
+     * @throws coding_exception
      */
     public static function calculate_next_send_time(model $schedule, ?int $timenow = null): int {
         global $CFG;
@@ -267,6 +288,9 @@ class schedule {
         ] = usergetdate($timescheduled, $CFG->timezone);
 
         switch ($recurrence) {
+            case model::RECURRENCE_HOURLY:
+                $hour += 1;
+            break;
             case model::RECURRENCE_DAILY:
                 $day += 1;
             break;
@@ -290,6 +314,9 @@ class schedule {
             case model::RECURRENCE_ANNUALLY:
                 $year += 1;
             break;
+            default:
+                throw new coding_exception('Invalid recurrence value', $recurrence);
+            break;
         }
 
         // We need to recursively increment the timestamp until we get one after the current time.
@@ -311,8 +338,13 @@ class schedule {
      * @param stdClass $user
      * @param stored_file $attachment
      * @return bool
+     *
+     * @deprecated since Moodle 5.1 - please do not use this function any more
      */
+    #[\core\attribute\deprecated(reason: 'It is no longer used', since: '5.1', mdl: 'MDL-86066')]
     public static function send_schedule_message(model $schedule, stdClass $user, stored_file $attachment): bool {
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
+
         $message = new message();
         $message->component = 'moodle';
         $message->name = 'reportbuilderschedule';
@@ -383,6 +415,7 @@ class schedule {
     public static function get_recurrence_options(): array {
         return [
             model::RECURRENCE_NONE => get_string('none'),
+            model::RECURRENCE_HOURLY => get_string('recurrencehourly', 'core_reportbuilder'),
             model::RECURRENCE_DAILY => get_string('recurrencedaily', 'core_reportbuilder'),
             model::RECURRENCE_WEEKDAYS => get_string('recurrenceweekdays', 'core_reportbuilder'),
             model::RECURRENCE_WEEKLY => get_string('recurrenceweekly', 'core_reportbuilder'),
@@ -395,12 +428,17 @@ class schedule {
      * Return list of options for when report is empty
      *
      * @return string[]
+     *
+     * @deprecated since Moodle 5.1 - please do not use this function any more
      */
+    #[\core\attribute\deprecated(reason: 'It is no longer used', since: '5.1', mdl: 'MDL-86066')]
     public static function get_report_empty_options(): array {
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
+
         return [
-            model::REPORT_EMPTY_SEND_EMPTY => get_string('scheduleemptysendwithattachment', 'core_reportbuilder'),
-            model::REPORT_EMPTY_SEND_WITHOUT => get_string('scheduleemptysendwithoutattachment', 'core_reportbuilder'),
-            model::REPORT_EMPTY_DONT_SEND => get_string('scheduleemptydontsend', 'core_reportbuilder'),
+            0 => get_string('scheduleemptysendwithattachment', 'core_reportbuilder'),
+            1 => get_string('scheduleemptysendwithoutattachment', 'core_reportbuilder'),
+            2 => get_string('scheduleemptydontsend', 'core_reportbuilder'),
         ];
     }
 }

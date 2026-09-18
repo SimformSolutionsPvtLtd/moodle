@@ -28,7 +28,7 @@ function glossary_show_entry_continuous(
 ) {
     global $OUTPUT;
 
-    echo '<table class="glossarypost continuous" cellspacing="0" role="presentation">';
+    echo '<table class="glossarypost continuous table-reboot" cellspacing="0" role="presentation">';
     echo '<tr valign="top">';
     echo '<td class="entry">';
     glossary_print_entry_approval($cm, $entry, $mode);

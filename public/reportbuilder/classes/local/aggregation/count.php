@@ -24,6 +24,9 @@ use core_reportbuilder\local\report\column;
 /**
  * Column count aggregation type
  *
+ * The formatted value applied to aggregated columns can be customised by passing a callable as the 'callback' option
+ * via {@see column::set_aggregation} or {@see column::set_aggregation_options} methods
+ *
  * @package     core_reportbuilder
  * @copyright   2021 Paul Holden <paulh@moodle.com>
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -57,13 +60,17 @@ class count extends base {
      * @return string
      */
     public static function get_field_sql(string $field, int $columntype): string {
-        global $DB;
-
-        if ($columntype === column::TYPE_LONGTEXT && $DB->get_dbfamily() === 'oracle') {
-            $field = $DB->sql_compare_text($field, 255);
-        }
-
         return "COUNT({$field})";
+    }
+
+    /**
+     * Returns aggregated column type
+     *
+     * @param int $columntype
+     * @return int
+     */
+    public static function get_column_type(int $columntype): int {
+        return column::TYPE_INTEGER;
     }
 
     /**
@@ -73,9 +80,16 @@ class count extends base {
      * @param array $values
      * @param array $callbacks
      * @param int $columntype
-     * @return int
+     * @return mixed
      */
-    public static function format_value($value, array $values, array $callbacks, int $columntype): int {
-        return (int) reset($values);
+    public function format_value($value, array $values, array $callbacks, int $columntype) {
+        $count = (int) reset($values);
+
+        // Determine callback based on passed options.
+        if (array_key_exists('callback', $this->options) && is_callable($this->options['callback'])) {
+            return ($this->options['callback'])($count);
+        }
+
+        return $count;
     }
 }

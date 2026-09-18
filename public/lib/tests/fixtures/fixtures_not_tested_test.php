@@ -24,7 +24,12 @@ namespace core\fixtures;
  * @copyright  Andrew Lyons <andrew@nicols.co.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+<<<<<<<< HEAD:public/lib/tests/event/deprecated_test.php
+final class deprecated_test extends \advanced_testcase {
+
+========
 final class fixtures_not_tested_test extends \advanced_testcase {
+>>>>>>>> upstream/MOODLE_501_STABLE:public/lib/tests/fixtures/fixtures_not_tested_test.php
     /**
      * Ensure that test fixtures are not tested.
      *

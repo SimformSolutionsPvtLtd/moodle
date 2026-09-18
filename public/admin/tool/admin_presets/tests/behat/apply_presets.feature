@@ -17,8 +17,6 @@ Feature: I can apply presets
     And I should see "Disable Restriction by grouping"
     And I navigate to "Plugins > Blocks > Manage blocks" in site administration
     And I should see "Disable Logged in user"
-    And I navigate to "Plugins > Course formats > Manage course formats" in site administration
-    And "Disable" "icon" should exist in the "Social" "table_row"
     And I navigate to "Plugins > Question behaviours > Manage question behaviours" in site administration
     And "Enabled" "link" should exist in the "Immediate feedback with CBM" "table_row"
     And I navigate to "Plugins > Question types > Manage question types" in site administration
@@ -28,9 +26,7 @@ Feature: I can apply presets
     And I should see "Setting changes"
 #   Checking all the settings to be applied for the Starter (if will help to identify possible regressions).
     And I should see "Activities" in the "Setting changes" "table"
-    And I should see "Activity chooser tabs" in the "Setting changes" "table"
     And I should see "Adaptive mode (no penalties)" in the "Setting changes" "table"
-    And I should see "Analytics" in the "Setting changes" "table"
     And I should see "Blog menu" in the "Setting changes" "table"
     And I should see "Blog tags" in the "Setting changes" "table"
     And I should see "Calculated" in the "Setting changes" "table"
@@ -68,12 +64,11 @@ Feature: I can apply presets
     And I should see "Lesson" in the "Setting changes" "table"
     And I should see "Logged in user" in the "Setting changes" "table"
     And I should see "Login" in the "Setting changes" "table"
-    And I should see "Main menu" in the "Setting changes" "table"
+    And I should see "Additional activities" in the "Setting changes" "table"
     And I should see "Maximum number of attachments" in the "Setting changes" "table"
     And "Maximum number of attachments" row "Current value" column of "Setting changes" table should contain "9"
     And "Maximum number of attachments" row "New value" column of "Setting changes" table should contain "3"
     And I should see "Mentees" in the "Setting changes" "table"
-    And I should see "Network servers" in the "Setting changes" "table"
     And I should see "Numerical" in the "Setting changes" "table"
     And I should see "Online users" in the "Setting changes" "table"
     And I should see "Private files" in the "Setting changes" "table"
@@ -84,11 +79,9 @@ Feature: I can apply presets
     And I should see "Restriction by profile" in the "Setting changes" "table"
     And I should see "SCORM package" in the "Setting changes" "table"
     And I should see "Search forums" in the "Setting changes" "table"
-    And I should see "Section links" in the "Setting changes" "table"
     And I should see "Server files" in the "Setting changes" "table"
     And I should see "Show data retention summary" in the "Setting changes" "table"
     And I should see "Social activities" in the "Setting changes" "table"
-    And I should see "Social" in the "Setting changes" "table"
     And I should see "Starred courses" in the "Setting changes" "table"
     And I should see "Lesson" in the "Setting changes" "table"
     And I should see "Tags" in the "Setting changes" "table"
@@ -110,8 +103,6 @@ Feature: I can apply presets
     And I should see "Enable Restriction by grouping"
     And I navigate to "Plugins > Blocks > Manage blocks" in site administration
     And I should see "Enable Logged in user"
-    And I navigate to "Plugins > Course formats > Manage course formats" in site administration
-    And "Disable" "icon" should not exist in the "Social" "table_row"
     And I navigate to "Plugins > Question behaviours > Manage question behaviours" in site administration
     And "Enabled" "link" should not exist in the "Immediate feedback with CBM" "table_row"
     And I navigate to "Plugins > Question types > Manage question types" in site administration

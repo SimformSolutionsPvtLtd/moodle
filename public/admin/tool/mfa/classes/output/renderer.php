@@ -143,32 +143,11 @@ class renderer extends \plugin_renderer_base {
     }
 
     /**
-     * Returns the html section for factor setup
-     *
-     * @param object $factor object of the factor class
-     * @return string
      * @deprecated since Moodle 4.4
-     * @todo Final deprecation in Moodle 4.8 MDL-80995
      */
-    public function setup_factor(object $factor): string {
-        debugging('The method setup_factor() has been deprecated. The HTML derived from this method is no longer needed.
-            Similar HTML is now achieved as part of available_factors().', DEBUG_DEVELOPER);
-        $html = '';
-
-        $html .= html_writer::start_tag('div', ['class' => 'card']);
-
-        $html .= html_writer::tag('h4', $factor->get_display_name(), ['class' => 'card-header']);
-        $html .= html_writer::start_tag('div', ['class' => 'card-body']);
-        $html .= $factor->get_info();
-
-        $setupparams = ['action' => 'setup', 'factor' => $factor->name, 'sesskey' => sesskey()];
-        $setupurl = new \moodle_url('action.php', $setupparams);
-        $html .= $this->output->single_button($setupurl, $factor->get_setup_string());
-        $html .= html_writer::end_tag('div');
-        $html .= html_writer::end_tag('div');
-        $html .= '<br>';
-
-        return $html;
+    #[\core\attribute\deprecated(null, reason: 'It is no longer used', since: '4.4', mdl: 'MDL-79920', final: true)]
+    public function setup_factor(): void {
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
     }
 
     /**
@@ -195,7 +174,7 @@ class renderer extends \plugin_renderer_base {
 
         $table = new \html_table();
         $table->id = 'active_factors';
-        $table->attributes['class'] = 'generaltable table table-bordered';
+        $table->attributes['class'] = 'generaltable table table-bordered table-hover';
         $table->head  = [
             $headers->devicename,
             $headers->added,
@@ -369,7 +348,7 @@ class renderer extends \plugin_renderer_base {
         $table = new \html_table();
         $table->head = $displaynames;
         $table->align = $colclasses;
-        $table->attributes['class'] = 'generaltable table table-bordered w-auto';
+        $table->attributes['class'] = 'generaltable table table-bordered w-auto table-hover';
         $table->attributes['style'] = 'width: auto; min-width: 50%; margin-bottom: 0;';
 
         // Manually handle Total users and MFA users.
@@ -482,7 +461,7 @@ class renderer extends \plugin_renderer_base {
 
         $table = new \html_table();
 
-        $table->attributes['class'] = 'generaltable table table-bordered w-auto';
+        $table->attributes['class'] = 'generaltable table table-bordered w-auto table-hover';
         $table->attributes['style'] = 'width: auto; min-width: 50%';
 
         $table->head = [
@@ -534,7 +513,7 @@ class renderer extends \plugin_renderer_base {
         global $DB;
 
         $table = new \html_table();
-        $table->attributes['class'] = 'generaltable table table-bordered w-auto';
+        $table->attributes['class'] = 'generaltable table table-bordered w-auto table-hover';
         $table->attributes['style'] = 'width: auto; min-width: 50%';
         $table->head = [
             'userid' => get_string('userid', 'grades'),

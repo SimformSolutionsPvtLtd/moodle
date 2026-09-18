@@ -92,7 +92,7 @@ class mod_forum_renderer extends plugin_renderer_base {
             get_string('existingsubscribers', 'forum'),
             'existingsubscribers',
             false,
-            ['class' => 'sr-only']
+            ['class' => 'visually-hidden']
         );
         $existingsubscol = html_writer::div($existingsubslabel . $existinguc->display(true), 'col-sm-5 px-0 existing');
 
@@ -126,7 +126,7 @@ class mod_forum_renderer extends plugin_renderer_base {
             get_string('potentialsubscribers', 'forum'),
             'potentialsubscribers',
             false,
-            ['class' => 'sr-only']
+            ['class' => 'visually-hidden']
         );
         $potentialsubscol = html_writer::div($potentialsubslabel . $potentialuc->display(true), 'col-sm-5 px-0 potential');
 

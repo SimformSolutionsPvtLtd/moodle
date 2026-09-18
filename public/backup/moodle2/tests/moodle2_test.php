@@ -141,7 +141,7 @@ final class moodle2_test extends \advanced_testcase {
                 backup::TARGET_NEW_COURSE);
         $thrown = null;
         try {
-            $this->assertTrue($rc->execute_precheck());
+            $rc->execute_precheck();
             $rc->execute_plan();
             $rc->destroy();
         } catch (Exception $e) {
@@ -154,6 +154,11 @@ final class moodle2_test extends \advanced_testcase {
         }
 
         $this->assertNull($thrown);
+
+        // Backup contained a question category in a deprecated context.
+        $results = $rc->get_precheck_results();
+        $this->assertCount(1, $results['warnings']);
+        $this->assertStringStartsWith('The questions category', $results['warnings'][0]);
 
         // Get information about the resulting course and check that it is set
         // up correctly.
@@ -1040,13 +1045,24 @@ final class moodle2_test extends \advanced_testcase {
                     backup::INTERACTIVE_NO, backup::MODE_GENERAL, $USER->id,
                     backup::TARGET_NEW_COURSE);
 
-            $this->assertTrue($rc->execute_precheck());
+            $rc->execute_precheck();
             $rc->execute_plan();
             $rc->destroy();
+
+            // Backup contained question category(s) in a deprecated context.
+            $expectedwarnings = $backupid === 'question_category_34_format' ? 1 : 2;
+            $results = $rc->get_precheck_results();
+            $this->assertCount($expectedwarnings, $results['warnings']);
+            for ($i = 0; $i < $expectedwarnings; $i++) {
+                $this->assertStringStartsWith('The questions category', $results['warnings'][$i]);
+            }
 
             // Get information about the resulting course and check that it is set up correctly.
             $modinfo = get_fast_modinfo($newcourseid);
             $quizzes = array_values($modinfo->get_instances_of('quiz'));
+            $qbanks = $modinfo->get_instances_of('qbank');
+            $this->assertCount(1, $qbanks);
+            $qbank = reset($qbanks);
             $contexts = $quizzes[0]->context->get_parent_contexts(true);
 
             $topcategorycount = [];
@@ -1055,6 +1071,11 @@ final class moodle2_test extends \advanced_testcase {
 
                 // Make sure all question categories that were inside the backup file were restored correctly.
                 if ($context->contextlevel == CONTEXT_COURSE) {
+                    // Course context categories are deprecated and now get transferred to a qbank instance on the course
+                    // at point of restore.
+                    $cats = $DB->get_records('question_categories',
+                        ['contextid' => $qbank->context->id], 'parent', 'id, name, parent'
+                    );
                     $this->assertEquals(['top', 'Default for C101'], array_column($cats, 'name'));
                 } else if ($context->contextlevel == CONTEXT_MODULE) {
                     $this->assertEquals(['top', 'Default for Q1'], array_column($cats, 'name'));
@@ -1067,12 +1088,76 @@ final class moodle2_test extends \advanced_testcase {
                     }
                 }
 
-                // Make sure there is a single top level category in this context.
+                // Make sure there is a single top level category in this context and that the parents are set correctly.
                 if ($cats) {
                     $this->assertEquals(1, $topcategorycount[$context->id]);
+                    $topcat = array_values($cats)[0];
+                    $this->assertEquals(0, $topcat->parent);
+                    $othercat = array_values($cats)[1];
+                    $this->assertEquals($topcat->id, $othercat->parent);
                 }
             }
         }
+    }
+
+    /**
+     * Check that the backup/restore process correctly wires the question categories, see MDL-86300.
+     * @covers \restore_move_module_questions_categories::define_execution
+     */
+    public function test_restore_question_categories_from_500(): void {
+        global $DB, $CFG, $USER;
+
+        $this->resetAfterTest(true);
+        $this->setAdminUser();
+
+        // Create a course.
+        $generator = $this->getDataGenerator();
+        $questiongenerator = $this->getDataGenerator()->get_plugin_generator('core_question');
+        $course = $generator->create_course();
+
+        // Add a quiz with question categories.
+        $quiz = $generator->create_module('quiz', ['course' => $course->id]);
+        $quizcontext = \context_module::instance($quiz->cmid);
+        $questiongenerator->create_question_category(['contextid' => $quizcontext->id]);
+        $quizquestioncats = $DB->get_records('question_categories', ['contextid' => $quizcontext->id]);
+        $this->assertCount(3, $quizquestioncats);
+
+        // Add a question bank with question categories.
+        $qbank = $this->getDataGenerator()->create_module('qbank', ['course' => $course->id]);
+        $qbankcontext = \context_module::instance($qbank->cmid);
+        $questiongenerator->create_question_category(['contextid' => $qbankcontext->id]);
+        $qbankquestioncats = $DB->get_records('question_categories', ['contextid' => $qbankcontext->id]);
+        $this->assertCount(3, $qbankquestioncats);
+
+        $targetcourseid = $this->backup_and_restore($course);
+
+        // Check the quiz and qbank question categories in the target course, in particular the parent relationship.
+        $modinfo = get_fast_modinfo($targetcourseid);
+
+        $targetquizzes = $modinfo->get_instances_of('quiz');
+        $this->assertCount(1, $targetquizzes);
+        $targetquiz = reset($targetquizzes);
+        $targetquizcontext = \context_module::instance($targetquiz->id);
+        $targetquizcats = array_values(
+            $DB->get_records('question_categories', ['contextid' => $targetquizcontext->id], 'parent', 'id, name, parent')
+        );
+        $this->assertCount(3, $targetquizcats);
+        $quiztop = $targetquizcats[0];
+        $this->assertEquals(0, $quiztop->parent);
+        $quiznontop = $targetquizcats[1];
+        $this->assertEquals($quiztop->id, $quiznontop->parent);
+
+        $targetqbanks = $modinfo->get_instances_of('qbank');
+        $this->assertCount(1, $targetqbanks);
+        $targetqbankcontext = \context_module::instance(reset($targetqbanks)->id);
+        $targetqbankcats = array_values(
+            $DB->get_records('question_categories', ['contextid' => $targetqbankcontext->id], 'parent', 'id, name, parent')
+        );
+        $this->assertCount(3, $targetqbankcats);
+        $qbanktop = $targetqbankcats[0];
+        $this->assertEquals(0, $qbanktop->parent);
+        $qbanknontop = $targetqbankcats[1];
+        $this->assertEquals($qbanktop->id, $qbanknontop->parent);
     }
 
     /**

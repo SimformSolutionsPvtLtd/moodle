@@ -43,7 +43,8 @@ if ( $mode == 'visible' and confirm_sesskey()) {
     $displayformat->sortorder   = $form->sortorder;
 
     // Extract visible tabs from array into comma separated list.
-    $visibletabs = implode(',', $form->visibletabs);
+    $visibletabs = implode(',', $form->visibletabs ?? []);
+
     // Include 'standard' tab by default along with other tabs.
     // This way we don't run into the risk of users not selecting any tab for displayformat.
     $displayformat->showtabs = GLOSSARY_STANDARD.','.$visibletabs;
@@ -67,7 +68,7 @@ $yes = get_string("yes");
 $no  = get_string("no");
 
 echo '<form method="post" action="formats.php" id="form">';
-echo '<table width="90%" align="center" class="generalbox">';
+echo '<table width="90%" align="center" class="generalbox table-reboot">';
 ?>
 <tr>
     <td colspan="3" align="center"><strong>

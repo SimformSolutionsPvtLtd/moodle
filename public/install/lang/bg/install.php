@@ -21,7 +21,7 @@
  * needed during the very first steps of installation. This file was
  * generated automatically by export-installer.php (which is part of AMOS
  * {@link https://moodledev.io/general/projects/api/amos}) using the
- * list of strings defined in install/stringnames.txt file.
+ * list of strings defined in public/install/stringnames.txt file.
  *
  * @package   installer
  * @license   https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -50,5 +50,4 @@ $string['pathssubdataroot'] = 'Тази директория е място, къ
 $string['pathssubdirroot'] = 'Пълен път до директорията на Moodle.';
 $string['pathssubwwwroot'] = 'Пълен интернет адрес, на който ще се отваря Moodle. Не е възможно Moodle да се отваря чрез различни адреси. Ако Вашият сайт има няколко адреса трябва на всеки от другите адреси да направите пренасочване към този. Ако Вашият сайт се отваря както глобално от Интернет, така и от локална мрежа, настройте DNS, така че потребителите от локалната мрежа също да могат да ползват глобалния адрес. Ако адресът не е коректен, моля, променете адреса в браузъра си и започнете инсталирането с правилния адрес.';
 $string['phpextension'] = '{$a} разширение на PHP';
-$string['phpversionhelp'] = '<p>Moodle изисква версия на PHP най-малко 4.3.0 или 5.1.0 (5.0.x има значителен брой известни проблеми).</p> <p>Вие използвате в момента версия {$a}</p> <p>Трябва да обновите PHP или да се преместите на нов хост (сървър) с по-нова версия на PHP!<br /> (В случая с 5.0.x може да опитате да инсталирате по-старата версия 4.4.x)</p>';
 $string['wwwroot'] = 'Уеб адрес';

@@ -135,7 +135,7 @@ Feature: H5P file upload to content bank for admins
     When I click on "Upload" "link"
     And I click on "Choose a file..." "button"
     And I click on "Upload a file" "link" in the ".fp-repo-area" "css_element"
-    And I set the field "Attachment" to "#dirroot#/course/tests/fixtures/image.jpg"
+    And I set the field "Attachment" to "#dirroot#/lib/tests/fixtures/1.jpg"
     And I press "Upload this file"
     # Confirm that jpg files cannot be added to content bank.
     Then "Image (JPEG) filetype cannot be accepted." "text" should exist

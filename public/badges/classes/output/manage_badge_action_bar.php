@@ -70,7 +70,7 @@ class manage_badge_action_bar extends base_action_bar {
         $badgenav = $this->generate_badge_navigation();
         if ($badgenav) {
             $badgenavselect = new url_select($badgenav, $this->page->url->out(false), null);
-            $badgenavselect->set_label(get_string('badgesnavigation', 'badges'), ['class' => 'sr-only']);
+            $badgenavselect->set_label(get_string('badgesnavigation', 'badges'), ['class' => 'visually-hidden']);
             $elements['urlselect'] = $badgenavselect;
         }
         foreach ($elements as $key => $element) {

@@ -48,29 +48,26 @@
 
 defined('MOODLE_INTERNAL') || die;
 
+require_once(__DIR__ . '/deprecatedlib.php');
+
 /**
  * List of features supported in URL module
  * @param string $feature FEATURE_xx constant for requested feature
  * @return mixed True if module supports feature, false if not, null if doesn't know or string for the module purpose.
  */
 function lti_supports($feature) {
-    switch ($feature) {
-        case FEATURE_GROUPS:
-        case FEATURE_GROUPINGS:
-            return false;
-        case FEATURE_MOD_INTRO:
-        case FEATURE_COMPLETION_TRACKS_VIEWS:
-        case FEATURE_GRADE_HAS_GRADE:
-        case FEATURE_GRADE_OUTCOMES:
-        case FEATURE_BACKUP_MOODLE2:
-        case FEATURE_SHOW_DESCRIPTION:
-            return true;
-        case FEATURE_MOD_PURPOSE:
-            return MOD_PURPOSE_OTHER;
-
-        default:
-            return null;
-    }
+    return match ($feature) {
+        FEATURE_GROUPS => false,
+        FEATURE_GROUPINGS => false,
+        FEATURE_MOD_INTRO => true,
+        FEATURE_COMPLETION_TRACKS_VIEWS => true,
+        FEATURE_GRADE_HAS_GRADE => true,
+        FEATURE_GRADE_OUTCOMES => true,
+        FEATURE_BACKUP_MOODLE2 => true,
+        FEATURE_SHOW_DESCRIPTION => true,
+        FEATURE_MOD_PURPOSE => MOD_PURPOSE_OTHER,
+        default => null,
+    };
 }
 
 /**
@@ -459,14 +456,6 @@ function lti_cron () {
  **/
 function lti_grades($basicltiid) {
     return null;
-}
-
-/**
- * @deprecated since Moodle 3.8
- */
-function lti_scale_used() {
-    throw new coding_exception('lti_scale_used() can not be used anymore. Plugins can implement ' .
-        '<modname>_scale_used_anywhere, all implementations of <modname>_scale_used are now ignored');
 }
 
 /**

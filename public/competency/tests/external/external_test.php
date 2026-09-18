@@ -36,12 +36,6 @@ use core_competency\template_competency;
 use core_competency\user_competency;
 use core_competency\user_competency_plan;
 use core_external\external_api;
-use externallib_advanced_testcase;
-
-defined('MOODLE_INTERNAL') || die();
-global $CFG;
-
-require_once($CFG->dirroot . '/webservice/tests/helpers.php');
 
 /**
  * External testcase.
@@ -50,8 +44,7 @@ require_once($CFG->dirroot . '/webservice/tests/helpers.php');
  * @copyright  2016 Frédéric Massart - FMCorz.net
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-final class external_test extends externallib_advanced_testcase {
-
+final class external_test extends \core_external\tests\externallib_testcase {
     /** @var \stdClass $creator User with enough permissions to create insystem context. */
     protected $creator = null;
 
@@ -2714,7 +2707,10 @@ final class external_test extends externallib_advanced_testcase {
 
         $evidence = external::grade_competency_in_course($course->id, $this->user->id, $c1->get('id'), 1, 'Evil note');
 
-        $this->assertEquals('The competency rating was manually set in the course \'Course: Evil course\'.', $evidence->description);
+        $this->assertEquals(
+            'The competency rating was manually set in the course &#39;Course: Evil course&#39;.',
+            $evidence->description
+        );
         $this->assertEquals('A', $evidence->gradename);
         $this->assertEquals('Evil note', $evidence->note);
 
@@ -2745,7 +2741,10 @@ final class external_test extends externallib_advanced_testcase {
 
         $evidence = external::grade_competency_in_plan($plan->get('id'), $c1->get('id'), 1, 'Evil note');
 
-        $this->assertEquals('The competency rating was manually set in the learning plan \'Evil\'.', $evidence->description);
+        $this->assertEquals(
+            'The competency rating was manually set in the learning plan &#39;Evil&#39;.',
+            $evidence->description
+        );
         $this->assertEquals('A', $evidence->gradename);
         $this->assertEquals('Evil note', $evidence->note);
 

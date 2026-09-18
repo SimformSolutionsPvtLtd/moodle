@@ -70,7 +70,7 @@
     <div class="buttons float-start">
         <div class="d-flex flex-wrap align-items-center ps-1">
             <label for="{{id}}">{{#str}}withselectedusers{{/str}}</label>
-            <select id="{{id}}" class="select custom-select ms-4" {{#attributes}}{{name}}="{{value}}" {{/attributes}}>
+            <select id="{{id}}" class="select form-select ms-4" {{#attributes}}{{name}}="{{value}}" {{/attributes}}>
                 <option value="">{{#str}}choosedots{{/str}}</option>
                 {{#actions}}
                 <option value="{{value}}">{{name}}</option>
@@ -87,6 +87,7 @@
 </div>
 
 {{#js}}
+{{#id}}
 require(['jquery', 'core_message/message_send_bulk', 'core/custom_interaction_events'], function($, BulkSender, CustomEvents) {
     CustomEvents.define('#{{id}}', [CustomEvents.events.accessibleChange]);
     $('#{{id}}').on(CustomEvents.events.accessibleChange, function(e) {
@@ -108,4 +109,5 @@ require(['jquery', 'core_message/message_send_bulk', 'core/custom_interaction_ev
         }
     });
 });
+{{/id}}
 {{/js}}

@@ -285,12 +285,15 @@ final class helper_test extends \advanced_testcase {
 
         // We need to change some of the default values; otherwise, the full preset won't be applied, because all the settings
         // and plugins are the same.
-        set_config('enableanalytics', '0');
+        set_config('enableanalytics', '1');
 
         $generator = $this->getDataGenerator()->get_plugin_generator('core_adminpresets');
         $generator->create_preset(['name' => 'Preset 1']);
 
+        $invokable = self::get_invokable();
+        set_error_handler($invokable, E_WARNING);
         $presetid = helper::change_default_preset($preset);
+        restore_error_handler();
 
         if (empty($settings) && empty($plugins)) {
             // The preset hasn't been applied.
@@ -331,7 +334,7 @@ final class helper_test extends \advanced_testcase {
                 ],
                 'plugins' => [
                     'assign' => 1,
-                    'chat' => 0,
+                    'wiki' => 0,
                     'data' => 0,
                     'lesson' => 0,
                 ],
@@ -371,7 +374,7 @@ final class helper_test extends \advanced_testcase {
                 ],
                 'plugins' => [
                     'assign' => 1,
-                    'chat' => 0,
+                    'page' => 0,
                     'data' => 0,
                     'lesson' => 1,
                 ],

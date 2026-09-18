@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Strings for component 'grades', language 'en', branch 'MOODLE_20_STABLE'
+ * Strings for component 'core_grades', language 'en', branch 'MOODLE_20_STABLE'
  *
  * @package   core_grades
  * @copyright 1999 onwards Martin Dougiamas  {@link http://moodle.com}
@@ -142,6 +142,7 @@ $string['createcategory'] = 'Create category';
 $string['createcategoryerror'] = 'Could not create a new category';
 $string['creatinggradebooksettings'] = 'Creating gradebook settings';
 $string['csv'] = 'CSV';
+$string['currentgrade'] = 'Current grade';
 $string['currentparentaggregation'] = 'Current parent aggregation';
 $string['curveto'] = 'Curve to';
 $string['decimalpoints'] = 'Overall decimal places';
@@ -167,7 +168,6 @@ $string['duplicatedgradeitem'] = '{$a} (copy)';
 $string['duplicatescale'] = 'Duplicate scale';
 $string['edit'] = 'Edit';
 $string['editcalculation'] = 'Edit calculation';
-$string['editcalculationverbose'] = 'Edit calculation for {$a->category} {$a->itemmodule} {$a->itemname}';
 $string['editfeedback'] = 'Edit feedback';
 $string['editgrade'] = 'Edit grade';
 $string['editgradeletters'] = 'Edit grade letters';
@@ -175,7 +175,6 @@ $string['editoutcome'] = 'Edit outcome';
 $string['editoutcomes'] = 'Edit outcomes';
 $string['editscale'] = 'Edit scale';
 $string['edittree'] = 'Setup';
-$string['editverbose'] = 'Edit {$a->category} {$a->itemmodule} {$a->itemname}';
 $string['enableoutcomes'] = 'Enable outcomes';
 $string['enableoutcomes_help'] = 'If enabled, grade items may be graded using one or more scales tied to outcome statements.';
 $string['encoding'] = 'Encoding';
@@ -184,6 +183,7 @@ $string['errorcalculationnoequal'] = 'Formula must start with equal sign (=1+2)'
 $string['errorcalculationunknown'] = 'Invalid formula';
 $string['errorcalculationbroken'] = 'Error in the calculation of grade item {$a}.';
 $string['errorgradevaluenonnumeric'] = 'Received non-numeric for low or high grade for';
+$string['errornegativepenalty'] = 'Negative value received from penalty aggregation for grade ID {$a}.';
 $string['errornocalculationallowed'] = 'Calculations are not allowed for this item';
 $string['errornocategorisedid'] = 'Could not get an uncategorised id!';
 $string['errornocourse'] = 'Could not get course information';
@@ -330,6 +330,12 @@ $string['gradeoutcomescourses'] = 'Course outcomes';
 $string['gradepass'] = 'Grade to pass';
 $string['gradepass_help'] = 'This setting determines the minimum grade required to pass. The value is used in activity and course completion, and in the gradebook, where pass grades are highlighted in green and fail grades in red.';
 $string['gradepassgreaterthangrade'] = 'The grade to pass can not be greater than the maximum possible grade {$a}';
+$string['gradepenalty'] = 'Grade penalties';
+$string['gradepenalty_enabledmodules'] = 'Enabled activities';
+$string['gradepenalty_enabledmodules_help'] = 'Enable grade penalties for the selected activities.';
+$string['gradepenalty_indicator_info'] = 'Late penalty applied -{$a} marks';
+$string['gradepenalty_supportedplugins'] = 'Manage supported activities';
+$string['gradepenaltynodeerror'] = 'There are no accessible grade penalties';
 $string['gradepointdefault'] = 'Grade point default';
 $string['gradepointdefault_help'] = 'This setting determines the default value for the grade point value available in a grade item.';
 $string['gradepointdefault_validateerror'] = 'This setting must be an integer between 1 and the grade point maximum.';
@@ -370,7 +376,6 @@ $string['hidden_help'] = 'If ticked, grades are hidden from students. A hidden u
 $string['hiddenasdate'] = 'Show submitted date for hidden grades';
 $string['hiddenasdate_help'] = 'If user can not see hidden grades show date of submission instead of \'-\'.';
 $string['hiddenuntil'] = 'Hidden until';
-$string['hiddenuntildate'] = 'Hidden until: {$a}';
 $string['hideadvanced'] = 'Hide advanced features';
 $string['hideaverages'] = 'Hide averages';
 $string['hidecalculations'] = 'Hide calculations';
@@ -390,7 +395,6 @@ $string['hidetotalifhiddenitems_help'] = 'This setting specifies whether totals 
 If hidden items are excluded, the total will be different to the total seen by the teacher in the grader report, since the teacher always sees totals calculated from all items, hidden or unhidden. If hidden items are included, students may be able to calculate the hidden items.';
 $string['hidetotalshowexhiddenitems'] = 'Show totals excluding hidden items';
 $string['hidetotalshowinchiddenitems'] = 'Show totals including hidden items';
-$string['hideverbose'] = 'Hide {$a->category} {$a->itemmodule} {$a->itemname}';
 $string['highgradeascending'] = 'Sort by high grade ascending';
 $string['highgradedescending'] = 'Sort by high grade descending';
 $string['highgradeletter'] = 'High';
@@ -475,11 +479,10 @@ $string['lock'] = 'Lock';
 $string['locked'] = 'Locked';
 $string['locked_help'] = 'If ticked, grades can no longer be automatically updated by the related activity.';
 $string['locktime'] = 'Lock after';
-$string['locktimedate'] = 'Locked after: {$a}';
-$string['lockverbose'] = 'Lock {$a->category} {$a->itemmodule} {$a->itemname}';
 $string['lowest'] = 'Lowest';
 $string['lowgradeletter'] = 'Low';
 $string['manageoutcomes'] = 'Manage outcomes';
+$string['managepenaltyplugins'] = 'Manage penalty plugins';
 $string['manualitem'] = 'Manual item';
 $string['mapfrom'] = 'Map from';
 $string['mapfrom_help'] = 'Select the column in the spreadsheet containing data for identifying the user, such as username, user ID or email address.';
@@ -522,6 +525,8 @@ $string['modgradedonotmodify'] = 'Do not modify existing grades';
 $string['modgradeerrorbadpoint'] = 'Invalid grade value. This must be an integer between 1 and {$a}';
 $string['modgradeerrorbadscale'] = 'Invalid scale selected. Please make sure you select a scale from the selections below.';
 $string['modgrademaxgrade'] = 'Maximum grade';
+$string['modgraderecalculatepenalty'] = 'Recalculate penalty';
+$string['modgraderecalculatepenalty_help'] = 'The penalty will be recalculated for all users.';
 $string['modgraderescalegrades'] = 'Rescale existing grades';
 $string['modgraderescalegrades_help'] = 'When changing the maximum grades on a gradebook item you need to specify whether or not this will cause existing percentage grades to change as well.
 
@@ -589,6 +594,7 @@ $string['numberofgrades'] = 'Number of grades';
 $string['onascaleof'] = 'on a scale of {$a->grademin} to {$a->grademax}';
 $string['operations'] = 'Operations';
 $string['options'] = 'Options';
+$string['originalgrade'] = 'Original grade';
 $string['others'] = 'Others';
 $string['otheruser'] = 'User';
 $string['outcome'] = 'Outcome';
@@ -708,7 +714,11 @@ $string['rawpct'] = 'Raw %';
 $string['real'] = 'Real';
 $string['realletter'] = 'Real (letter)';
 $string['realpercentage'] = 'Real (percentage)';
+$string['recalculatepenalty'] = 'Recalculate penalties';
+$string['recalculatepenaltyconfirm'] = 'This will recalculate and apply penalties for all submissions in this context. Are you sure you want to continue?';
+$string['recalculatepenaltysuccess'] = 'Penalty recalculation in progress. There may be a delay before grades are updated.';
 $string['recalculatinggrades'] = 'Recalculating grades';
+$string['recalculatinggradesadhoc'] = 'The report will update automatically. You don\'t need to do anything.';
 $string['recovergradesdefault'] = 'Recover grades default';
 $string['recovergradesdefault_help'] = 'By default recover old grades when re-enrolling a user in a course.';
 $string['refreshpreview'] = 'Refresh preview';
@@ -798,7 +808,6 @@ $string['showrank'] = 'Show rank';
 $string['showrank_help'] = 'Whether to show the position of the student in relation to the rest of the class for each grade item.';
 $string['showuserimage'] = 'Show user profile images';
 $string['showuserimage_help'] = 'Whether to show the user\'s profile image next to the name in the grader report.';
-$string['showverbose'] = 'Show {$a->category} {$a->itemmodule} {$a->itemname}';
 $string['simpleview'] = 'Single view';
 $string['sitewide'] = 'Site-wide';
 $string['sort'] = 'sort';
@@ -837,7 +846,6 @@ $string['unchangedgrade'] = 'Grade unchanged';
 $string['unlimitedgrades'] = 'Unlimited grades';
 $string['unlimitedgrades_help'] = 'By default, grades are limited by the maximum and minimum values of the grade item. Enabling this setting removes this limit, and allows grades of over 100% to be entered directly in the gradebook.';
 $string['unlock'] = 'Unlock';
-$string['unlockverbose'] = 'Unlock {$a->category} {$a->itemmodule} {$a->itemname}';
 $string['unused'] = 'Unused';
 $string['updatedgradesonly'] = 'Export new or updated grades only';
 $string['uploadgrades'] = 'Upload grades';
@@ -861,7 +869,7 @@ $string['userpreferences'] = 'User preferences';
 $string['userenrolmentsuspended'] = 'User enrolment suspended';
 $string['useweighted'] = 'Use weighted';
 $string['verbosescales'] = 'Verbose scales';
-$string['verbosescales_help'] = 'A verbose scale uses words rather than numbers. Set to \'Yes\' if both numerical and verbose scales are to be imported. Set to \'No\' if only numerical scales are to be imported.';
+$string['verbosescales_help'] = 'A verbose scale uses words rather than numbers. Set to \'Yes\' if verbose scales are to be imported. Set to \'No\' if only numerical scales are to be imported.';
 $string['viewas'] = 'View report as';
 $string['viewbygroup'] = 'Group';
 $string['viewfeedback'] = 'View feedback';
@@ -887,37 +895,18 @@ $string['xml'] = 'XML';
 $string['yes'] = 'Yes';
 $string['yourgrade'] = 'Your grade';
 
-// Deprecated since Moodle 4.2.
-$string['showanalysisicon'] = 'Show grade analysis icon';
-$string['showanalysisicon_desc'] = 'Whether to show grade analysis icon by default. If the activity module supports it, the grade analysis icon links to a page with more detailed explanation of the grade and how it was obtained.';
-$string['showanalysisicon_help'] = 'If the activity module supports it, the grade analysis icon links to a page with more detailed explanation of the grade and how it was obtained.';
-$string['showlocks'] = 'Show locks';
-$string['showlocks_help'] = 'If enabled, when editing is turned on, a lock/unlock icon is shown for each grade for controlling whether the grade can be automatically updated by the related activity.';
-$string['showeyecons'] = 'Show show/hide icons';
-$string['showeyecons_help'] = 'If enabled, when editing is turned on, a show/hide icon is shown for each grade for controlling its visibility to the student.';
-$string['showquickfeedback'] = 'Show quick feedback';
-$string['showquickfeedback_help'] = 'If enabled, when editing is turned on, a feedback text input box with a dotted border appears for each grade, allowing the feedback for many grades to be edited at the same time. Changes are saved and highlighted when the update button is clicked.
-
-Note that when feedback is edited in the grader report, an overridden flag is set, meaning that the feedback can no longer be changed from within the related activity.';
-$string['enableajax'] = 'Enable AJAX';
-$string['enableajax_help'] = 'Adds a layer of AJAX functionality to the grader report, simplifying and speeding up common operations. Depends on Javascript being switched on at the user\'s browser level.';
-$string['controls'] = 'Controls';
-$string['showactivityicons'] = 'Show activity icons';
-$string['showactivityicons_help'] = 'If enabled, activity icons are shown next to activity names.';
-$string['showcalculations'] = 'Show calculations';
-$string['showcalculations_help'] = 'If enabled, when editing, a calculator icon is shown for each grade item and category with a visual indicator that a grade item is calculated.';
-$string['studentsperpage'] = 'Students per page';
-$string['studentsperpage_help'] = 'This setting determines the number of students displayed per page in the grader report.';
-
-// Deprecated since Moodle 4.4.
-$string['grade'] = 'Grade';
-$string['gradeitemadvanced'] = 'Advanced grade item options';
-$string['gradeitemadvanced_help'] = 'Select all elements that should be displayed as advanced when editing grade items.';
-$string['aria-toggledropdown'] = 'Toggle the following dropdown';
-$string['aria:dropdowngrades'] = 'Grade items found';
-
 // Deprecated since Moodle 4.5.
 $string['filterbothactive'] = 'First ({$a->first}) Last ({$a->last})';
 $string['filterbyname'] = 'Filter by name';
 $string['filterfirstactive'] = 'First ({$a->first})';
 $string['filterlastactive'] = 'Last ({$a->last})';
+
+// Deprecated since Moodle 5.1.
+$string['editcalculationverbose'] = 'Edit calculation for {$a->category} {$a->itemmodule} {$a->itemname}';
+$string['editverbose'] = 'Edit {$a->category} {$a->itemmodule} {$a->itemname}';
+$string['hiddenuntildate'] = 'Hidden until: {$a}';
+$string['hideverbose'] = 'Hide {$a->category} {$a->itemmodule} {$a->itemname}';
+$string['locktimedate'] = 'Locked after: {$a}';
+$string['lockverbose'] = 'Lock {$a->category} {$a->itemmodule} {$a->itemname}';
+$string['showverbose'] = 'Show {$a->category} {$a->itemmodule} {$a->itemname}';
+$string['unlockverbose'] = 'Unlock {$a->category} {$a->itemmodule} {$a->itemname}';

@@ -18,6 +18,7 @@ namespace gradereport_user\report;
 
 use cache;
 use context_course;
+use core_grades\penalty_manager;
 use course_modinfo;
 use grade_grade;
 use grade_helper;
@@ -379,7 +380,6 @@ class user extends grade_report {
      * @return int The number of elements processed
      */
     public function inject_rowspans(array &$element): int {
-
         if ($element['depth'] > $this->maxdepth) {
             $this->maxdepth = $element['depth'];
         }
@@ -545,7 +545,7 @@ class user extends grade_report {
                     if (!$cm->uservisible) {
                         // If there is 'availableinfo' text then it is only greyed
                         // out and not entirely hidden.
-                        if (!$cm->availableinfo) {
+                        if (!$cm->visible || !$cm->availableinfo) {
                             $hide = true;
                         }
                     }
@@ -702,7 +702,7 @@ class user extends grade_report {
                             $gradeitemdata['graderaw'] = $gradeval;
                             $data['grade']['content'] = grade_format_gradevalue($gradeval,
                                 $gradegrade->grade_item,
-                                true) . $gradestatus;
+                                true) . penalty_manager::show_penalty_indicator($gradegrade) . $gradestatus;
                         }
                     } else {
                         $gradestatusclass = '';
@@ -729,7 +729,7 @@ class user extends grade_report {
 
                         $data['grade']['class'] = "{$class} {$gradestatusclass}";
                         $data['grade']['content'] = $gradepassicon . grade_format_gradevalue($gradeval,
-                                $gradegrade->grade_item, true) . $gradestatus;
+                            $gradegrade->grade_item, true) . penalty_manager::show_penalty_indicator($gradegrade) . $gradestatus;
                         $gradeitemdata['graderaw'] = $gradeval;
                     }
                     $data['grade']['headers'] = "$headercat $headerrow grade$userid";
@@ -936,7 +936,7 @@ class user extends grade_report {
             $data['parentcategories'] = array_diff(array_filter(explode('/', $gradeobject->path)), [$gradeobject->id]);
 
             $rowspandata['leader']['class'] = $class . " d$depth b1t b2b b1l";
-            $rowspandata['leader']['rowspan'] = $element['rowspan'];
+            $rowspandata['leader']['rowspan'] = $element['rowspan'] ?? 0;
             $rowspandata['parentcategories'] = array_filter(explode('/', $gradeobject->path));
             $rowspandata['spacer'] = true;
         }
@@ -1073,7 +1073,7 @@ class user extends grade_report {
         $table = new \html_table();
         $table->attributes = [
             'summary' => s(get_string('tablesummary', 'gradereport_user')),
-            'class' => 'generaltable boxaligncenter user-grade',
+            'class' => 'table generaltable user-grade',
         ];
 
         // Set the table headings.

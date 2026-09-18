@@ -302,7 +302,7 @@ class html_writer {
             $class = str_replace(']', '', $class);
             $attributes['class'] = $class;
         }
-        $attributes['class'] = 'select custom-select ' . $attributes['class']; // Add 'select' selector always.
+        $attributes['class'] = 'select form-select ' . $attributes['class']; // Add 'select' selector always.
 
         $attributes['name'] = $name;
 
@@ -561,7 +561,7 @@ class html_writer {
             }
         }
         if (empty($table->attributes['class'])) {
-            $table->attributes['class'] = 'generaltable';
+            $table->attributes['class'] = 'generaltable table table-hover';
         }
         if (!empty($table->tablealign)) {
             $table->attributes['class'] .= ' boxalign' . $table->tablealign;
@@ -584,7 +584,7 @@ class html_writer {
         if (!empty($table->caption)) {
             $captionattributes = [];
             if ($table->captionhide) {
-                $captionattributes['class'] = 'accesshide';
+                $captionattributes['class'] = 'visually-hidden';
             }
             $output .= self::tag(
                 'caption',

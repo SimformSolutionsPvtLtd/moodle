@@ -330,7 +330,7 @@ YUI.add('moodle-core_filepicker', function(Y) {
         }
 
         /**
-         * Generate slave checkboxes based on toggleall's specification
+         * Generate target checkboxes based on toggleall's specification
          * @param {object} o An object reprsenting the record for the current row.
          * @return {html} The checkbox html
          */
@@ -342,12 +342,12 @@ YUI.add('moodle-core_filepicker', function(Y) {
                 .setAttribute('data-fieldtype', 'checkbox')
                 .setAttribute('data-fullname', o.data.fullname)
                 .setAttribute('data-action', 'toggle')
-                .setAttribute('data-toggle', 'slave')
+                .setAttribute('data-toggle', 'target')
                 .setAttribute('data-togglegroup', 'file-selections-' + parentid);
 
             var checkboxLabel = Y.Node.create('<label>')
                 .setHTML("Select file '" + o.data.fullname + "'")
-                .addClass('sr-only')
+                .addClass('visually-hidden')
                 .setAttrs({
                     for: checkbox.generateID(),
                 });
@@ -387,12 +387,12 @@ YUI.add('moodle-core_filepicker', function(Y) {
                 .setAttribute('type', 'checkbox')
                 // .setAttribute('title', M.util.get_string('selectallornone', 'form'))
                 .setAttribute('data-action', 'toggle')
-                .setAttribute('data-toggle', 'master')
+                .setAttribute('data-toggle', 'toggler')
                 .setAttribute('data-togglegroup', 'file-selections-' + parentid);
 
             var checkboxLabel = Y.Node.create('<label>')
                 .setHTML(M.util.get_string('selectallornone', 'form'))
-                .addClass('sr-only')
+                .addClass('visually-hidden')
                 .setAttrs({
                     for: checkbox.generateID(),
                 });
@@ -1241,6 +1241,14 @@ M.core_filepicker.init = function(Y, options) {
                         .one('.fp-value').setContent(Y.Escape.html(value));
                 }
             }
+            // Load popover for the filepicker content.
+            var filepickerContent = Y.one('.file-picker.fp-select');
+            require(['theme_boost/bootstrap/popover'], function(Popover) {
+                var popoverTriggerList = filepickerContent.getDOMNode().querySelectorAll('[data-bs-toggle="popover"]');
+                popoverTriggerList.forEach((popoverTriggerEl) => {
+                    new Popover(popoverTriggerEl);
+                });
+            });
         },
         setup_select_file: function() {
             var client_id = this.options.client_id;
@@ -1787,7 +1795,15 @@ M.core_filepicker.init = function(Y, options) {
             if (obj.repo_id && scope.options.repositories[obj.repo_id]) {
                 scope.fpnode.addClass('repository_'+scope.options.repositories[obj.repo_id].type)
             }
-            Y.one('.file-picker .fp-repo-items').focus();
+            var filepickerContent = Y.one('.file-picker .fp-repo-items');
+            filepickerContent.focus();
+            // Load popover for the filepicker content.
+            require(['theme_boost/bootstrap/popover'], function(Popover) {
+                var popoverTriggerList = filepickerContent.getDOMNode().querySelectorAll('[data-bs-toggle="popover"]');
+                popoverTriggerList.forEach((popoverTriggerEl) => {
+                    new Popover(popoverTriggerEl);
+                });
+            });
 
             // display response
             if (obj.login) {
@@ -1876,7 +1892,75 @@ M.core_filepicker.init = function(Y, options) {
                 node.all('label').set('for', node.one('input,select').generateID());
             });
             content.one('form').set('id', id);
-            content.one('.fp-file input').set('name', 'repo_upload_file');
+            // Define element IDs.
+            const ids = {
+                restrictionsSpan: 'fp-restrictions-span-' + client_id,
+                filetypesDescriptions: 'form-filetypes-descriptions-' + client_id,
+                filetypesDescriptionsIntro: 'filetypes-descriptions-intro-' + client_id,
+            };
+
+            /**
+             * Sets unique IDs for file type restriction and description elements within the file picker or file manager wrapper.
+             *
+             * @param {Y.Node} wrapper - The YUI Node wrapper element to search within (e.g., filepicker or filemanager wrapper).
+             * @param {Object} ids - An object containing the IDs to assign to relevant elements.
+             *   - restrictionsSpan: ID for the restrictions span element.
+             *   - filetypesDescriptions: ID for the file types descriptions element.
+             *   - filetypesDescriptionsIntro: ID for the file types descriptions intro element.
+             */
+            function setFileTypeIds(wrapper, ids) {
+                if (!wrapper) {
+                    return {
+                        hasRestrictionSpan: false,
+                        hasFiletypesDescriptions: false,
+                        hasFiletypesDescriptionsIntro: false,
+                    };
+                }
+                const parent = wrapper.get('parentNode');
+                const restrictionSpan = wrapper.one('.fp-restrictions span');
+                if (restrictionSpan) {
+                    restrictionSpan.set('id', ids.restrictionsSpan);
+                }
+                const filetypesDescriptions = parent.one('.form-filetypes-descriptions');
+                if (filetypesDescriptions) {
+                    filetypesDescriptions.set('id', ids.filetypesDescriptions);
+                }
+                const filetypesDescriptionsIntro = parent.one('.filetypes-descriptions-intro');
+                if (filetypesDescriptionsIntro) {
+                    filetypesDescriptionsIntro.set('id', ids.filetypesDescriptionsIntro);
+                }
+                return {
+                    hasRestrictionSpan: !!restrictionSpan,
+                    hasFiletypesDescriptions: !!filetypesDescriptions,
+                    hasFiletypesDescriptionsIntro: !!filetypesDescriptionsIntro,
+                };
+            }
+
+            const filepickerIdsSet = setFileTypeIds(Y.one('#filepicker-wrapper-' + client_id), ids);
+            const filemanagerIdsSet = setFileTypeIds(Y.one('#filemanager-' + client_id), ids);
+
+            let idsToDescribe = '';
+            // Set value of aria-describedby.
+            if (filepickerIdsSet.hasRestrictionSpan || filemanagerIdsSet.hasRestrictionSpan) {
+                idsToDescribe += ids.restrictionsSpan;
+            }
+            if (filepickerIdsSet.hasFiletypesDescriptionsIntro || filemanagerIdsSet.hasFiletypesDescriptionsIntro) {
+                if (idsToDescribe.length > 0) {
+                    idsToDescribe += ' ';
+                }
+                idsToDescribe += ids.filetypesDescriptionsIntro;
+            }
+            if (filepickerIdsSet.hasFiletypesDescriptions || filemanagerIdsSet.hasFiletypesDescriptions) {
+                if (idsToDescribe.length > 0) {
+                    idsToDescribe += ' ';
+                }
+                idsToDescribe += ids.filetypesDescriptions;
+            }
+
+            content
+                .one('.fp-file input')
+                .set('name', 'repo_upload_file')
+                .set('aria-describedby', idsToDescribe);
             if (data.upload.label && content.one('.fp-file label')) {
                 content.one('.fp-file label').setContent(data.upload.label);
             }

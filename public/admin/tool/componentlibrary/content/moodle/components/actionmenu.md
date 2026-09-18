@@ -119,7 +119,7 @@ $menu = new action_menu();
 // Make sure the pix icon is rendered as a decorative image by passing an empty alt parameter.
 $icon = $output->pix_icon('t/edit', '');
 // Add a visually hidden text label for the trigger button.
-$icon .= html_writer::span(get_string('edit'), 'sr-only');
+$icon .= html_writer::span(get_string('edit'), 'visually-hidden');
 $menu->set_menu_trigger($icon);
 ```
 

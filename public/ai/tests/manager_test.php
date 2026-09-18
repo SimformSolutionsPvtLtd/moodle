@@ -19,6 +19,7 @@ namespace core_ai;
 use core_ai\aiactions\generate_image;
 use core_ai\aiactions\generate_text;
 use core_ai\aiactions\summarise_text;
+use core_ai\aiactions\explain_text;
 use core_ai\aiactions\responses\response_generate_image;
 
 /**
@@ -30,6 +31,29 @@ use core_ai\aiactions\responses\response_generate_image;
  * @covers     \core_ai\manager
  */
 final class manager_test extends \advanced_testcase {
+    /**
+     * Test the default placement context API.
+     *
+     * @covers \core_ai\placement::is_available_in_context
+     * @covers \core_ai\placement::get_actions_available
+     */
+    public function test_default_placement_context_api(): void {
+        $placement = new class extends placement {
+            /**
+             * Get the action list.
+             *
+             * @return array
+             */
+            public static function get_action_list(): array {
+                return [];
+            }
+        };
+
+        $context = \context_system::instance();
+        $this->assertFalse($placement::is_available_in_context($context));
+        $this->assertEmpty($placement::get_actions_available($context));
+    }
+
     /**
      * Test get_ai_plugin_classname.
      */
@@ -65,7 +89,258 @@ final class manager_test extends \advanced_testcase {
             generate_text::class,
             generate_image::class,
             summarise_text::class,
+            explain_text::class,
         ], $actions);
+    }
+
+    /**
+     * Test get placements available in a context.
+     */
+    public function test_get_placements_available_in_context(): void {
+        $this->resetAfterTest();
+
+        set_config('enabled', 1, 'aiplacement_courseassist');
+        set_config('enabled', 1, 'aiplacement_editor');
+        \core_plugin_manager::reset_caches();
+        $course = self::getDataGenerator()->create_course();
+        $placements = manager::get_placements_available_in_context(\context_course::instance($course->id));
+        $this->assertArrayHasKey('aiplacement_courseassist', $placements);
+        $this->assertArrayHasKey('aiplacement_editor', $placements);
+        $placements = manager::get_placements_available_in_context(\context_system::instance());
+        $this->assertArrayNotHasKey('aiplacement_courseassist', $placements);
+        $this->assertArrayHasKey('aiplacement_editor', $placements);
+
+        unset_config('version', 'aiplacement_courseassist');
+        \core_plugin_manager::reset_caches();
+        $placements = manager::get_placements_available_in_context(\context_course::instance($course->id));
+        $this->assertArrayNotHasKey('aiplacement_courseassist', $placements);
+        $this->assertArrayHasKey('aiplacement_editor', $placements);
+        $this->assertEmpty(manager::get_placement_actions_available(\context_system::instance(), false));
+    }
+
+    /**
+     * Test getting enabled placements without a concrete context.
+     */
+    public function test_get_enabled_placements(): void {
+        $this->resetAfterTest();
+
+        set_config('enabled', 1, 'aiplacement_courseassist');
+        set_config('enabled', 1, 'aiplacement_editor');
+        \core_plugin_manager::reset_caches();
+
+        $placements = manager::get_enabled_placements();
+        $this->assertArrayHasKey('aiplacement_courseassist', $placements);
+        $this->assertArrayHasKey('aiplacement_editor', $placements);
+
+        set_config('enabled', 0, 'aiplacement_courseassist');
+        \core_plugin_manager::reset_caches();
+
+        $placements = manager::get_enabled_placements();
+        $this->assertArrayNotHasKey('aiplacement_courseassist', $placements);
+        $this->assertArrayHasKey('aiplacement_editor', $placements);
+    }
+
+    /**
+     * Test placement actions are excluded when the editor placement is uninstalled.
+     */
+    public function test_get_placement_actions_available_with_editor_uninstalled(): void {
+        $this->resetAfterTest();
+
+        set_config('enabled', 1, 'aiplacement_courseassist');
+        set_config('enabled', 1, 'aiplacement_editor');
+        unset_config('version', 'aiplacement_editor');
+        \core_plugin_manager::reset_caches();
+
+        $course = self::getDataGenerator()->create_course();
+        $placements = manager::get_placements_available_in_context(\context_course::instance($course->id));
+        $this->assertArrayHasKey('aiplacement_courseassist', $placements);
+        $this->assertArrayNotHasKey('aiplacement_editor', $placements);
+        $this->assertEmpty(manager::get_placement_actions_available(\context_system::instance(), false));
+    }
+
+    /**
+     * Test create_provider_instance method.
+     */
+    public function test_create_provider_instance(): void {
+        $this->resetAfterTest();
+        global $DB;
+
+        // Create the provider instance.
+        $manager = \core\di::get(\core_ai\manager::class);
+        $config = ['data' => 'goeshere'];
+        $provider = $manager->create_provider_instance(
+            classname: '\aiprovider_openai\provider',
+            name: 'dummy',
+            config: $config,
+        );
+
+        $this->assertIsInt($provider->id);
+        $this->assertFalse($provider->enabled);
+        $this->assertEquals('goeshere', $provider->config['data']);
+
+        // Check the record was written to the DB.
+        $record = $DB->get_record('ai_providers', ['id' => $provider->id], '*', MUST_EXIST);
+        $this->assertEquals($provider->id, $record->id);
+    }
+
+    /**
+     * Test create_provider_instance non provider class.
+     */
+    public function test_create_provider_instance_non_provider_class(): void {
+        $this->resetAfterTest();
+
+        // Should throw an exception as the class is not a provider.
+        $this->expectException(\coding_exception::class);
+        $this->expectExceptionMessage(' Provider class not valid: ' . $this::class);
+
+        // Create the provider instance.
+        $manager = \core\di::get(\core_ai\manager::class);
+        $manager->create_provider_instance(
+            classname: $this::class,
+            name: 'dummy',
+        );
+    }
+
+    /**
+     * Test get_provider_record method
+     */
+    public function test_get_provider_record(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        // Create a dummy provider record directly in the database.
+        $config = ['data' => 'goeshere'];
+        $record = new \stdClass();
+        $record->name = 'dummy1';
+        $record->provider = 'dummy';
+        $record->enabled = 1;
+        $record->config = json_encode($config);
+        $record->actionconfig = json_encode(['generate_text' => 1]);
+        $record->id = $DB->insert_record('ai_providers', $record);
+
+        $manager = \core\di::get(\core_ai\manager::class);
+        $provider = $manager->get_provider_record(['provider' => 'dummy']);
+
+        $this->assertEquals($record->id, $provider->id);
+    }
+
+    /**
+     * Test get_provider_records method.
+     */
+    public function test_get_provider_records(): void {
+        $this->resetAfterTest();
+        global $DB;
+
+        // Create some dummy provider records directly in the database.
+        $config = ['data' => 'goeshere'];
+        $record1 = new \stdClass();
+        $record1->name = 'dummy1';
+        $record1->provider = 'dummy';
+        $record1->enabled = 1;
+        $record1->config = json_encode($config);
+        $record1->actionconfig = json_encode(['generate_text' => 1]);
+
+        $record2 = new \stdClass();
+        $record2->name = 'dummy2';
+        $record2->provider = 'dummy';
+        $record2->enabled = 1;
+        $record2->config = json_encode($config);
+        $record2->actionconfig = json_encode(['generate_text' => 1]);
+
+        $DB->insert_records('ai_providers', [
+                $record1,
+                $record2,
+        ]);
+
+        // Get the provider records.
+        $manager = \core\di::get(\core_ai\manager::class);
+        $providers = $manager->get_provider_records(['provider' => 'dummy']);
+
+        // Assert that the records were returned.
+        $this->assertCount(2, $providers);
+    }
+
+    /**
+     * Test get_provider_instances method.
+     */
+    public function test_get_provider_instances(): void {
+        $this->resetAfterTest();
+        global $DB;
+
+        $manager = \core\di::get(\core_ai\manager::class);
+        $config = ['data' => 'goeshere'];
+
+        $provider = $manager->create_provider_instance(
+                classname: '\aiprovider_openai\provider',
+                name: 'dummy',
+                config: $config,
+        );
+
+        // Create an instance record for a non provider class.
+        $record = new \stdClass();
+        $record->name = 'dummy';
+        $record->provider = 'dummy';
+        $record->enabled = 1;
+        $record->config = json_encode($config);
+
+        $DB->insert_record('ai_providers', $record);
+
+        // Get the provider instances.
+        $instances = $manager->get_provider_instances();
+        $this->assertDebuggingCalled('Unable to find a provider class for dummy');
+        $this->assertCount(1, $instances);
+        $this->assertEquals($provider->id, $instances[$provider->id]->id);
+    }
+
+    /**
+     * Test update_provider_instance method.
+     */
+    public function test_update_provider_instance(): void {
+        $this->resetAfterTest();
+        global $DB;
+
+        // Create the provider instance.
+        $manager = \core\di::get(\core_ai\manager::class);
+        $config = ['data' => 'goeshere'];
+        $provider = $manager->create_provider_instance(
+                classname: '\aiprovider_openai\provider',
+                name: 'dummy',
+                config: $config,
+        );
+
+        // Update the provider instance.
+        $config['data'] = 'updateddata';
+        $manager->update_provider_instance($provider, $config);
+
+        // Check the record was updated in the DB.
+        $record = $DB->get_record('ai_providers', ['id' => $provider->id], '*', MUST_EXIST);
+        $this->assertEquals($provider->id, $record->id);
+        $this->assertEquals('updateddata', json_decode($record->config)->data);
+    }
+
+    /**
+     * Test delete_provider_instance method.
+     */
+    public function test_delete_provider_instance(): void {
+        $this->resetAfterTest();
+        global $DB;
+
+        // Create the provider instance.
+        $manager = \core\di::get(\core_ai\manager::class);
+        $config = ['data' => 'goeshere'];
+        $provider = $manager->create_provider_instance(
+                classname: '\aiprovider_openai\provider',
+                name: 'dummy',
+                config: $config,
+        );
+
+        // Delete the provider instance.
+        $manager->delete_provider_instance($provider);
+
+        // Check the record was deleted from the DB.
+        $record = $DB->record_exists('ai_providers', ['id' => $provider->id]);
+        $this->assertFalse($record);
     }
 
     /**
@@ -73,14 +348,32 @@ final class manager_test extends \advanced_testcase {
      */
     public function test_get_providers_for_actions(): void {
         $this->resetAfterTest();
-        set_config('enabled', 1, 'aiprovider_openai');
-        set_config('apikey', '123', 'aiprovider_openai');
-
         $manager = \core\di::get(manager::class);
         $actions = [
             generate_text::class,
             summarise_text::class,
+            explain_text::class,
         ];
+
+        // Create two provider instances.
+        $config = [
+            'apikey' => 'goeshere',
+            'endpoint' => 'https://example.com',
+        ];
+        $provider1 = $manager->create_provider_instance(
+            classname: '\aiprovider_openai\provider',
+            name: 'dummy1',
+            enabled: true,
+            config: $config,
+        );
+
+        $config['apiendpoint'] = 'https://example.com';
+        $provider2 = $manager->create_provider_instance(
+            classname: '\aiprovider_azureai\provider',
+            name: 'dummy2',
+            enabled: true,
+            config: $config,
+        );
 
         // Get the providers for the actions.
         $providers = $manager->get_providers_for_actions($actions);
@@ -91,14 +384,47 @@ final class manager_test extends \advanced_testcase {
         // Assert that there is only one provider for each action.
         $this->assertCount(2, $providers[generate_text::class]);
         $this->assertCount(2, $providers[summarise_text::class]);
+        $this->assertCount(2, $providers[explain_text::class]);
 
         // Disable the generate text action for the Open AI provider.
-        manager::set_action_state('aiprovider_openai', generate_text::class::get_basename(), 0);
+        $setresult = $manager->set_action_state(
+                plugin: $provider1->provider,
+                actionbasename: generate_text::class::get_basename(),
+                enabled: 0,
+                instanceid: $provider1->id);
+        // Assert that the action was disabled.
+        $this->assertFalse($setresult);
+
         $providers = $manager->get_providers_for_actions($actions, true);
 
         // Assert that there is no provider for the generate text action.
-        $this->assertCount(0, $providers[generate_text::class]);
-        $this->assertCount(1, $providers[summarise_text::class]);
+        $this->assertCount(1, $providers[generate_text::class]);
+        $this->assertCount(2, $providers[summarise_text::class]);
+
+        // Ordering the provider instances.
+        // Re-enable the generate text action for the Openai provider.
+        $manager->set_action_state(
+            plugin: $provider1->provider,
+            actionbasename: generate_text::class::get_basename(),
+            enabled: 1,
+            instanceid: $provider1->id,
+        );
+
+        // Move the $provider2 to the first provider for the generate text action.
+        $manager->change_provider_order($provider2->id, \core\plugininfo\aiprovider::MOVE_UP);
+        // Get the new providers for the actions.
+        $providers = $manager->get_providers_for_actions($actions);
+        // Assert whether provider2 is the first provider and provider1 is the last provider for the generate text action.
+        $this->assertEquals($providers[generate_text::class][0], $provider2);
+        $this->assertEquals($providers[generate_text::class][1], $provider1);
+
+        // Move the $provider2 to the last provider for the generate text action.
+        $manager->change_provider_order($provider2->id, \core\plugininfo\aiprovider::MOVE_DOWN);
+        // Get the new providers for the actions.
+        $providers = $manager->get_providers_for_actions($actions);
+        // Assert whether provider1 is the first provider and provider2 is the last provider for the generate text action.
+        $this->assertEquals($providers[generate_text::class][0], $provider1);
+        $this->assertEquals($providers[generate_text::class][1], $provider2);
     }
 
     /**
@@ -106,7 +432,9 @@ final class manager_test extends \advanced_testcase {
      */
     public function test_process_action_fail(): void {
         $this->resetAfterTest();
+        global $DB;
         $managermock = $this->getMockBuilder(manager::class)
+            ->setConstructorArgs([$DB])
             ->onlyMethods(['call_action_provider'])
             ->getMock();
 
@@ -139,15 +467,28 @@ final class manager_test extends \advanced_testcase {
      */
     public function test_process_action(): void {
         $this->resetAfterTest();
+        global $DB;
 
-        // Enable the providers.
-        set_config('enabled', 1, 'aiprovider_openai');
-        set_config('apikey', '123', 'aiprovider_openai');
-        set_config('enabled', 1, 'aiprovider_azureai');
-        set_config('apikey', '123', 'aiprovider_azureai');
-        set_config('endpoint', 'abc', 'aiprovider_azureai');
+        // Create two provider instances.
+        $manager = \core\di::get(manager::class);
+        $config = ['apikey' => 'goeshere'];
+        $provider1 = $manager->create_provider_instance(
+                classname: '\aiprovider_openai\provider',
+                name: 'dummy1',
+                enabled: true,
+                config: $config,
+        );
+
+        $config['apiendpoint'] = 'https://example.com';
+        $provider2 = $manager->create_provider_instance(
+                classname: '\aiprovider_azureai\provider',
+                name: 'dummy2',
+                enabled: true,
+                config: $config,
+        );
 
         $managermock = $this->getMockBuilder(manager::class)
+            ->setConstructorArgs([$DB])
             ->onlyMethods(['call_action_provider'])
             ->getMock();
 
@@ -304,15 +645,21 @@ final class manager_test extends \advanced_testcase {
         $body = [
             'revisedprompt' => 'This is a revised prompt',
             'imageurl' => 'https://example.com/image.png',
+            'model' => 'dall-e-3',
         ];
         $actionresponse = new response_generate_image(
             success: true,
         );
         $actionresponse->set_response_data($body);
 
-        $provider = new \aiprovider_openai\provider();
-
         $manager = \core\di::get(manager::class);
+        $config = ['data' => 'goeshere'];
+        $provider = $manager->create_provider_instance(
+                classname: '\aiprovider_openai\provider',
+                name: 'dummy',
+                config: $config,
+        );
+
         // We're working with a private method here, so we need to use reflection.
         $method = new \ReflectionMethod($manager, 'store_action_result');
         $storeresult = $method->invoke($manager, $provider, $action, $actionresponse);
@@ -327,12 +674,14 @@ final class manager_test extends \advanced_testcase {
         $this->assertEquals($actionresponse->get_errormessage(), $record->errormessage);
         $this->assertEquals($action->get_configuration('timecreated'), $record->timecreated);
         $this->assertEquals($actionresponse->get_timecreated(), $record->timecompleted);
+        $this->assertEquals($actionresponse->get_model_used(), $record->model);
     }
 
     /**
      * Test call_action_provider.
      */
     public function test_call_action_provider(): void {
+        $this->resetAfterTest();
         $contextid = 1;
         $userid = 1;
         $prompttext = 'This is a test prompt';
@@ -351,9 +700,13 @@ final class manager_test extends \advanced_testcase {
             style: $style
         );
 
-        $provider = new \aiprovider_openai\provider();
-
         $manager = \core\di::get(manager::class);
+        $config = ['apikey' => 'goeshere'];
+        $provider = $manager->create_provider_instance(
+                classname: '\aiprovider_openai\provider',
+                name: 'dummy',
+                config: $config,
+        );
 
         // We're working with a private method here, so we need to use reflection.
         $method = new \ReflectionMethod($manager, 'call_action_provider');
@@ -368,18 +721,38 @@ final class manager_test extends \advanced_testcase {
      */
     public function test_is_action_enabled(): void {
         $this->resetAfterTest();
-        $plugin = 'aiprovider_openai';
         $action = generate_image::class;
+        $manager = \core\di::get(manager::class);
+
+        $config = ['apikey' => 'goeshere'];
+        $provider = $manager->create_provider_instance(
+            classname: '\aiprovider_openai\provider',
+            name: 'dummy',
+            config: $config,
+        );
 
         // Should be enabled by default.
-        $result = manager::is_action_enabled($plugin, $action);
+        $result = $manager->is_action_enabled(
+            plugin: $provider->provider,
+            actionclass: $action,
+            instanceid: $provider->id
+        );
         $this->assertTrue($result);
 
         // Disable the action.
-        manager::set_action_state($plugin, $action::get_basename(), 0);
+        $manager->set_action_state(
+            plugin: $provider->provider,
+            actionbasename: $action::get_basename(),
+            enabled: 0,
+            instanceid: $provider->id
+        );
 
         // Should now be disabled.
-        $result = manager::is_action_enabled($plugin, $action);
+        $result = $manager->is_action_enabled(
+            plugin: $provider->provider,
+            actionclass: $action,
+            instanceid: $provider->id
+        );
         $this->assertFalse($result);
     }
 
@@ -388,18 +761,40 @@ final class manager_test extends \advanced_testcase {
      */
     public function test_enable_action(): void {
         $this->resetAfterTest();
-        $plugin = 'aiprovider_openai';
         $action = generate_image::class;
 
+        $manager = \core\di::get(manager::class);
+
+        $config = ['apikey' => 'goeshere'];
+        $provider = $manager->create_provider_instance(
+                classname: '\aiprovider_openai\provider',
+                name: 'dummy',
+                config: $config,
+        );
+
         // Disable the action.
-        set_config('generate_image', 0, $plugin);
+        $setresult = $manager->set_action_state(
+                plugin: $provider->provider,
+                actionbasename: $action::get_basename(),
+                enabled: 0,
+                instanceid: $provider->id);
 
         // Should now be disabled.
-        $result = manager::is_action_enabled($plugin, $action);
+        $this->assertFalse($setresult);
+        $result = $manager->is_action_enabled(
+                plugin: $provider->provider,
+                actionclass: $action,
+                instanceid: $provider->id
+        );
         $this->assertFalse($result);
 
         // Enable the action.
-        $result = manager::set_action_state($plugin, $action::get_basename(), 1);
+        $manager = \core\di::get(manager::class);
+        $result = $manager->set_action_state(
+                plugin: $provider->provider,
+                actionbasename: generate_text::class::get_basename(),
+                enabled: 1,
+                instanceid: $provider->id);
         $this->assertTrue($result);
     }
 
@@ -411,23 +806,170 @@ final class manager_test extends \advanced_testcase {
         $action = generate_image::class;
 
         // Plugin is disabled by default, action state should not matter. Everything should be false.
-        $result = manager::is_action_available($action);
+        $manager = \core\di::get(manager::class);
+        $result = $manager->is_action_available($action);
         $this->assertFalse($result);
 
-        // Enable the plugin, actions will be enabled by default when the plugin is enabled.
-        $manager = \core_plugin_manager::resolve_plugininfo_class('aiprovider');
-        $manager::enable_plugin('openai', 1);
-        set_config('apikey', '123', 'aiprovider_openai');
+        // Create the provider instance, actions will be enabled by default when the plugin is enabled.
+        $config = ['apikey' => 'goeshere'];
+        $provider = $manager->create_provider_instance(
+            classname: '\aiprovider_openai\provider',
+            name: 'dummy',
+            enabled: true,
+            config: $config,
+        );
 
         // Should now be available.
-        $result = manager::is_action_available($action);
+        $result = $manager->is_action_available($action);
         $this->assertTrue($result);
 
         // Disable the action.
-        set_config('generate_image', 0, 'aiprovider_openai');
+        $manager->set_action_state(
+                plugin: $provider->provider,
+                actionbasename: $action::get_basename(),
+                enabled: 0,
+                instanceid: $provider->id);
 
         // Should now be unavailable.
-        $result = manager::is_action_available($action);
+        $result = $manager->is_action_available($action);
         $this->assertFalse($result);
+    }
+
+    /**
+     * Test is_ai_tools_enabled_in_course method.
+     *
+     * @return void
+     */
+    public function test_is_ai_tools_enabled_in_course(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $context = \context_course::instance($course->id);
+
+        $manager = \core\di::get(manager::class);
+        $aitoolsenabled = $manager::is_ai_tools_enabled_in_course($context);
+        $this->assertTrue($aitoolsenabled);
+
+        $course->enableaitools = 0;
+        $DB->update_record('course', $course);
+
+        $aitoolsenabled = $manager::is_ai_tools_enabled_in_course($context);
+        $this->assertFalse($aitoolsenabled);
+    }
+
+    /**
+     * Test get_enabled_actions_in_course_module method.
+     *
+     * @param string $enabledactions
+     * @param array $expectedactions
+     * @dataProvider ai_actions_provider
+     * @return void
+     */
+    public function test_get_enabled_actions_in_course_module(
+        string $enabledactions,
+        array $expectedactions,
+    ): void {
+        global $PAGE;
+
+        $this->resetAfterTest();
+
+        $manager = \core\di::get(manager::class);
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+
+        // Create forum module and add enabled AI actions.
+        $module = $generator->create_module('forum', [
+            'course' => $course->id,
+            'enabledaiactions' => $enabledactions,
+        ]);
+
+        // Set the page context to the module context.
+        $ctx = \context_module::instance($module->cmid);
+        $PAGE->set_context($ctx);
+
+        // Get all enabled actions in a course module.
+        $record = $manager::get_ai_fields_from_course_module($module->cmid);
+        $allactions = $manager::get_enabled_actions_in_course_module($record);
+        foreach ($expectedactions as $expectedaction) {
+            $this->assertContains($expectedaction, $allactions);
+        }
+        $this->assertCount(count($expectedactions), $allactions);
+    }
+
+    /**
+     * Test is_action_enabled_in_context method.
+     *
+     * @return void
+     */
+    public function test_is_action_enabled_in_context(): void {
+        global $PAGE;
+
+        $this->resetAfterTest();
+
+        $manager = \core\di::get(manager::class);
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+
+        // Create forum module and enabled only the generate text action.
+        $module = $generator->create_module('forum', [
+            'course' => $course->id,
+            'enabledaiactions' => json_encode(['generate_text' => 1]),
+        ]);
+
+        // Set the page context to the module context.
+        $modulecontext = \context_module::instance($module->cmid);
+        $PAGE->set_context($modulecontext);
+
+        // Only the generate text action should be available.
+        $result = $manager->is_action_enabled_in_context($modulecontext, generate_text::class);
+        $this->assertTrue($result);
+        $result = $manager->is_action_enabled_in_context($modulecontext, explain_text::class);
+        $this->assertFalse($result);
+
+        // Explain text should be available outside the module context.
+        $systemcontext = \context_system::instance();
+        $result = $manager->is_action_enabled_in_context($systemcontext, explain_text::class);
+        $this->assertTrue($result);
+    }
+
+    /**
+     * Data provider for {@see test_get_enabled_actions_in_course_module}
+     *
+     * @return array
+     */
+    public static function ai_actions_provider(): array {
+        return [
+            'actioncombo1' => [
+                json_encode(['generate_text' => 1, 'generate_image' => 1]),
+                [
+                    generate_text::class,
+                    generate_image::class,
+                ],
+            ],
+            'actioncombo2' => [
+                json_encode(['summarise_text' => 1, 'explain_text' => 1]),
+                [
+                    summarise_text::class,
+                    explain_text::class,
+                ],
+            ],
+            'actioncombo3' => [
+                json_encode(['summarise_text' => 1, 'explain_text' => 0, 'generate_text' => 1, 'generate_image' => 1]),
+                [
+                    summarise_text::class,
+                    generate_text::class,
+                    generate_image::class,
+                ],
+            ],
+            'actioncombo4' => [
+                json_encode(['summarise_text' => 0, 'explain_text' => 1, 'generate_text' => 0, 'generate_image' => 0]),
+                [
+                    explain_text::class,
+                ],
+            ],
+        ];
     }
 }

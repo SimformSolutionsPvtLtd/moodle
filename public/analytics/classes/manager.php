@@ -38,7 +38,7 @@ class manager {
     /**
      * Default mlbackend
      */
-    const DEFAULT_MLBACKEND = '\mlbackend_php\processor';
+    const DEFAULT_MLBACKEND = '\mlbackend_python\processor';
 
     /**
      * Name of the file where components declare their models.
@@ -257,11 +257,16 @@ class manager {
     public static function is_mlbackend_used($plugin) {
         $models = self::get_all_models();
         foreach ($models as $model) {
-            $processor = $model->get_predictions_processor();
-            $noprefixnamespace = ltrim(get_class($processor), '\\');
-            $processorplugin = substr($noprefixnamespace, 0, strpos($noprefixnamespace, '\\'));
-            if ($processorplugin == $plugin) {
-                return true;
+            try {
+                $processor = $model->get_predictions_processor();
+                $noprefixnamespace = ltrim(get_class($processor), '\\');
+                $processorplugin = substr($noprefixnamespace, 0, strpos($noprefixnamespace, '\\'));
+                if ($processorplugin == $plugin) {
+                    return true;
+                }
+            } catch (\Exception $e) {
+                // The model does not have a predictions processor.
+                continue;
             }
         }
 
@@ -297,15 +302,6 @@ class manager {
         }
 
         return self::$alltimesplittings;
-    }
-
-    /**
-     * @deprecated since Moodle 3.7 use get_time_splitting_methods_for_evaluation instead
-     */
-    public static function get_enabled_time_splitting_methods() {
-        throw new coding_exception(__FUNCTION__ . '() has been removed. You can use self::get_time_splitting_methods_for_evaluation if ' .
-            'you want to get the default time splitting methods for evaluation, or you can use self::get_all_time_splittings if ' .
-            'you want to get all the time splitting methods available on this site.');
     }
 
     /**

@@ -43,7 +43,7 @@ class format_social extends core_courseformat\base {
      * @param array $options options for view URL. At the moment core uses:
      *     'navigation' (bool) ignored by this format
      *     'sr' (int) ignored by this format
-     * @return null|moodle_url
+     * @return moodle_url
      */
     public function get_view_url($section, $options = array()) {
         return new moodle_url('/course/view.php', ['id' => $this->courseid]);
@@ -129,18 +129,61 @@ class format_social extends core_courseformat\base {
         return $this->get_format_options();
     }
 
-    /**
-     * Returns the information about the ajax support in the given source format.
-     *
-     * The returned object's property (boolean)capable indicates that
-     * the course format supports Moodle course ajax features.
-     *
-     * @return stdClass
-     */
+    #[\Override]
     public function supports_ajax() {
+        // All home page is rendered in the backend, we only need an ajax editor components in edit mode.
+        // This will also prevent redirectng to the login page when a guest tries to access the site,
+        // and will make the home page loading faster.
         $ajaxsupport = new stdClass();
-        $ajaxsupport->capable = true;
+        $ajaxsupport->capable = $this->show_editor();
         return $ajaxsupport;
     }
 
+    #[\Override]
+    public function supports_components() {
+        return true;
+    }
+
+    #[\Override]
+    public function uses_sections() {
+        return true;
+    }
+
+    #[\Override]
+    public function get_section_name($section) {
+        $section = $this->get_section($section);
+        if ($section->is_delegated()) {
+            return $section->name;
+        }
+        // Social format only uses one section inside the social activities block.
+        return get_string('socialactivities', 'format_social');
+    }
+
+    /**
+     * Social format uses only section 0.
+     *
+     * @return int
+     */
+    #[\Override]
+    public function get_sectionnum(): int {
+        return 0;
+    }
+
+    /**
+     * Returns if a specific section is visible to the current user.
+     *
+     * Formats can override this method to implement any special section logic.
+     * Social format does not use any other sections than section 0 and
+     * used this method to hide all other sections from the Move section activity.
+     *
+     * @param section_info $section the section modinfo
+     * @return bool;
+     */
+    #[\Override]
+    public function is_section_visible(section_info $section): bool {
+        $visible = parent::is_section_visible($section);
+        // Social format does only use section 0 as a normal section.
+        // Any other included section should be a delegated one (subsections).
+        return $visible && ($section->sectionnum == 0 || $section->is_delegated());
+    }
 }

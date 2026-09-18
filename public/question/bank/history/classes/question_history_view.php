@@ -63,6 +63,10 @@ class question_history_view extends view {
         array $params = [],
         array $extraparams = [],
     ) {
+        if ($cm === null) {
+            debugging('$cm is now a required field', DEBUG_DEVELOPER);
+        }
+
         // The extra params can come straight from a web service request, so the entry id must be cleaned here.
         $this->entryid = clean_param($extraparams['entryid'] ?? 0, PARAM_INT);
         $this->basereturnurl = new \moodle_url($extraparams['returnurl']);
@@ -87,10 +91,12 @@ class question_history_view extends view {
         return $this->requiredcolumns;
     }
 
+    /**
+     * @deprecated since Moodle 4.3 MDL-72321
+     */
+    #[\core\attribute\deprecated('filtering objects', since: '4.3', mdl: 'MDL-72321', final: true)]
     protected function display_advanced_search_form($advancedsearch): void {
-        foreach ($advancedsearch as $searchcondition) {
-            echo $searchcondition->display_options_adv();
-        }
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
     }
 
     public function allow_add_questions(): bool {
@@ -100,7 +106,7 @@ class question_history_view extends view {
 
     #[\Override]
     protected function default_sort(): array {
-        return ['qbank_history__version_number_column' => 1];
+        return ['qbank_history__version_number_column' => SORT_ASC];
     }
 
     protected function build_query(): void {
@@ -179,10 +185,6 @@ class question_history_view extends view {
         $this->display_question_bank_header();
         // Add search conditions.
         $this->add_standard_search_conditions();
-    }
-
-    public function is_listing_specific_versions(): bool {
-        return true;
     }
 
 }

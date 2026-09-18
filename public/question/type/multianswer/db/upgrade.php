@@ -28,9 +28,6 @@
  * @param int $oldversion the version we are upgrading from.
  */
 function xmldb_qtype_multianswer_upgrade($oldversion) {
-    // Automatically generated Moodle v4.1.0 release upgrade line.
-    // Put any upgrade step following this.
-
     // Automatically generated Moodle v4.2.0 release upgrade line.
     // Put any upgrade step following this.
 
@@ -43,13 +40,30 @@ function xmldb_qtype_multianswer_upgrade($oldversion) {
     // Automatically generated Moodle v4.5.0 release upgrade line.
     // Put any upgrade step following this.
 
-    if ($oldversion < 2024100701) {
+    // Automatically generated Moodle v5.0.0 release upgrade line.
+    // Put any upgrade step following this.
+
+    if ($oldversion < 2025061000) {
         $task = new \qtype_multianswer\task\cleanup_duplicate_subquestions();
         if (count($task->find_duplicated_subquestions()) > 0) {
             mtrace('Duplicated subquestions found. Queueing cleanup task.');
             \core\task\manager::queue_adhoc_task($task);
         }
-        upgrade_plugin_savepoint(true, 2024100701, 'qtype', 'multianswer');
+        upgrade_plugin_savepoint(true, 2025061000, 'qtype', 'multianswer');
+    }
+
+    // Automatically generated Moodle v5.1.0 release upgrade line.
+    // Put any upgrade step following this.
+
+    if ($oldversion < 2025100601) {
+        // The cleanup task may have failed before due to MDL-86281.
+        $task = new \qtype_multianswer\task\cleanup_duplicate_subquestions();
+        $queuedtask = \core\task\manager::get_queued_adhoc_task_record($task);
+        if ($queuedtask && $queuedtask->faildelay > 0 && $queuedtask->attemptsavailable === 0) {
+            mtrace('Subquestion cleanup task failed before. Re-queueing.');
+            \core\task\manager::queue_adhoc_task($task);
+        }
+        upgrade_plugin_savepoint(true, 2025100601, 'qtype', 'multianswer');
     }
 
     return true;

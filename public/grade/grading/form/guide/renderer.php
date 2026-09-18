@@ -408,7 +408,7 @@ class gradingform_guide_renderer extends plugin_renderer_base {
                           'title' => get_string('clicktocopy', 'gradingform_guide'),
                           'id' => '{NAME}[comments][{COMMENT-id}]', 'class'=>'markingguidecomment'));
             } else {
-                  // Set a default description format if not set.
+                // Set a default description format if not set.
                 if (!array_key_exists('descriptionformat', $comment)) {
                     $comment['descriptionformat'] = FORMAT_MOODLE;
                 }

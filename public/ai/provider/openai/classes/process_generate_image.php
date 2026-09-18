@@ -16,12 +16,11 @@
 
 namespace aiprovider_openai;
 
+use aiprovider_openai\aimodel\openai_image_base;
 use core_ai\ai_image;
 use GuzzleHttp\Psr7\Request;
-use GuzzleHttp\Psr7\Uri;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\UriInterface;
 
 /**
  * Class process image generation.
@@ -35,20 +34,10 @@ class process_generate_image extends abstract_processor {
     private int $numberimages = 1;
 
     #[\Override]
-    protected function get_endpoint(): UriInterface {
-        return new Uri(get_config('aiprovider_openai', 'action_generate_image_endpoint'));
-    }
-
-    #[\Override]
-    protected function get_model(): string {
-        return get_config('aiprovider_openai', 'action_generate_image_model');
-    }
-
-    #[\Override]
     protected function query_ai_api(): array {
         $response = parent::query_ai_api();
 
-        // If the request was successful, save the image to a file.
+        // If the request was successful, save the URL to a file.
         if ($response['success']) {
             $fileobj = $this->create_file_from_response(
                 $this->action->get_configuration('userid'),
@@ -62,88 +51,95 @@ class process_generate_image extends abstract_processor {
     }
 
     /**
-     * Convert the given aspect ratio to an image size compatible with the model's API.
+     * Convert the given aspect ratio to an image size compatible with the OpenAI API.
      *
-     * DALL-E 3: square=1024x1024, landscape=1792x1024, portrait=1024x1792.
-     * GPT image models: square=1024x1024, landscape=1536x1024, portrait=1024x1536.
+     * Delegates to the model class if one is found for the configured model,
+     * otherwise falls back to a default mapping: 'square' → '1024x1024',
+     * 'landscape' → '1536x1024', 'portrait' → '1024x1536'.
      *
-     * @param string $ratio The aspect ratio of the image (square, landscape, portrait).
-     * @return string The size string for the API request.
+     * @param string $ratio The aspect ratio of the image ('square', 'landscape', or 'portrait').
+     * @return string The size string to send in the API request (e.g. '1024x1024').
      */
     private function calculate_size(string $ratio): string {
-        if (str_starts_with($this->get_model(), 'dall-e')) {
-            if ($ratio === 'square') {
-                $size = '1024x1024';
-            } else if ($ratio === 'landscape') {
-                $size = '1792x1024';
-            } else if ($ratio === 'portrait') {
-                $size = '1024x1792';
-            } else {
-                throw new \coding_exception('Invalid aspect ratio: ' . $ratio);
-            }
+        // Get model class.
+        $modelclass = helper::get_model_class($this->get_model());
+        if ($modelclass) {
+            return $modelclass->calculate_size($ratio);
+        }
+        // Fallback.
+        if ($ratio === 'square') {
+            $size = '1024x1024';
+        } else if ($ratio === 'landscape') {
+            $size = '1536x1024';
+        } else if ($ratio === 'portrait') {
+            $size = '1024x1536';
         } else {
-            if ($ratio === 'square') {
-                $size = '1024x1024';
-            } else if ($ratio === 'landscape') {
-                $size = '1536x1024';
-            } else if ($ratio === 'portrait') {
-                $size = '1024x1536';
-            } else {
-                throw new \coding_exception('Invalid aspect ratio: ' . $ratio);
-            }
+            throw new \coding_exception('Invalid aspect ratio: ' . $ratio);
         }
         return $size;
     }
 
     /**
-     * Convert the given quality setting to the value expected by the model's API.
+     * Convert the given quality setting to an API-compatible quality value.
      *
-     * DALL-E models accept the Moodle values directly (standard, hd).
-     * GPT image models map them: standard -> medium, hd -> high.
+     * Delegates to the model class if one is found for the configured model,
+     * otherwise falls back to a default mapping: 'standard' → 'medium', 'hd' → 'high'.
      *
-     * @param string $quality The quality setting (standard, hd).
-     * @return string The quality value for the API request.
+     * @param string $quality The quality setting from the action ('standard' or 'hd').
+     * @return string The quality value to send in the API request.
      */
     private function calculate_quality(string $quality): string {
-        if (str_starts_with($this->get_model(), 'dall-e')) {
-            return $quality;
+        // Get model class.
+        $modelclass = helper::get_model_class($this->get_model());
+        if ($modelclass) {
+            return $modelclass->calculate_quality($quality);
         }
+        // Fallback.
         if ($quality === 'standard') {
-            return 'medium';
+            $processedquality = 'medium';
         } else if ($quality === 'hd') {
-            return 'high';
+            $processedquality = 'high';
+        } else {
+            throw new \coding_exception('Invalid quality: ' . $quality);
         }
-        throw new \coding_exception('Invalid quality: ' . $quality);
+
+        return $processedquality;
     }
 
     #[\Override]
     protected function create_request_object(string $userid): RequestInterface {
-        $model = $this->get_model();
-        $body = (object) [
-            'prompt' => $this->action->get_configuration('prompttext'),
-            'model' => $model,
-            'n' => $this->numberimages,
-            'quality' => $this->calculate_quality($this->action->get_configuration('quality')),
-            'size' => $this->calculate_size($this->action->get_configuration('aspectratio')),
-            'user' => $userid,
-        ];
-
-        // DALL-E models use response_format=b64_json and support style;
-        // GPT image models use output_format instead and do not accept style.
-        if (str_starts_with($model, 'dall-e')) {
-            $body->response_format = 'b64_json';
-            $body->style = $this->action->get_configuration('style');
-        } else {
-            $body->output_format = 'png';
+        // Create the request object.
+        $requestobj = new \stdClass();
+        $requestobj->model = $this->get_model();
+        $requestobj->user = $userid;
+        $requestobj->prompt = $this->action->get_configuration('prompttext');
+        $requestobj->n = $this->numberimages;
+        $requestobj->quality = $this->calculate_quality($this->action->get_configuration('quality'));
+        $requestobj->size = $this->calculate_size($this->action->get_configuration('aspectratio'));
+        // Get model class.
+        $modelclass = helper::get_model_class($this->get_model());
+        if ($modelclass instanceof openai_image_base) {
+            $responseformat = $modelclass->response_format();
+            if ($responseformat !== null) {
+                $requestobj->response_format = $responseformat;
+            }
+            $outputformat = $modelclass->get_output_format();
+            if ($outputformat !== null) {
+                $requestobj->output_format = $outputformat;
+            }
         }
-
+        // Append the extra model settings.
+        $modelsettings = $this->get_model_settings();
+        foreach ($modelsettings as $setting => $value) {
+            $requestobj->$setting = $value;
+        }
         return new Request(
             method: 'POST',
             uri: '',
-            body: json_encode($body, JSON_UNESCAPED_SLASHES),
             headers: [
                 'Content-Type' => 'application/json',
             ],
+            body: json_encode($requestobj, JSON_UNESCAPED_SLASHES),
         );
     }
 
@@ -157,6 +153,7 @@ class process_generate_image extends abstract_processor {
             'b64json' => $bodyobj->data[0]->b64_json,
             'output_format' => $bodyobj->output_format ?? 'png',
             'revisedprompt' => $bodyobj->data[0]->revised_prompt ?? '',
+            'model' => $this->get_model(), // There is no model in the response, use config.
         ];
     }
 
@@ -172,7 +169,10 @@ class process_generate_image extends abstract_processor {
      * @param array $response Response from the AI provider, containing 'b64json' and 'output_format'.
      * @return \stored_file The stored draft file.
      */
-    private function create_file_from_response(int $userid, array $response): \stored_file {
+    private function create_file_from_response(
+        int $userid,
+        array $response,
+    ): \stored_file {
         global $CFG;
 
         require_once("{$CFG->libdir}/filelib.php");
@@ -184,6 +184,7 @@ class process_generate_image extends abstract_processor {
         $tempdst = make_request_directory() . DIRECTORY_SEPARATOR . $filename;
         file_put_contents($tempdst, $imagebytes);
 
+        // Add the watermark.
         $image = new ai_image($tempdst);
         $image->add_watermark()->save();
 

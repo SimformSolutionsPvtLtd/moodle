@@ -35,5 +35,5 @@ Feature: Delete activity and resource works correctly
     And I should not see "Glossary 1" in the "page-content" "region"
     # Reload the page and confirm that both the label and glossary are really deleted
     And I reload the page
-    And I should not see "Label 1"
-    And I should not see "Glossary 1"
+    And I should not see "Label 1" in the "page-content" "region"
+    And I should not see "Glossary 1" in the "page-content" "region"

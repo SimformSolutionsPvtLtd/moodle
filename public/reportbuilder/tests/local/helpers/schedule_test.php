@@ -19,12 +19,14 @@ declare(strict_types=1);
 namespace core_reportbuilder\local\helpers;
 
 use advanced_testcase;
-use invalid_parameter_exception;
 use core\clock;
+use core\exception\{coding_exception, invalid_parameter_exception};
 use core_cohort\reportbuilder\audience\cohortmember;
 use core_reportbuilder_generator;
 use core_reportbuilder\local\models\schedule as model;
+use core_reportbuilder\local\schedules\base;
 use core_reportbuilder\reportbuilder\audience\manual;
+use core_reportbuilder\reportbuilder\schedule\message;
 use core_user\reportbuilder\datasource\users;
 
 /**
@@ -49,6 +51,39 @@ final class schedule_test extends advanced_testcase {
     }
 
     /**
+     * Data provider for {@see test_valid}
+     *
+     * @return array[]
+     */
+    public static function valid_provider(): array {
+        return [
+            [message::class, true],
+            [base::class, false],
+            [\core\url::class, false],
+            ['doesntexist', false],
+        ];
+    }
+
+    /**
+     * Test validity of given classname as a schedule type
+     *
+     * @param string $classname
+     * @param bool $expected
+     *
+     * @dataProvider valid_provider
+     */
+    public function test_valid(string $classname, bool $expected): void {
+        $this->assertEquals($expected, schedule::valid($classname));
+    }
+
+    /**
+     * Test getting list of available schedules
+     */
+    public function test_get_schedules(): void {
+        $this->assertContains(message::class, schedule::get_schedules());
+    }
+
+    /**
      * Test create schedule
      */
     public function test_create_schedule(): void {
@@ -64,17 +99,19 @@ final class schedule_test extends advanced_testcase {
         $schedule = schedule::create_schedule((object) [
             'name' => 'My schedule',
             'reportid' => $report->get('id'),
+            'classname' => message::class,
+            'configdata' => json_encode(['subject' => 'Hello', 'message' => 'Hola']),
             'format' => 'csv',
-            'subject' => 'Hello',
-            'message' => 'Hola',
             'timescheduled' => $timescheduled,
         ]);
 
+        $this->assertDebuggingCalled(null, DEBUG_DEVELOPER);
+
         $this->assertEquals('My schedule', $schedule->get('name'));
         $this->assertEquals($report->get('id'), $schedule->get('reportid'));
+        $this->assertEquals(message::class, $schedule->get('classname'));
+        $this->assertEquals('{"subject":"Hello","message":"Hola"}', $schedule->get('configdata'));
         $this->assertEquals('csv', $schedule->get('format'));
-        $this->assertEquals('Hello', $schedule->get('subject'));
-        $this->assertEquals('Hola', $schedule->get('message'));
         $this->assertEquals($timescheduled, $schedule->get('timescheduled'));
         $this->assertEquals($timescheduled, $schedule->get('timenextsend'));
     }
@@ -263,6 +300,7 @@ final class schedule_test extends advanced_testcase {
 
         // There is only one row in the report (the only user on the site).
         $count = schedule::get_schedule_report_count($schedule);
+        $this->assertDebuggingCalled(null, DEBUG_DEVELOPER);
         $this->assertEquals(1, $count);
     }
 
@@ -412,6 +450,9 @@ final class schedule_test extends advanced_testcase {
             'Recurrence, time scheduled in future' => [
                 model::RECURRENCE_DAILY, '2021-06-05 12:00', '2021-06-05 12:00',
             ],
+            'Hourly recurrence' => [
+                model::RECURRENCE_HOURLY, '2021-06-04 20:30', '2021-06-04 23:30',
+            ],
             'Daily recurrence' => [
                 model::RECURRENCE_DAILY, '2021-06-02 12:00', '2021-06-05 12:00',
             ],
@@ -456,5 +497,28 @@ final class schedule_test extends advanced_testcase {
 
         $scheduleexpected = strtotime("{$expected} UTC");
         $this->assertEquals($scheduleexpected, schedule::calculate_next_send_time($schedule));
+    }
+
+    /**
+     * Test for calculating next schedule send time with an invalid recurrence value
+     */
+    public function test_calculate_next_send_time_invalid_recurrence(): void {
+        $this->resetAfterTest();
+
+        /** @var core_reportbuilder_generator $generator */
+        $generator = $this->getDataGenerator()->get_plugin_generator('core_reportbuilder');
+        $report = $generator->create_report(['name' => 'My report', 'source' => users::class]);
+
+        // Create model manually, as the generator automatically calculates next send itself.
+        $schedule = new model(0, (object) [
+            'reportid' => $report->get('id'),
+            'name' => 'My schedule',
+            'recurrence' => -42,
+            'timescheduled' => $this->clock->time() - DAYSECS,
+        ]);
+
+        $this->expectException(coding_exception::class);
+        $this->expectExceptionMessage('Invalid recurrence value');
+        schedule::calculate_next_send_time($schedule);
     }
 }

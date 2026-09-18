@@ -1,12 +1,32 @@
 # core_user (subsystem) Upgrade notes
 
-## 4.5.5
+## 5.1.4
+
+### Added
+
+- Added new optional parameter `userid` to the `user_remove_user_device` function.
+
+  For more information see [MDL-87795](https://tracker.moodle.org/browse/MDL-87795)
+
+## 5.1
 
 ### Added
 
 - New method `\core_user::get_dummy_fullname(...)` for returning dummy user fullname comprised of configured name fields only
 
   For more information see [MDL-82132](https://tracker.moodle.org/browse/MDL-82132)
+
+## 5.0
+
+### Removed
+
+- Final removal of the following user preference helpers, please use the `core_user/repository` module instead:
+
+  - `user_preference_allow_ajax_update`
+  - `M.util.set_user_preference`
+  - `lib/ajax/setuserpref.php`
+
+  For more information see [MDL-79124](https://tracker.moodle.org/browse/MDL-79124)
 
 ## 4.5
 

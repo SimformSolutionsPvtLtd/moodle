@@ -109,7 +109,7 @@ class assign_grading_table extends table_sql implements renderable {
         $this->define_baseurl($url);
 
         // Do some business - then set the sql.
-        $currentgroup = groups_get_activity_group($assignment->get_course_module(), true);
+        $currentgroup = groups_get_activity_group($assignment->get_course_module(), true, participationonly: false);
 
         if ($rowoffset) {
             $this->rownum = $rowoffset - 1;
@@ -321,6 +321,11 @@ class assign_grading_table extends table_sql implements renderable {
                 $where .= '))';
                 $params['submitted'] = ASSIGN_SUBMISSION_STATUS_SUBMITTED;
 
+            } else if ($filter == ASSIGN_FILTER_GRADED) {
+                $where .= ' AND (s.timemodified IS NOT NULL AND
+                                 s.timemodified < g.timemodified AND g.grade IS NOT NULL)';
+                $params['submitted'] = ASSIGN_SUBMISSION_STATUS_SUBMITTED;
+
             } else if ($filter == ASSIGN_FILTER_GRANTED_EXTENSION) {
                 $where .= ' AND uf.extensionduedate > 0 ';
 
@@ -382,10 +387,10 @@ class assign_grading_table extends table_sql implements renderable {
             $visibleheader = html_writer::span(get_string('select'), '', ['aria-hidden' => 'true']);
             // The actual accessible name for the column header which provides more context about the column's purpose to
             // screen reader users.
-            $bulkactionsselection = html_writer::span(get_string('bulkactionsselection', 'assign'), 'sr-only');
+            $bulkactionsselection = html_writer::span(get_string('bulkactionsselection', 'assign'), 'visually-hidden');
 
             // The select all checkbox.
-            $selectalllabel = html_writer::label(get_string('selectall'), 'selectall', false, ['class' => 'sr-only']);
+            $selectalllabel = html_writer::label(get_string('selectall'), 'selectall', false, ['class' => 'visually-hidden']);
             $selectallcheckbox = html_writer::empty_tag(
                 'input',
                 [
@@ -557,7 +562,7 @@ class assign_grading_table extends table_sql implements renderable {
         foreach ($extrauserfields as $extrafield) {
              $this->column_class($extrafield, $extrafield);
         }
-        $this->no_sorting('recordid');
+
         $this->no_sorting('finalgrade');
         $this->no_sorting('userid');
         $this->no_sorting('select');
@@ -768,9 +773,10 @@ class assign_grading_table extends table_sql implements renderable {
      * @param boolean $editable
      * @param int $userid The user id of the user this grade belongs to
      * @param int $modified Timestamp showing when the grade was last modified
+     * @param float $deductedmark The deducted mark if penalty is applied
      * @return string The formatted grade
      */
-    public function display_grade($grade, $editable, $userid, $modified) {
+    public function display_grade($grade, $editable, $userid, $modified, float $deductedmark = 0) {
         if ($this->is_downloading()) {
             if ($this->assignment->get_instance()->grade >= 0) {
                 if ($grade == -1 || $grade === null) {
@@ -787,7 +793,7 @@ class assign_grading_table extends table_sql implements renderable {
                 return $scale;
             }
         }
-        return $this->assignment->display_grade($grade, $editable, $userid, $modified);
+        return $this->assignment->display_grade($grade, $editable, $userid, $modified, $deductedmark);
     }
 
     /**
@@ -1050,7 +1056,7 @@ class assign_grading_table extends table_sql implements renderable {
 
         $grade = $this->get_gradebook_data_for_user($row->userid);
         if ($grade) {
-            $o = $this->display_grade($grade->grade, false, $row->userid, $row->timemarked);
+            $o = $this->display_grade($grade->grade, false, $row->userid, $row->timemarked, $grade->deductedmark);
         }
 
         return $o;
@@ -1288,7 +1294,7 @@ class assign_grading_table extends table_sql implements renderable {
                         $submissioninfo .= $this->output->container(get_string('graded', 'assign'), 'submissiongraded');
                     }
                 } else if (!$timesubmitted || $status == ASSIGN_SUBMISSION_STATUS_NEW) {
-                    $now = time();
+                    $now = \core\di::get(\core\clock::class)->time();
                     if ($due && ($now > $due)) {
                         $overduestr = get_string('overdue', 'assign', format_time($now - $due));
                         $submissioninfo .= $this->output->container($overduestr, 'overduesubmission');
@@ -1806,8 +1812,9 @@ class assign_grading_table extends table_sql implements renderable {
         if (empty($assignment->blindmarking)) {
             $result = array_merge($result, array('userid' => SORT_ASC));
         } else {
+            $now = \core\di::get(\core\clock::class)->time();
             $result = array_merge($result, [
-                    'COALESCE(s.timecreated, '  . time()        . ')'   => SORT_ASC,
+                    'COALESCE(s.timecreated, '  . $now          . ')'   => SORT_ASC,
                     'COALESCE(s.id, '           . PHP_INT_MAX   . ')'   => SORT_ASC,
                     'um.id'                                             => SORT_ASC,
                 ]);
@@ -1953,7 +1960,7 @@ class assign_grading_table extends table_sql implements renderable {
         // Start of main data table.
 
         if ($this->responsive) {
-            echo html_writer::start_tag('div', ['class' => 'no-overflow']);
+            echo html_writer::start_tag('div', ['class' => 'table-responsive']);
         }
         echo html_writer::start_tag('table', $this->attributes) . $this->render_caption();
     }

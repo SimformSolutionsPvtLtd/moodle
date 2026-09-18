@@ -27,6 +27,8 @@ defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->libdir . '/filelib.php');
 
+use core\url;
+
 /**
  * Blog_entry class. Represents an entry in a user's blog. Contains all methods for managing this entry.
  * This class does not contain any HTML-generating code. See blog_listing sub-classes for such code.
@@ -180,8 +182,6 @@ class blog_entry implements renderable {
 
         // Entry comments.
         if (!empty($CFG->usecomments) and $CFG->blogusecomments) {
-            require_once($CFG->dirroot . '/comment/lib.php');
-
             $cmt = new stdClass();
             $cmt->context = context_user::instance($this->userid);
             $cmt->courseid = $PAGE->course->id;
@@ -189,7 +189,7 @@ class blog_entry implements renderable {
             $cmt->itemid = $this->id;
             $cmt->showcount = $CFG->blogshowcommentscount;
             $cmt->component = 'blog';
-            $this->renderable->comment = new comment($cmt);
+            $this->renderable->comment = new \core_comment\manager($cmt);
         }
 
         $this->summary = file_rewrite_pluginfile_urls($this->summary, 'pluginfile.php', SYSCONTEXTID, 'blog', 'post', $this->id);
@@ -1175,8 +1175,14 @@ class blog_entry_attachment implements renderable {
 
         $this->file = $file;
         $this->filename = $file->get_filename();
-        $this->url = file_encode_url($CFG->wwwroot . '/pluginfile.php',
-                                     '/' . SYSCONTEXTID . '/blog/attachment/' . $entryid . '/' . $this->filename);
+        $this->url = url::make_pluginfile_url(
+            contextid: SYSCONTEXTID,
+            component: 'blog',
+            area: 'attachment',
+            itemid: $entryid,
+            pathname: '/',
+            filename: $this->filename
+        )->out();
     }
 
 }

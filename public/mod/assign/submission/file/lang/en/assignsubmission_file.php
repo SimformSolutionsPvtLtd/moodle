@@ -34,6 +34,7 @@ $string['enabled'] = 'File submissions';
 $string['enabled_help'] = 'If enabled, students are able to upload one or more files as their submission.';
 $string['eventassessableuploaded'] = 'A file has been uploaded.';
 $string['file'] = 'File submissions';
+$string['filewithsize'] = '{$a->filename} ({$a->size})';
 $string['maxbytes'] = 'Maximum file size';
 $string['maxfiles'] = 'Maximum files per submission';
 $string['maxfiles_help'] = 'If file submissions are enabled, each assignment can be set to accept up to this number of files for their submission.';
@@ -45,6 +46,3 @@ $string['pluginname'] = 'File submissions';
 $string['privacy:metadata:filepurpose'] = 'The files loaded for this assignment submission';
 $string['siteuploadlimit'] = 'Site upload limit';
 $string['submissionfilearea'] = 'Uploaded submission files';
-
-// Deprecated since Moodle 4.3.
-$string['numfilesforlog'] = 'The number of file(s) : {$a} file(s).';

@@ -40,17 +40,20 @@ class response_generate_image extends response_base {
      *
      * @param bool $success The success status of the action.
      * @param int $errorcode Error code. Must exist if success is false.
-     * @param string $errormessage Error message. Must exist if success is false
+     * @param string $error Error name. Must exist if success is false
+     * @param string $errormessage Error message.
      */
     public function __construct(
         bool $success,
         int $errorcode = 0,
+        string $error = '',
         string $errormessage = '',
     ) {
         parent::__construct(
             success: $success,
             actionname: 'generate_image',
             errorcode: $errorcode,
+            error: $error,
             errormessage: $errormessage,
         );
     }
@@ -60,6 +63,7 @@ class response_generate_image extends response_base {
         $this->draftfile = $response['draftfile'] ?? null;
         $this->revisedprompt = $response['revisedprompt'] ?? null;
         $this->sourceurl = $response['sourceurl'] ?? null;
+        $this->model = $response['model'] ?? null;
     }
 
     #[\Override]
@@ -68,6 +72,7 @@ class response_generate_image extends response_base {
             'draftfile' => $this->draftfile,
             'revisedprompt' => $this->revisedprompt,
             'sourceurl' => $this->sourceurl,
+            'model' => $this->model,
         ];
     }
 }

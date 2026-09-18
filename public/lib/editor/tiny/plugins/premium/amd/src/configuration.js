@@ -25,7 +25,8 @@ import {
     addToolbarButton,
     addMenubarItem,
     addToolbarSection,
-    addContextmenuItem
+    addContextmenuItem,
+    removeMenubarItem,
 } from 'editor_tiny/utils';
 import {
     getInitialPluginConfiguration,
@@ -44,12 +45,14 @@ export const configure = (instanceConfig, options) => {
     // Due to the timing the plugin options are available, we need to get at the options in this slightly unconventional way.
     const pluginOptions = getInitialPluginConfiguration(options);
     const enabledPremiumPlugins = pluginOptions[getPluginOptionName('tiny_premium/plugin', 'premiumplugins')].split(',');
+    let serviceUrls = pluginOptions[getPluginOptionName('tiny_premium/plugin', 'serviceurls')];
 
     let plugins = instanceConfig.plugins;
     let menu = instanceConfig.menu;
     let toolbar = configureToolbar(instanceConfig.toolbar);
     let contextmenu = instanceConfig.contextmenu;
     let pluginsettings = {};
+    pluginsettings = {...pluginsettings, ...serviceUrls};
 
     // Advanced Table.
     if (enabledPremiumPlugins.indexOf('advtable') !== -1) {
@@ -138,6 +141,17 @@ export const configure = (instanceConfig, options) => {
     // Powerpaste.
     if (enabledPremiumPlugins.indexOf('powerpaste') !== -1) {
         plugins += ` powerpaste`;
+    }
+    // Accessibility Checker.
+    if (enabledPremiumPlugins.indexOf('a11ychecker') !== -1) {
+        plugins += ` a11ychecker`;
+        toolbar = addToolbarButton(toolbar, 'premium_a', 'a11ycheck');
+        // Tiny's allychecker plugin is listed in the menu by default. Let's remove it and add it where we want it.
+        menu = removeMenubarItem(menu, 'tools', 'a11ycheck');
+        // Positioning the a11ychecker in the same position as tiny_accessibilitychecker (for familiarity).
+        menu = addMenubarItem(menu, 'tools', 'a11ycheck', 'count');
+        // Finally, hide tiny_accessibilitychecker so there is no confusion.
+        menu = removeMenubarItem(menu, 'tools', 'tiny_accessibilitychecker');
     }
 
     return {

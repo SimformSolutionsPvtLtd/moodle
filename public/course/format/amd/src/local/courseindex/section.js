@@ -26,7 +26,7 @@
 
 import SectionTitle from 'core_courseformat/local/courseindex/sectiontitle';
 import DndSection from 'core_courseformat/local/courseeditor/dndsection';
-import jQuery from 'jquery';
+import log from "core/log";
 
 export default class Component extends DndSection {
 
@@ -43,7 +43,7 @@ export default class Component extends DndSection {
             SECTION_TITLE: `[data-for='section_title']`,
             CM_LAST: `[data-for="cm"]:last-child`,
             DND_ALLOWED: `[data-courseindexdndallowed='true']`,
-            COLLAPSE: `[data-toggle="collapse"]`,
+            COLLAPSE: `[data-bs-toggle="collapse"]`,
             TREE_ITEM: `[role="treeitem"]`,
         };
         // Default classes to toggle on refresh.
@@ -70,8 +70,14 @@ export default class Component extends DndSection {
      * @return {Component}
      */
     static init(target, selectors) {
+        let element = document.querySelector(target);
+        // TODO Remove this if condition as part of MDL-83851.
+        if (!element) {
+            log.debug('Init component with id is deprecated, use a query selector instead.');
+            element = document.getElementById(target);
+        }
         return new this({
-            element: document.getElementById(target),
+            element,
             selectors,
         });
     }
@@ -97,7 +103,8 @@ export default class Component extends DndSection {
         }
         // Check if the current url is the section url.
         const section = state.section.get(this.id);
-        if (window.location.href == section.sectionurl.replace(/&amp;/g, "&")) {
+        // Sections urls may be null.
+        if (window.location.href == section?.sectionurl?.replace(/&amp;/g, "&")) {
             this.reactive.dispatch('setPageItem', 'section', this.id);
             sectionItem.scrollIntoView();
         }
@@ -124,9 +131,8 @@ export default class Component extends DndSection {
         // The section can be expanded before this component is ready, so the initial
         // value is taken from the collapsible itself instead of the state.
         this._refreshExpandedState(treeItem, collapsible);
-        // Bootstrap 4 collapse events are triggered through jQuery, so they must be listened
-        // to with jQuery too: a native addEventListener never receives them.
-        jQuery(collapsible).on('shown.bs.collapse hidden.bs.collapse', () => this._refreshExpandedState(treeItem, collapsible));
+        this.addEventListener(collapsible, 'shown.bs.collapse', () => this._refreshExpandedState(treeItem, collapsible));
+        this.addEventListener(collapsible, 'hidden.bs.collapse', () => this._refreshExpandedState(treeItem, collapsible));
     }
 
     /**

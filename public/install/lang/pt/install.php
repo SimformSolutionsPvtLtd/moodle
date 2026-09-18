@@ -21,7 +21,7 @@
  * needed during the very first steps of installation. This file was
  * generated automatically by export-installer.php (which is part of AMOS
  * {@link https://moodledev.io/general/projects/api/amos}) using the
- * list of strings defined in install/stringnames.txt file.
+ * list of strings defined in public/install/stringnames.txt file.
  *
  * @package   installer
  * @license   https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -36,7 +36,7 @@ $string['chooselanguagesub'] = 'Selecione o idioma a utilizar durante a instala�
 $string['clialreadyconfigured'] = 'O ficheiro config.php já existe. Use \'admin/cli/install_database.php\' para instalar o Moodle para este site.';
 $string['clialreadyinstalled'] = 'O ficheiro config.php já existe, use admin/cli/install_database.php para atualizar o Moodle para este site.';
 $string['cliinstallheader'] = 'Programa para instalação do Moodle <b>{$a}</b> através da linha de comandos';
-$string['clitablesexist'] = 'A instalação através da linha de comandos (CLI) não pode continuar porque a base de dados já contém as tabelas a criar.';
+$string['clitablesexist'] = 'As tabelas da base de dados já existem; a instalação através da Interface de Linha de Comandos (CLI) não pode continuar.';
 $string['databasehost'] = 'Servidor da base de dados';
 $string['databasename'] = 'Nome da base de dados';
 $string['databasetypehead'] = 'Escolha o <i>driver</i> da base de dados';
@@ -49,7 +49,6 @@ $string['environmentsub2'] = 'Cada nova versão do Moodle tem pré-requisitos m�
 $string['errorsinenvironment'] = 'A verificação do sistema falhou!';
 $string['installation'] = 'Instalação';
 $string['langdownloaderror'] = 'Não foi possível descarregar o idioma \'<b>{$a}</b>\' . O processo de instalação continuará em Inglês.';
-$string['memorylimithelp'] = '<p>O limite de memória para o PHP definido atualmente no servidor é <b>{$a}</b>.</p><p>Um número elevado de módulos em utilização ou de utilizadores registados pode fazer com que o Moodle apresente problemas de falta de memória.</p><p>É recomendado que o PHP seja configurado com um limite de memória de pelo menos 40MB. Esta configuração pode ser definida de diversas formas:</p><ol><li>Compilação do PHP com o parâmetro <b>--enable-memory-limit</b>. Esta definição permitirá ao próprio Moodle definir o valor a utilizar.</li><li>Alteração do parâmetro <b>memory_limit</b> no ficheiro de configuração do PHP para um valor igual ou superior a 40MB.</li><li>Criação de um ficheiro <b>.htaccess</b> na raiz da pasta do Moodle com a linha <b>php_value memory_limit 40M</b><p><strong>Atenção</strong>: Em alguns servidores esta configuração impedirá o funcionamento de <b>todas</b> as páginas PHP. Nestes casos, não poderá ser utilizado o ficheiro <b>.htaccess</b>.</p></li></ol>';
 $string['paths'] = 'Caminhos';
 $string['pathserrcreatedataroot'] = 'O programa de instalação não conseguiu criar a pasta dos dados <b>{$a->dataroot}</b>.';
 $string['pathshead'] = 'Confirmar caminhos';
@@ -66,9 +65,8 @@ $string['pathsunsecuredataroot'] = 'A localização da pasta dos dados não é s
 $string['pathswrongadmindir'] = 'A pasta <b>admin</b> não existe';
 $string['phpextension'] = 'Extensão <b>{$a}</b> do PHP';
 $string['phpversion'] = 'Versão do PHP';
-$string['phpversionhelp'] = '<p>A instalação do Moodle só é possível se no servidor estiver instalada, pelo menos, a versão 5.6.5 do PHP (a versão 7.0.x tem algumas limitações).</p>
-<p>A versão atualmente instalada é {$a}.</p>
-<p>É necessário atualizar a versão do PHP ou migrar para um servidor com a referida versão.</p>';
+$string['webserverconfigproblemdescription'] = 'O seu servidor web não está configurado para impedir o acesso a ficheiros fora do diretório /public. Para mais pdetalhes sobre como configurar corretamente o seu servidor web, consulte a página <a href="https://docs.moodle.org/en/Upgrading#Code_directories_restructure">Atualização - Reestruturação dos diretórios de código</a>. Após a reconfiguração, aceda novamente à <a href="{$a}">raiz da web</a>.';
+$string['webservernotconfigured'] = 'Servidor web não configurado';
 $string['welcomep10'] = '{$a->installername} ({$a->installerversion})';
 $string['welcomep20'] = 'A apresentação desta página confirma a correta instalação e ativação do pacote <strong>{$a->packname} {$a->packversion}</strong> no servidor.';
 $string['welcomep30'] = 'Esta versão do pacote <strong>{$a->installername}</strong> inclui as aplicações necessárias para o correto funcionamento do  <strong>Moodle</strong>, nomeadamente:';

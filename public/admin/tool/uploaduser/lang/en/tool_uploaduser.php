@@ -35,10 +35,12 @@ $string['clihelp'] = 'Print out this help.';
 $string['climissingargument'] = 'Argument --{$a} is required';
 $string['clititle'] = 'Command line Upload user tool.';
 $string['clivalidationerror'] = 'Validation error:';
+$string['csvcontainserrors'] = 'Errors were found in the CSV file. Invalid rows will be skipped.';
 $string['csvdelimiter'] = 'CSV separator';
 $string['defaultvalues'] = 'Default values';
 $string['deleteerrors'] = 'Delete errors';
 $string['duplicateemail'] = 'Multiple users with email {$a} detected';
+$string['duplicatevalueupload'] = 'This value has already been used in the uploaded users file.';
 $string['encoding'] = 'Encoding';
 $string['errormnetadd'] = 'Can not add remote users';
 $string['errorprefix'] = 'Error:';
@@ -120,6 +122,3 @@ $string['uuupdatetype'] = 'Existing user details';
 $string['uuusernametemplate'] = 'Username template';
 $string['privacy:metadata'] = 'The User upload plugin does not store any personal data.';
 $string['warningprefix'] = 'Warning:';
-
-// Deprecated since Moodle 4.4.
-$string['invaliduserdata'] = 'Invalid data detected for user {$a} and it has been automatically cleaned.';

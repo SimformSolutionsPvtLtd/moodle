@@ -28,7 +28,7 @@ function glossary_show_entry_entrylist(
 ) {
     $return = false;
 
-    echo '<table class="glossarypost entrylist" cellspacing="0" role="presentation">';
+    echo '<table class="glossarypost entrylist table-reboot" cellspacing="0" role="presentation">';
 
     echo '<tr valign="top">';
     echo '<td class="entry">';

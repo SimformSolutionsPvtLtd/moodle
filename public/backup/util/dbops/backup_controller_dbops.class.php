@@ -161,6 +161,28 @@ abstract class backup_controller_dbops extends backup_dbops {
         $dbman->create_temp_table($xmldb_table); // And create it
     }
 
+    /**
+     * Create temporary tables to store a partial copies of question category data from the backup_ids_temp table.
+     *
+     * This is to work around MySQL's restruction on joining the same temporary table multiple times in the same query. It isn't
+     * necessary on PostgreSQL (which can join temporary tables multiple times) or MSSQL (which doesn't really use temporary tables)
+     * but doing it this way keeps things database-agnostic.
+     */
+    public static function create_question_category_temp_tables(): void {
+        global $DB;
+        $dbman = $DB->get_manager();
+
+        foreach (['question_category_complete_temp', 'question_category_partial_temp'] as $tablename) {
+            $xmldbtable = new xmldb_table($tablename);
+            $xmldbtable->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE);
+            $xmldbtable->add_field('backupid', XMLDB_TYPE_CHAR, 32, null, XMLDB_NOTNULL);
+            $xmldbtable->add_field('itemid', XMLDB_TYPE_INTEGER, 10, null, XMLDB_NOTNULL);
+            $xmldbtable->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+
+            $dbman->create_temp_table($xmldbtable);
+        }
+    }
+
     public static function drop_backup_ids_temp_table($backupid) {
         global $DB;
         $dbman = $DB->get_manager(); // We are going to use database_manager services
@@ -169,6 +191,21 @@ abstract class backup_controller_dbops extends backup_dbops {
         if ($dbman->table_exists($targettablename)) {
             $table = new xmldb_table($targettablename);
             $dbman->drop_table($table); // And drop it
+        }
+    }
+
+    /**
+     * Dispose of the additional temporary tables.
+     */
+    public static function drop_question_category_temp_tables(): void {
+        global $DB;
+        $dbman = $DB->get_manager();
+
+        foreach (['question_category_complete_temp', 'question_category_partial_temp'] as $tablename) {
+            if ($dbman->table_exists($tablename)) {
+                $xmldbtable = new xmldb_table($tablename);
+                $dbman->drop_table($xmldbtable);
+            }
         }
     }
 
@@ -569,7 +606,6 @@ abstract class backup_controller_dbops extends backup_dbops {
                         'backup_general_userscompletion'    => 'userscompletion',
                         'backup_general_logs'               => 'logs',
                         'backup_general_histories'          => 'grade_histories',
-                        'backup_general_questionbank'       => 'questionbank',
                         'backup_general_groups'             => 'groups',
                         'backup_general_competencies'       => 'competencies',
                         'backup_general_customfield'        => 'customfield',
@@ -588,7 +624,6 @@ abstract class backup_controller_dbops extends backup_dbops {
                         'backup_import_badges'             => 'badges',
                         'backup_import_calendarevents'     => 'calendarevents',
                         'backup_import_permissions'        => 'permissions',
-                        'backup_import_questionbank'       => 'questionbank',
                         'backup_import_groups'             => 'groups',
                         'backup_import_competencies'       => 'competencies',
                         'backup_import_customfield'        => 'customfield',
@@ -603,7 +638,6 @@ abstract class backup_controller_dbops extends backup_dbops {
                          'activities',
                          'blocks',
                          'filters',
-                         'questionbank'
                     );
                     self::force_enable_settings($controller, $settings);
                     // Badges are not included by default when duplicating activities.
@@ -625,7 +659,6 @@ abstract class backup_controller_dbops extends backup_dbops {
                         'backup_auto_userscompletion'    => 'userscompletion',
                         'backup_auto_logs'               => 'logs',
                         'backup_auto_histories'          => 'grade_histories',
-                        'backup_auto_questionbank'       => 'questionbank',
                         'backup_auto_groups'             => 'groups',
                         'backup_auto_competencies'       => 'competencies',
                         'backup_auto_customfield'        => 'customfield',

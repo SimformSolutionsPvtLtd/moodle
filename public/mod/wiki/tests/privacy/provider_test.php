@@ -252,7 +252,7 @@ final class provider_test extends provider_testcase {
         $this->assertEqualsCanonicalizing([
             $this->contexts[1]->id,
             $this->contexts[2]->id,
-        ], $contextids);
+        ], array_values($contextids));
 
         // Get contexts for the second user.
         $contextids = provider::get_contexts_for_userid($this->users[2]->id)->get_contextids();
@@ -260,7 +260,7 @@ final class provider_test extends provider_testcase {
             $this->contexts[1]->id,
             $this->contexts[2]->id,
             $this->contexts[3]->id,
-        ], $contextids);
+        ], array_values($contextids));
 
         // Get contexts for the third user.
         $contextids = provider::get_contexts_for_userid($this->users[3]->id)->get_contextids();
@@ -268,7 +268,7 @@ final class provider_test extends provider_testcase {
             $this->contexts[1]->id,
             $this->contexts[2]->id,
             $this->contexts[3]->id,
-        ], $contextids);
+        ], array_values($contextids));
     }
 
     /**
@@ -488,13 +488,12 @@ final class provider_test extends provider_testcase {
     /**
      * Creates a comment object
      *
-     * @param  stdClass $page
+     * @param  \stdClass $page
      * @param  string   $text
-     * @return comment The comment object.
+     * @return \core_comment\manager The comment object.
      */
     protected function add_comment($page, $text) {
-        global $DB, $CFG, $USER;
-        require_once($CFG->dirroot . '/comment/lib.php');
+        global $DB;
         $record = $DB->get_record_sql('SELECT cm.id, cm.course FROM {course_modules} cm
             JOIN {modules} m ON m.name = ? AND m.id = cm.module
             JOIN {wiki} w ON cm.instance = w.id
@@ -507,7 +506,7 @@ final class provider_test extends provider_testcase {
         $args->area = 'wiki_page';
         $args->itemid = $page->id;
         $args->component = 'mod_wiki';
-        $comment = new \comment($args);
+        $comment = new \core_comment\manager($args);
         $comment->set_post_permission(true);
         $comment->add($text);
         return $comment;

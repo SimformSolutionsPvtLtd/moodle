@@ -44,7 +44,7 @@ final class response_generate_text_test extends \advanced_testcase {
      */
     public function test_construct_error(): void {
         $this->expectException(\coding_exception::class);
-        $this->expectExceptionMessage('Error code and message must exist in an error response.');
+        $this->expectExceptionMessage('Error code and name must exist in an error response.');
         new response_generate_text(
             success: false,
         );
@@ -74,5 +74,18 @@ final class response_generate_text_test extends \advanced_testcase {
         $this->assertEquals($body['finishreason'], $actionresponse->get_response_data()['finishreason']);
         $this->assertEquals($body['prompttokens'], $actionresponse->get_response_data()['prompttokens']);
         $this->assertEquals($body['completiontokens'], $actionresponse->get_response_data()['completiontokens']);
+    }
+
+    /**
+     * Test that reasoning tags are stripped from generated content.
+     */
+    public function test_set_response_data_strips_reasoning_tags(): void {
+        $actionresponse = new response_generate_text(success: true);
+        $actionresponse->set_response_data([
+            'generatedcontent' => '<think>Internal reasoning.</think>The actual response.',
+            'finishreason' => 'stop',
+        ]);
+
+        $this->assertEquals('The actual response.', $actionresponse->get_response_data()['generatedcontent']);
     }
 }

@@ -27,6 +27,7 @@ namespace core;
 
 use core_filetypes;
 use curl;
+use PHPUnit\Framework\Attributes\CoversFunction;
 use repository;
 
 defined('MOODLE_INTERNAL') || die();
@@ -43,6 +44,7 @@ require_once($CFG->dirroot . '/repository/lib.php');
  * @copyright 2009 Jerome Mouneyrac
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[CoversFunction('file_save_draft_area_files')]
 final class filelib_test extends \advanced_testcase {
     public function test_format_postdata_for_curlcall(): void {
 
@@ -511,6 +513,27 @@ final class filelib_test extends \advanced_testcase {
         $this->assertNotEquals(0, $curl->get_errno());
         $this->assertNotEquals('47250a973d1b88d9445f94db4ef2c97a', md5($contents));
 
+        // Test multiple queries with proxy.
+        $curl = new \curl(['debug' => 1]);
+        ob_start();
+        $requests = [[
+            'nobody' => true,
+            'header' => 1,
+            'url' => $testurl,
+            'returntransfer' => true,
+        ],
+        [
+            'nobody' => true,
+            'header' => 1,
+            'url' => $testurl,
+            'returntransfer' => true,
+        ]];
+        $curl->download($requests);
+        $output = ob_get_contents();
+        ob_end_clean();
+        // We must have exactly 2 occurrences of ["CURLOPT_PROXY"].
+        $this->assertMatchesRegularExpression('/(\["CURLOPT_PROXY"\].*){2}/ms', $output);
+
         // Test with proxy bypass.
         $testurlhost = parse_url($testurl, PHP_URL_HOST);
         $CFG->proxybypass = $testurlhost;
@@ -518,6 +541,26 @@ final class filelib_test extends \advanced_testcase {
         $contents = $curl->get($testurl);
         $this->assertSame(0, $curl->get_errno());
         $this->assertSame('47250a973d1b88d9445f94db4ef2c97a', md5($contents));
+
+        // Test multiple queries with proxy bypass.
+        $curl = new \curl(['debug' => 1]);
+        ob_start();
+        $requests = [[
+            'nobody' => true,
+            'header' => 1,
+            'url' => $testurl,
+            'returntransfer' => true,
+        ],
+        [
+            'nobody' => true,
+            'header' => 1,
+            'url' => $testurl,
+            'returntransfer' => true,
+        ]];
+        $curl->download($requests);
+        $output = ob_get_contents();
+        ob_end_clean();
+        $this->assertStringNotContainsString('["CURLOPT_PROXY"]', $output);
 
         $CFG->proxyhost = $oldproxy;
         $CFG->proxybypass = $oldproxybypass;
@@ -896,6 +939,52 @@ final class filelib_test extends \advanced_testcase {
         $text = file_save_draft_area_files(IGNORE_FILE_MERGE, $usercontext->id, 'user', 'private', 0, null, $inlinetext);
         $this->assertCount(2, $fs->get_area_files($usercontext->id, 'user', 'private'));
         $this->assertEquals($inlinetext, $text);
+    }
+
+    /**
+     * Test saving draft files into another draft area preserves draft source metadata.
+     */
+    public function test_file_save_draft_area_files_preserves_source_metadata_for_draft_destination(): void {
+        global $USER;
+
+        $this->resetAfterTest(true);
+        $this->setAdminUser();
+
+        $fs = get_file_storage();
+        $syscontext = \context_system::instance();
+        $usercontext = \context_user::instance($USER->id);
+        $filename = 'license.jpg';
+        $originalrecord = [
+            'contextid' => $syscontext->id,
+            'component' => 'core',
+            'filearea' => 'unittest',
+            'itemid' => 0,
+            'filepath' => '/',
+            'filename' => $filename,
+        ];
+
+        $fs->create_file_from_string($originalrecord, 'Original file content');
+
+        $destinationdraftitemid = file_get_unused_draft_itemid();
+        $source = (object) ['source' => $filename, 'original' => $fs->pack_reference($originalrecord)];
+        $serialisedsource = serialize($source);
+        $sourcedraftitemid = file_get_unused_draft_itemid();
+        $sourcefile = $fs->create_file_from_string([
+            'contextid' => $usercontext->id,
+            'component' => 'user',
+            'filearea' => 'draft',
+            'itemid' => $sourcedraftitemid,
+            'filepath' => '/',
+            'filename' => $filename,
+        ], 'Draft file content');
+
+        $sourcefile->set_source($serialisedsource);
+        file_save_draft_area_files($sourcedraftitemid, $usercontext->id, 'user', 'draft', $destinationdraftitemid);
+
+        $destinationfile = $fs->get_file($usercontext->id, 'user', 'draft', $destinationdraftitemid, '/', $filename);
+
+        $this->assertInstanceOf(\stored_file::class, $destinationfile);
+        $this->assertSame($serialisedsource, $destinationfile->get_source());
     }
 
     /**
@@ -2125,6 +2214,48 @@ EOF;
             $filepath . '. Buffer contents (first 20 characters): test text', $output);
         $this->assertStringContainsString('Non-empty default output handler buffer detected while serving the file ' .
             $filename . '. Buffer contents (first 20 characters): test text', $output);
+    }
+
+    /**
+     * Test curl removeopt method.
+     *
+     * @covers \curl::removeopt
+     */
+    public function test_curl_removeopt(): void {
+        $curl = new testable_curl();
+
+        // Short option name should be auto-prefixed with CURLOPT_ and then removed.
+        $curl->setopt(['USERPWD' => 'user:pass']);
+        $this->assertArrayHasKey('CURLOPT_USERPWD', $curl->get_options());
+        $curl->removeopt(['USERPWD']);
+        $this->assertArrayNotHasKey('CURLOPT_USERPWD', $curl->get_options());
+
+        // Full CURLOPT_ name should be normalised to uppercase and removed.
+        $curl->setopt(['CURLOPT_TIMEOUT' => 30]);
+        $this->assertArrayHasKey('CURLOPT_TIMEOUT', $curl->get_options());
+        $curl->removeopt(['CURLOPT_TIMEOUT']);
+        $this->assertArrayNotHasKey('CURLOPT_TIMEOUT', $curl->get_options());
+
+        // CURLINFO_ option should not be prefixed with CURLOPT_.
+        $curl->setopt(['CURLINFO_HEADER_OUT' => 1]);
+        $this->assertArrayHasKey('CURLINFO_HEADER_OUT', $curl->get_options());
+        $curl->removeopt(['CURLINFO_HEADER_OUT']);
+        $this->assertArrayNotHasKey('CURLINFO_HEADER_OUT', $curl->get_options());
+
+        // Removing a non-existent option should silently succeed.
+        $curl->removeopt(['CURLOPT_NONEXISTENT']);
+
+        // Multiple options can be removed in a single call.
+        $curl->setopt(['CURLOPT_TIMEOUT' => 30, 'CURLOPT_CONNECTTIMEOUT' => 10]);
+        $this->assertArrayHasKey('CURLOPT_TIMEOUT', $curl->get_options());
+        $this->assertArrayHasKey('CURLOPT_CONNECTTIMEOUT', $curl->get_options());
+        $curl->removeopt(['CURLOPT_TIMEOUT', 'CURLOPT_CONNECTTIMEOUT']);
+        $this->assertArrayNotHasKey('CURLOPT_TIMEOUT', $curl->get_options());
+        $this->assertArrayNotHasKey('CURLOPT_CONNECTTIMEOUT', $curl->get_options());
+
+        // Passing a non-string option (integer constant) should throw a coding_exception.
+        $this->expectException(\coding_exception::class);
+        $curl->removeopt([CURLOPT_VERBOSE]);
     }
 }
 

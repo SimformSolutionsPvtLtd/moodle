@@ -25,6 +25,8 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+use core\url;
+
 /** Display folder contents on a separate page */
 define('FOLDER_DISPLAY_PAGE', 0);
 /** Display folder contents inline in a course */
@@ -36,20 +38,19 @@ define('FOLDER_DISPLAY_INLINE', 1);
  * @return mixed True if module supports feature, false if not, null if doesn't know or string for the module purpose.
  */
 function folder_supports($feature) {
-    switch($feature) {
-        case FEATURE_MOD_ARCHETYPE:           return MOD_ARCHETYPE_RESOURCE;
-        case FEATURE_GROUPS:                  return false;
-        case FEATURE_GROUPINGS:               return false;
-        case FEATURE_MOD_INTRO:               return true;
-        case FEATURE_COMPLETION_TRACKS_VIEWS: return true;
-        case FEATURE_GRADE_HAS_GRADE:         return false;
-        case FEATURE_GRADE_OUTCOMES:          return false;
-        case FEATURE_BACKUP_MOODLE2:          return true;
-        case FEATURE_SHOW_DESCRIPTION:        return true;
-        case FEATURE_MOD_PURPOSE:             return MOD_PURPOSE_CONTENT;
-
-        default: return null;
-    }
+    return match ($feature) {
+        FEATURE_MOD_ARCHETYPE => MOD_ARCHETYPE_RESOURCE,
+        FEATURE_GROUPS => false,
+        FEATURE_GROUPINGS => false,
+        FEATURE_MOD_INTRO => true,
+        FEATURE_COMPLETION_TRACKS_VIEWS => true,
+        FEATURE_GRADE_HAS_GRADE => false,
+        FEATURE_GRADE_OUTCOMES => false,
+        FEATURE_BACKUP_MOODLE2 => true,
+        FEATURE_SHOW_DESCRIPTION => true,
+        FEATURE_MOD_PURPOSE => MOD_PURPOSE_CONTENT,
+        default => null,
+    };
 }
 
 /**
@@ -319,12 +320,20 @@ function folder_export_contents($cm, $baseurl) {
     $files = $fs->get_area_files($context->id, 'mod_folder', 'content', 0, 'sortorder DESC, id ASC', false);
 
     foreach ($files as $fileinfo) {
-        $file = array();
+        $file = [];
         $file['type'] = 'file';
         $file['filename']     = $fileinfo->get_filename();
         $file['filepath']     = $fileinfo->get_filepath();
         $file['filesize']     = $fileinfo->get_filesize();
-        $file['fileurl']      = file_encode_url("$CFG->wwwroot/" . $baseurl, '/'.$context->id.'/mod_folder/content/'.$folder->revision.$fileinfo->get_filepath().$fileinfo->get_filename(), true);
+        $file['fileurl']      = url::make_webservice_pluginfile_url(
+            contextid: $context->id,
+            component: 'mod_folder',
+            area: 'content',
+            itemid: $folder->revision,
+            pathname: $fileinfo->get_filepath(),
+            filename: $fileinfo->get_filename(),
+            forcedownload: true
+        )->out();
         $file['timecreated']  = $fileinfo->get_timecreated();
         $file['timemodified'] = $fileinfo->get_timemodified();
         $file['sortorder']    = $fileinfo->get_sortorder();
@@ -459,7 +468,7 @@ function folder_cm_info_view(cm_info $cm) {
         // Restore folder object from customdata.
         // Note the field 'customdata' is not empty IF AND ONLY IF we display contens inline.
         // Otherwise the content is default.
-        $folder = $cm->customdata;
+        $folder = (object) $cm->get_custom_data();
         $folder->id = (int)$cm->instance;
         $folder->course = (int)$cm->course;
         $folder->display = FOLDER_DISPLAY_INLINE;
@@ -654,7 +663,8 @@ function folder_print_recent_mod_activity($activity, $courseid, $detail, $modnam
     $tableoptions = [
         'border' => '0',
         'cellpadding' => '3',
-        'cellspacing' => '0'
+        'cellspacing' => '0',
+        'class' => 'table-reboot',
     ];
     $output = html_writer::start_tag('table', $tableoptions);
     $output .= html_writer::start_tag('tr');

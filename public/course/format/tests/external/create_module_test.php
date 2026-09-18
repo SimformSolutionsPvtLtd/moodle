@@ -18,13 +18,8 @@ declare(strict_types=1);
 
 namespace core_courseformat\external;
 
-defined('MOODLE_INTERNAL') || die();
-
 use moodle_exception;
 use stdClass;
-
-global $CFG;
-require_once($CFG->dirroot . '/webservice/tests/helpers.php');
 
 /**
  * Tests for the create_module class.
@@ -35,17 +30,14 @@ require_once($CFG->dirroot . '/webservice/tests/helpers.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @coversDefaultClass \core_courseformat\external\create_module
  */
-final class create_module_test extends \externallib_advanced_testcase {
+final class create_module_test extends \core_external\tests\externallib_testcase {
+    #[\Override]
+    public static function setUpBeforeClass(): void {
+        parent::setUpBeforeClass();
 
-    /**
-     * Setup to ensure that fixtures are loaded.
-     */
-    public static function setupBeforeClass(): void { // phpcs:ignore
-        global $CFG;
-
-        require_once($CFG->dirroot . '/course/format/tests/fixtures/format_theunittest.php');
-        require_once($CFG->dirroot . '/course/format/tests/fixtures/format_theunittest_output_course_format_state.php');
-        require_once($CFG->dirroot . '/course/format/tests/fixtures/format_theunittest_stateactions.php');
+        self::load_fixture('courseformat', 'format_theunittest.php');
+        self::load_fixture('courseformat', 'format_theunittest_output_course_format_state.php');
+        self::load_fixture('courseformat', 'format_theunittest_stateactions.php');
     }
 
     /**
@@ -69,6 +61,7 @@ final class create_module_test extends \externallib_advanced_testcase {
 
         // Execute course action.
         $results = json_decode(create_module::execute((int)$course->id, $modname, (int)$targetsection->id, (int)$activity->id));
+        $this->assertDebuggingCalled();
 
         // Check result.
         $cmupdate = $this->find_update_by_fieldname($results, 'put', 'cm', get_string('quickcreatename', 'mod_' . $modname));
@@ -84,9 +77,6 @@ final class create_module_test extends \externallib_advanced_testcase {
      */
     public function test_execute_with_format_override(): void {
         $this->resetAfterTest();
-
-        $manager = \core_plugin_manager::resolve_plugininfo_class('mod');
-        $manager::enable_plugin('subsection', 1);
 
         // Create a course.
         $course = $this->getDataGenerator()->create_course(['format' => 'theunittest', 'numsections' => 1, 'initsections' => 1]);
@@ -125,6 +115,7 @@ final class create_module_test extends \externallib_advanced_testcase {
         // Execute course action.
         $modname = 'book';
         create_module::execute((int)$course->id, $modname, (int)$targetsection->id);
+        $this->assertDebuggingCalled();
     }
 
     /**

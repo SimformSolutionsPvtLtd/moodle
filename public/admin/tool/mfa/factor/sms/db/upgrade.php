@@ -76,7 +76,7 @@ function xmldb_factor_sms_upgrade(int $oldversion): bool {
     // Automatically generated Moodle v4.5.0 release upgrade line.
     // Put any upgrade step following this.
 
-    if ($oldversion < 2024100702) {
+    if ($oldversion < 2025040700) {
         // Ensure default values are applied for the MFA SMS factor when upgrading.
         $config = get_config('factor_sms');
 
@@ -93,8 +93,14 @@ function xmldb_factor_sms_upgrade(int $oldversion): bool {
         }
 
         // MFA savepoint reached.
-        upgrade_plugin_savepoint(true, 2024100702, 'factor', 'sms');
+        upgrade_plugin_savepoint(true, 2025040700, 'factor', 'sms');
     }
+
+    // Automatically generated Moodle v5.0.0 release upgrade line.
+    // Put any upgrade step following this.
+
+    // Automatically generated Moodle v5.1.0 release upgrade line.
+    // Put any upgrade step following this.
 
     return true;
 }

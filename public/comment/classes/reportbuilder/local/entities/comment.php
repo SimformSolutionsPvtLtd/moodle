@@ -18,15 +18,13 @@ declare(strict_types=1);
 
 namespace core_comment\reportbuilder\local\entities;
 
-use context;
-use context_helper;
-use html_writer;
-use lang_string;
-use stdClass;
+use core\{context, context_helper};
+use core\lang_string;
 use core_reportbuilder\local\entities\base;
 use core_reportbuilder\local\filters\{date, text};
 use core_reportbuilder\local\helpers\format;
 use core_reportbuilder\local\report\{column, filter};
+use stdClass;
 
 /**
  * Comment entity
@@ -86,16 +84,10 @@ class comment extends base {
      * @return column[]
      */
     protected function get_all_columns(): array {
-        global $DB;
-
         $commentalias = $this->get_table_alias('comments');
         $contextalias = $this->get_table_alias('context');
 
         // Content.
-        $contentfieldsql = "{$commentalias}.content";
-        if ($DB->get_dbfamily() === 'oracle') {
-            $contentfieldsql = $DB->sql_order_by_text($contentfieldsql, 1024);
-        }
         $columns[] = (new column(
             'content',
             new lang_string('content'),
@@ -104,64 +96,18 @@ class comment extends base {
             ->add_joins($this->get_joins())
             ->set_type(column::TYPE_LONGTEXT)
             ->add_join($this->get_context_join())
-            ->add_field($contentfieldsql, 'content')
-            ->add_fields("{$commentalias}.format, {$commentalias}.contextid, " .
-                context_helper::get_preload_record_columns_sql($contextalias))
-            ->add_callback(static function($content, stdClass $comment): string {
-                if ($content === null) {
+            ->add_fields("{$commentalias}.content, {$commentalias}.format")
+            ->add_fields(context_helper::get_preload_record_columns_sql($contextalias))
+            ->set_is_sortable(true)
+            ->add_callback(static function(?string $content, stdClass $comment): string {
+                if ($content === null || $comment->ctxid === null) {
                     return '';
                 }
 
-                context_helper::preload_from_record($comment);
-                $context = context::instance_by_id($comment->contextid);
+                context_helper::preload_from_record(clone $comment);
+                $context = context::instance_by_id($comment->ctxid);
 
                 return format_text($content, $comment->format, ['context' => $context]);
-            });
-
-        // Context.
-        $columns[] = (new column(
-            'context',
-            new lang_string('context'),
-            $this->get_entity_name()
-        ))
-            ->add_joins($this->get_joins())
-            ->set_type(column::TYPE_TEXT)
-            ->add_join($this->get_context_join())
-            ->add_fields("{$commentalias}.contextid, " . context_helper::get_preload_record_columns_sql($contextalias))
-            // Sorting may not order alphabetically, but will at least group contexts together.
-            ->set_is_sortable(true)
-            ->set_is_deprecated('See \'context:name\' for replacement')
-            ->add_callback(static function($contextid, stdClass $context): string {
-                if ($contextid === null) {
-                    return '';
-                }
-
-                context_helper::preload_from_record($context);
-                return context::instance_by_id($contextid)->get_context_name();
-            });
-
-        // Context URL.
-        $columns[] = (new column(
-            'contexturl',
-            new lang_string('contexturl'),
-            $this->get_entity_name()
-        ))
-            ->add_joins($this->get_joins())
-            ->set_type(column::TYPE_TEXT)
-            ->add_join($this->get_context_join())
-            ->add_fields("{$commentalias}.contextid, " . context_helper::get_preload_record_columns_sql($contextalias))
-            // Sorting may not order alphabetically, but will at least group contexts together.
-            ->set_is_sortable(true)
-            ->set_is_deprecated('See \'context:link\' for replacement')
-            ->add_callback(static function($contextid, stdClass $context): string {
-                if ($contextid === null) {
-                    return '';
-                }
-
-                context_helper::preload_from_record($context);
-                $context = context::instance_by_id($contextid);
-
-                return html_writer::link($context->get_url(), $context->get_context_name());
             });
 
         // Component.
@@ -171,7 +117,6 @@ class comment extends base {
             $this->get_entity_name()
         ))
             ->add_joins($this->get_joins())
-            ->set_type(column::TYPE_TEXT)
             ->add_fields("{$commentalias}.component")
             ->set_is_sortable(true);
 
@@ -182,7 +127,6 @@ class comment extends base {
             $this->get_entity_name()
         ))
             ->add_joins($this->get_joins())
-            ->set_type(column::TYPE_TEXT)
             ->add_fields("{$commentalias}.commentarea")
             ->set_is_sortable(true);
 
@@ -217,8 +161,6 @@ class comment extends base {
      * @return filter[]
      */
     protected function get_all_filters(): array {
-        global $DB;
-
         $commentalias = $this->get_table_alias('comments');
 
         // Content.
@@ -227,7 +169,7 @@ class comment extends base {
             'content',
             new lang_string('content'),
             $this->get_entity_name(),
-            $DB->sql_cast_to_char("{$commentalias}.content")
+            "{$commentalias}.content"
         ))
             ->add_joins($this->get_joins());
 

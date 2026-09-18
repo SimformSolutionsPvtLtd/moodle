@@ -22,8 +22,12 @@ use mod_bigbluebuttonbn\local\extension\broker_meeting_events_addons;
 use mod_bigbluebuttonbn\local\extension\custom_completion_addons;
 use mod_bigbluebuttonbn\local\extension\mod_form_addons;
 use mod_bigbluebuttonbn\local\extension\mod_instance_helper;
+use mod_bigbluebuttonbn\local\extension\navigation_append_addon;
+use mod_bigbluebuttonbn\local\extension\navigation_override_addon;
+use mod_bigbluebuttonbn\local\extension\view_page_addons;
 use stdClass;
 use core_plugin_manager;
+use core_component;
 
 /**
  * Generic subplugin management helper
@@ -80,8 +84,7 @@ class extension {
      */
     protected static function get_instances_implementing(string $classname, ?array $newparameters = []): array {
         $classes = self::get_classes_implementing($classname);
-        sort($classes); // Make sure all extension classes are returned in the same order. This is arbitrarily in
-        // alphabetical order and depends on the classname but this one way to ensure consistency across calls.
+        ksort($classes); // Make sure all extension classes are returned in the correct order.
         return array_map(function($targetclassname) use ($newparameters) {
             // If $newparameters is null, the constructor will be called without parameters.
             return new $targetclassname(...$newparameters);
@@ -100,6 +103,9 @@ class extension {
         $classbasename = end($classnamecomponents);
         $allsubs = core_plugin_manager::instance()->get_plugins_of_type(self::BBB_EXTENSION_PLUGIN_NAME);
         $extensionclasses = [];
+        $names = core_component::get_plugin_list(self::BBB_EXTENSION_PLUGIN_NAME);
+        $sortedlist = self::get_sorted_plugins_list($names); // Make sure to use the most updated list.
+        $sortedlist = array_flip($sortedlist);
         foreach ($allsubs as $sub) {
             if (!$sub->is_enabled()) {
                 continue;
@@ -112,9 +118,36 @@ class extension {
                 debugging("The class $targetclassname should extend $classname in the subplugin {$sub->name}. Ignoring.");
                 continue;
             }
-            $extensionclasses[] = $targetclassname;
+            if (!isset($sortedlist[$sub->name])) {
+                debugging("The class $targetclassname does not belong to an existing subplugin. Ignoring");
+                continue;
+            }
+            // Return all extension classes based on subplugin order on manage extension page.
+            $sortorder = $sortedlist[$sub->name];
+            $extensionclasses[$sortorder] = $targetclassname;
         }
         return $extensionclasses;
+    }
+
+    /**
+     * Return plugin list sorted according to order from admin extension manager.
+     * @param array $names Array of plugin names
+     * @return array The sorted list of plugins
+     */
+    public static function get_sorted_plugins_list(array $names): array {
+        $result = [];
+        foreach ($names as $name => $path) {
+            $idx = get_config(self::BBB_EXTENSION_PLUGIN_NAME . '_' . $name, 'sortorder');
+            if (!$idx) {
+                $idx = 0;
+            }
+            while (array_key_exists($idx, $result)) {
+                $idx += 1;
+            }
+            $result[$idx] = $name;
+        }
+        ksort($result);
+        return $result;
     }
 
     /**
@@ -228,5 +261,54 @@ class extension {
      */
     public static function broker_meeting_events_addons_instances(instance $instance, string $data): array {
         return self::get_instances_implementing(broker_meeting_events_addons::class, [$instance, $data]);
+    }
+
+    /**
+     * Append settings navigation.
+     *
+     * @param \settings_navigation $settingsnav
+     * @param \navigation_node $nodenav
+     */
+    public static function append_settings_navigation(\settings_navigation $settingsnav, \navigation_node $nodenav) {
+        $appends = self::get_instances_implementing(navigation_append_addon::class);
+        foreach ($appends as $addon) {
+            $addon->append_settings_navigation($settingsnav, $nodenav);
+        }
+    }
+
+    /**
+     * Override settings navigation.
+     *
+     * @param \settings_navigation $settingsnav
+     * @param \navigation_node $nodenav
+     * @return bool true if the settings navigation was overridden, false otherwise.
+     */
+    public static function override_settings_navigation(\settings_navigation $settingsnav, \navigation_node $nodenav) {
+        $overrides = self::get_instances_implementing(navigation_override_addon::class);
+        if (!empty($overrides)) {
+            $firstoverride = reset($overrides);
+            $firstoverride->override_settings_navigation($settingsnav, $nodenav);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Get rendered output for override in the instance.
+     *
+     * @param \renderer_base $renderer
+     * @param instance $instance
+     * @return string|null Rendered information for the instance, or null if no override found.
+     */
+    public static function get_rendered_output_override($renderer, $instance): ?string {
+        $classes = self::get_classes_implementing(view_page_addons::class);
+        if (!empty($classes)) {
+            $outputclass = reset($classes);
+            if (class_exists($outputclass)) {
+                return $renderer->render(new $outputclass($instance));
+            }
+        }
+        // Fallback to the default rendered output if no subplugin overrides it.
+        return null;
     }
 }

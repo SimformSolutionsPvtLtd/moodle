@@ -16,7 +16,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Strings for component 'forum', language 'en', branch 'MOODLE_20_STABLE'
+ * Strings for component 'mod_forum', language 'en', branch 'MOODLE_20_STABLE'
  *
  * @package   mod_forum
  * @copyright 1999 onwards Martin Dougiamas  {@link http://moodle.com}
@@ -103,6 +103,7 @@ $string['cannotuseseperategroupsandsingletopic'] = 'Separate groups can\'t be us
 $string['cannotusesingletopicandseperategroups'] = 'A single simple discussion can\'t be used with separate groups.';
 $string['cannotviewpostyet'] = 'You can\'t read other students\' posts in this discussion yet because you haven\'t posted.';
 $string['cannotviewusersposts'] = 'There are no posts made by this user that you are able to view.';
+$string['charactercount'] = 'Character count';
 $string['cleanreadtime'] = 'Mark old posts as read hour';
 $string['clicktolockdiscussion'] = 'Click to lock this discussion';
 $string['clicktounlockdiscussion'] = 'Click to unlock this discussion';
@@ -168,6 +169,7 @@ $string['digestmailprefs'] = 'your user profile';
 $string['digestmailsubject'] = '{$a}: forum digest';
 $string['digestmailtime'] = 'Hour to send digest emails';
 $string['digestsentusers'] = 'Email digests successfully sent to {$a} users.';
+$string['digesttype'] = 'Digest type';
 $string['disallowsubscribe'] = 'Subscriptions not allowed';
 $string['disallowsubscription'] = 'Subscription';
 $string['disallowsubscription_help'] = 'This forum has been configured so that you cannot subscribe to discussions.';
@@ -520,6 +522,7 @@ $string['posttomygroups_help'] = 'Posts a copy of this message to all groups you
 $string['prevdiscussiona'] = 'Previous discussion: {$a}';
 $string['pluginadministration'] = 'Forum administration';
 $string['pluginname'] = 'Forum';
+$string['post'] = 'Post';
 $string['postadded'] = '<p>Your post was successfully added.</p> <p>You have {$a} to edit it if you want to make any changes.</p>';
 $string['postaddedsuccess'] = 'Your post was successfully added.';
 $string['postaddedtimeleft'] = 'You have {$a} to edit it if you want to make any changes.';
@@ -609,7 +612,6 @@ $string['prunedpost'] = 'A new discussion has been created from that post';
 $string['pruneheading'] = 'Split the discussion and move this post to a new discussion';
 $string['qandaforum'] = 'Q and A forum';
 $string['qandanotify'] = 'This is a question and answer forum. To see other replies, you must first post your reply.';
-$string['re'] = 'Re:';
 $string['readtherest'] = 'Read the rest of this topic';
 $string['removeallforumtags'] = 'All forum tags';
 $string['removefromfavourites'] = 'Unstar this discussion';
@@ -676,6 +678,8 @@ $string['subject'] = 'Subject';
 $string['subplugintype_forumreport'] = 'Forum report';
 $string['subplugintype_forumreport_plural'] = 'Forum reports';
 $string['subscribe'] = 'Subscribe to forum';
+$string['subscribedtoforum'] = 'Subscribed to {$a}';
+$string['subscribetoforum'] = 'Subscribe to forum {$a}';
 $string['subscribediscussion'] = 'Subscribe to this discussion';
 $string['subscribeall'] = 'Subscribe everyone to this forum';
 $string['subscribeenrolledonly'] = 'Sorry, only enrolled users are allowed to subscribe to forum post notifications.';
@@ -714,6 +718,8 @@ $string['timestartenderror'] = 'Display end date cannot be earlier than the star
 $string['togglediscussionmenu'] = 'Toggle the discussion menu';
 $string['togglefullscreen'] = 'Toggle full screen';
 $string['togglesettingsdrawer'] = 'Toggle settings drawer';
+$string['trackedforforum'] = 'Tracking on for {$a}';
+$string['trackforforum'] = 'Track new posts for forum {$a}';
 $string['trackforum'] = 'Track unread posts';
 $string['trackreadposts_header'] = 'Forum tracking';
 $string['tracking'] = 'Track';
@@ -733,6 +739,7 @@ $string['unreadposts'] = 'Unread posts';
 $string['unreadpostsnumber'] = '{$a} unread posts';
 $string['unreadpostsone'] = '1 unread post';
 $string['unsubscribe'] = 'Unsubscribe from forum';
+$string['unsubscribefromforum'] = 'Unsubscribe from forum {$a}';
 $string['unsubscribelink'] = 'Unsubscribe from this forum: {$a}';
 $string['unsubscribediscussion'] = 'Unsubscribe from this discussion';
 $string['unsubscribediscussionlink'] = 'Unsubscribe from this discussion: {$a}';
@@ -743,7 +750,10 @@ $string['unsubscribeallconfirmdiscussions'] = 'You are currently subscribed to {
 $string['unsubscribealldone'] = 'All optional forum subscriptions were removed. You will still receive notifications from forums with forced subscription. To manage forum notifications go to Messaging in My Profile Settings.';
 $string['unsubscribeallempty'] = 'You are not subscribed to any forums. To disable all notifications from this server go to Messaging in My Profile Settings.';
 $string['unsubscribed'] = 'Unsubscribed';
+$string['unsubscribedfromforum'] = 'Unsubscribed from {$a}';
 $string['unsubscribeshort'] = 'Unsubscribe';
+$string['untrackedforforum'] = 'Tracking off for {$a}';
+$string['untrackforforum'] = 'Do not track new posts for forum {$a}';
 $string['useexperimentalui'] = 'Use experimental nested discussion view';
 $string['usermarksread'] = 'Manual message read marking';
 $string['usernavigation'] = 'User navigation';
@@ -755,6 +765,7 @@ $string['viewthediscussion'] = 'View the discussion';
 $string['warnafter'] = 'Post threshold for warning';
 $string['warnafter_help'] = 'Students can be warned as they approach the maximum number of posts allowed in a given period. This setting specifies after how many posts they are warned. Users with the capability mod/forum:postwithoutthrottling are exempt from post limits.';
 $string['warnformorepost'] = 'Warning! There is more than one discussion in this forum - using the most recent';
+$string['wordcount'] = 'Word count';
 $string['yournewquestion'] = 'Your new question';
 $string['yournewtopic'] = 'Your new discussion topic';
 $string['yourreply'] = 'Your reply';
@@ -785,15 +796,11 @@ $string['showmoreusers'] = 'Show more users';
 $string['viewconversation'] = 'View discussion';
 $string['viewgrades'] = 'View grades';
 
-// Deprecated since Moodle 4.3.
-$string['completionpostsgroup'] = 'Require posts';
-$string['completiondiscussionsgroup'] = 'Require discussions';
-$string['completiondiscussionshelp'] = 'requiring discussions to complete';
-$string['completionrepliesgroup'] = 'Require replies';
-$string['completionreplieshelp'] = 'requiring replies to complete';
-
 // Deprecated since Moodle 4.5.
 $string['privacy:request:delete:discussion:name'] = 'Delete at the request of the author';
 $string['privacy:request:delete:post:message'] = 'The content of this post has been deleted at the request of its author.';
 $string['privacy:request:delete:post:subject'] = 'Delete at the request of the author';
 $string['tagsdeleted'] = 'Forum tags have been deleted';
+
+// Deprecated since Moodle 5.0.
+$string['re'] = 'Re:';

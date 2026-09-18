@@ -66,11 +66,11 @@ function behat_error($errorcode, $text = '') {
             $text = 'Behat permissions problem: ' . $text . ', check the permissions';
             break;
         case BEHAT_EXITCODE_REINSTALL:
-            $path = testing_cli_argument_path('/admin/tool/behat/cli/init.php');
+            $path = testing_cli_argument_path('/public/admin/tool/behat/cli/init.php');
             $text = "Reinstall Behat: ".$text.", use:\n php ".$path;
             break;
         case BEHAT_EXITCODE_INSTALL:
-            $path = testing_cli_argument_path('/admin/tool/behat/cli/init.php');
+            $path = testing_cli_argument_path('/public/admin/tool/behat/cli/init.php');
             $text = "Install Behat before enabling it, use:\n php ".$path;
             break;
         case BEHAT_EXITCODE_INSTALLED:
@@ -101,7 +101,6 @@ function behat_get_error_string($errtype) {
             break;
         case E_NOTICE:
         case E_USER_NOTICE:
-        case E_STRICT:
             $errnostr = 'Notice';
             break;
         case E_RECOVERABLE_ERROR:
@@ -133,11 +132,11 @@ function behat_error_handler($errno, $errstr, $errfile, $errline) {
         return true;
     }
 
-    // This error handler receives E_ALL | E_STRICT, running the behat test site the debug level is
+    // This error handler receives E_ALL, running the behat test site the debug level is
     // set to DEVELOPER and will always include E_NOTICE,E_USER_NOTICE... as part of E_ALL, if the current
     // error_reporting() value does not include one of those levels is because it has been forced through
     // the moodle code (see fix_utf8() for example) in that cases we respect the forced error level value.
-    $respect = array(E_NOTICE, E_USER_NOTICE, E_STRICT, E_WARNING, E_USER_WARNING, E_DEPRECATED, E_USER_DEPRECATED);
+    $respect = [E_NOTICE, E_USER_NOTICE, E_WARNING, E_USER_WARNING, E_DEPRECATED, E_USER_DEPRECATED];
     foreach ($respect as $respectable) {
 
         // If the current value does not include this kind of errors and the reported error is
@@ -215,11 +214,12 @@ function behat_clean_init_config() {
     global $CFG;
 
     $allowed = array_flip(array(
-        'wwwroot', 'dataroot', 'dirroot', 'admin', 'directorypermissions', 'filepermissions',
+        'wwwroot', 'dataroot', 'root', 'dirroot', 'admin', 'directorypermissions', 'filepermissions',
         'umaskpermissions', 'dbtype', 'dblibrary', 'dbhost', 'dbname', 'dbuser', 'dbpass', 'prefix',
         'dboptions', 'proxyhost', 'proxyport', 'proxytype', 'proxyuser', 'proxypassword',
         'proxybypass', 'pathtogs', 'pathtophp', 'pathtodu', 'aspellpath', 'pathtodot', 'skiplangupgrade',
-        'altcacheconfigpath', 'pathtounoconv', 'alternative_file_system_class', 'pathtopython'
+        'altcacheconfigpath', 'pathtounoconv', 'alternative_file_system_class', 'pathtopython',
+        'routerconfigured',
     ));
 
     // Add extra allowed settings.
@@ -364,7 +364,7 @@ function behat_is_test_site() {
  * Fix variables for parallel behat testing.
  * - behat_wwwroot = behat_wwwroot{behatrunprocess}
  * - behat_dataroot = behat_dataroot{behatrunprocess}
- * - behat_prefix = behat_prefix.{behatrunprocess}_ (For oracle it will be firstletter of prefix and behatrunprocess)
+ * - behat_prefix = behat_prefix.{behatrunprocess}
  **/
 function behat_update_vars_for_process() {
     global $CFG;
@@ -395,14 +395,8 @@ function behat_update_vars_for_process() {
         }
 
         // Set behat_prefix for db, just suffix run process number, to avoid max length exceed.
-        // For oracle only 2 letter prefix is possible.
         // NOTE: This will not work for parallel process > 9.
-        if ($CFG->dbtype === 'oci') {
-            $CFG->behat_prefix = substr($CFG->behat_prefix, 0, 1);
-            $CFG->behat_prefix .= "{$behatrunprocess}";
-        } else {
-            $CFG->behat_prefix .= "{$behatrunprocess}_";
-        }
+        $CFG->behat_prefix .= "{$behatrunprocess}_";
 
         if (!empty($CFG->behat_parallel_run[$behatrunprocess - 1])) {
             // Override allowed config vars.
@@ -536,7 +530,7 @@ function behat_get_run_process() {
  * @return array list of processes.
  */
 function cli_execute_parallel($cmds, $cwd = null, $delay = 0) {
-    require_once(__DIR__ . "/../../vendor/autoload.php");
+    require_once(__DIR__ . "/../../../vendor/autoload.php");
 
     $processes = array();
 

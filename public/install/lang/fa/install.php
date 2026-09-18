@@ -21,7 +21,7 @@
  * needed during the very first steps of installation. This file was
  * generated automatically by export-installer.php (which is part of AMOS
  * {@link https://moodledev.io/general/projects/api/amos}) using the
- * list of strings defined in install/stringnames.txt file.
+ * list of strings defined in public/install/stringnames.txt file.
  *
  * @package   installer
  * @license   https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -55,25 +55,6 @@ $string['environmentsub2'] = 'هر کدام از انتشارهای مودل ح�
 $string['errorsinenvironment'] = 'بررسی محیط ناموفق بود!';
 $string['installation'] = 'در حال نصب';
 $string['langdownloaderror'] = 'متأسفانه زبان «{$a}» نصب نشد. فرآیند نصب به زبان انگلیسی ادامه خواهد یافت.';
-$string['memorylimithelp'] = '<p>حد حافظهٔ PHP کارگزار شما هم‌اکنون {$a}  است.</p>
-
-<p>این مسئله ممکن است در آینده سبب بروز مشکلات مربوط به حافظه برای مودل شود،
-به‌خصوص اگر شما ماژول‌های فعال و/یا کاربران زیادی داشته باشید.</p>
-
-<p>توصیه می‌کنیم که در صورت امکان PHP را با مقدار بیشتری مثل 40M پیکربندی نمائید.
-روش‌های متعددی برای انجام این کار وحود دارد که می‌توانید آن‌ها را امتحان نمائید:</p>
-<ol>
-<li>اگر می‌توانید، PHP را با <span dir="ltr"><i>--enable-memory-limit</i></span> مجدداً compile نمائید.
-این کار به مودل اجازه خواهد داد که حد حافظه را خودش تعیین کند.</li>
-<li>اگر به فایل php.ini خود دسترسی دارید، می‌توانید مقدار <b>memory_limit</b>
-را به چیزی مثل 40M تغییر دهید. اگر دسترسی ندارید، می‌توانید
-از مدیر کارگزار خود بخواهید که این کار را برای شما انجام دهد.</li>
-<li>در بعضی از کارگزارهای PHP شما می‌توانید یک فایل <span dir="ltr">.htaccess</span> محتوی خط زیر
-در دایرکتوری مودل ایجاد کنید:
-    <blockquote><div>php_value memory_limit 40M</div></blockquote>
-<p>اگرچه، در برخی از کارگزارها انجام این کار موجب جلوگیری از کارکردن <b>همهٔ</b> صفحه‌های PHP خواهد شد
-(هنگام مشاهدهٔ صفحه‌ها خطاهایی خواهید دید) و مجبور خواهید بود که فایل <span dir="ltr">.htaccess</span> را پاک کنید.</p></li>
-</ol>';
 $string['paths'] = 'مسیرها';
 $string['pathserrcreatedataroot'] = 'دایرکتوری داده (<string dir="ltr" style="direction:ltr;display:inline-block;">{$a->dataroot}</span>) نمی‌تواند توسط برنامهٔ نصب ایجاد شود.';
 $string['pathshead'] = 'تایید مسیرها';
@@ -97,9 +78,6 @@ $string['pathsunsecuredataroot'] = 'محل دایرکتوری داده امن ن
 $string['pathswrongadmindir'] = 'دایرکتوری مدیر وجود ندارد';
 $string['phpextension'] = 'افزونهٔ {$a} در PHP';
 $string['phpversion'] = 'نسخهٔ PHP';
-$string['phpversionhelp'] = '<p>مودل نیاز به PHP نسخهٔ حداقل 5.6.5 یا 7.1 دارد (<span dir="ltr" style="direction: ltr; display: inline-block">7.0.x</span> محدودیت‌هایی در engine اش دارد).</p>
-<p>شما در حال حاضر از نسخهٔ {$a} استفاده می‌کنید</p>
-<p>باید PHP را ارتقاء دهید یا از کارگزاری دارای نسخهٔ جدیدتر PHP استفاده نمائید.</p>';
 $string['welcomep10'] = '{$a->installername} (<span dir="ltr">{$a->installerversion}</span>)';
 $string['welcomep20'] = 'دیدن این صفحه به معنی نصب و راه‌اندازی موفق بستهٔ
     <strong>{$a->packname} <span dir="ltr">{$a->packversion}</span></b></strong> است. تبریک!';

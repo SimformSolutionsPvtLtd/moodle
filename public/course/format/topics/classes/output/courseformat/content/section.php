@@ -45,9 +45,9 @@ class section extends section_base {
 
         $data = parent::export_for_template($output);
 
-        if (!$this->format->get_sectionnum() && !$this->section->is_delegated()) {
+        if (!$this->format->get_sectionnum() && !$this->section->get_component_instance()) {
             $addsectionclass = $format->get_output_classname('content\\addsection');
-            $addsection = new $addsectionclass($format);
+            $addsection = new $addsectionclass($format, $this->section);
             $data->numsections = $addsection->export_for_template($output);
             $data->insertafter = true;
         }

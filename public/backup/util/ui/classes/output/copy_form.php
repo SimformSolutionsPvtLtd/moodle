@@ -25,6 +25,10 @@
 
 namespace core_backup\output;
 
+use core\di;
+use core\hook\manager;
+use core_backup\hook\after_copy_form_definition;
+
 defined('MOODLE_INTERNAL') || die();
 
 require_once("$CFG->libdir/formslib.php");
@@ -86,16 +90,18 @@ class copy_form extends \moodleform {
         $mform->setConstant('returnurl', $returnurl);
 
         // Form heading.
-        $mform->addElement('html', \html_writer::div(get_string('copycoursedesc', 'backup'), 'form-description mb-6'));
+        $mform->addElement('html', \html_writer::div(get_string('copycoursedesc', 'backup'), 'form-text mb-6'));
 
         // Course fullname.
-        $mform->addElement('text', 'fullname', get_string('fullnamecourse'), 'maxlength="254" size="50"');
+        $mform->addElement('text', 'fullname', get_string('fullnamecourse'),
+            ['maxlength' => \core_course\constants::FULLNAME_MAXIMUM_LENGTH, 'size' => 50]);
         $mform->addHelpButton('fullname', 'fullnamecourse');
         $mform->addRule('fullname', get_string('missingfullname'), 'required', null, 'client');
         $mform->setType('fullname', PARAM_TEXT);
 
         // Course shortname.
-        $mform->addElement('text', 'shortname', get_string('shortnamecourse'), 'maxlength="100" size="20"');
+        $mform->addElement('text', 'shortname', get_string('shortnamecourse'),
+            ['maxlength' => \core_course\constants::SHORTNAME_MAXIMUM_LENGTH, 'size' => 20]);
         $mform->addHelpButton('shortname', 'shortnamecourse');
         $mform->addRule('shortname', get_string('missingshortname'), 'required', null, 'client');
         $mform->setType('shortname', PARAM_TEXT);
@@ -194,6 +200,10 @@ class copy_form extends \moodleform {
             $mform->addHelpButton('rolearray', 'keptroles', 'backup');
             $this->add_checkbox_controller(2);
         }
+
+        // Dispatch hook to allow more elements to be added to the form.
+        $hook = new after_copy_form_definition($mform);
+        di::get(manager::class)->dispatch($hook);
 
         $buttonarray = array();
         $buttonarray[] = $mform->createElement('submit', 'submitreturn', get_string('copyreturn', 'backup'));

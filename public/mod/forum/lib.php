@@ -20,6 +20,7 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+use core\url;
 use mod_forum\local\entities\forum as forum_entity;
 
 defined('MOODLE_INTERNAL') || die();
@@ -357,23 +358,24 @@ function forum_delete_instance($id) {
  * @return mixed True if module supports feature, false if not, null if doesn't know or string for the module purpose.
  */
 function forum_supports($feature) {
-    switch($feature) {
-        case FEATURE_GROUPS:                  return true;
-        case FEATURE_GROUPINGS:               return true;
-        case FEATURE_MOD_INTRO:               return true;
-        case FEATURE_COMPLETION_TRACKS_VIEWS: return true;
-        case FEATURE_COMPLETION_HAS_RULES:    return true;
-        case FEATURE_GRADE_HAS_GRADE:         return true;
-        case FEATURE_GRADE_OUTCOMES:          return true;
-        case FEATURE_RATE:                    return true;
-        case FEATURE_BACKUP_MOODLE2:          return true;
-        case FEATURE_SHOW_DESCRIPTION:        return true;
-        case FEATURE_PLAGIARISM:              return true;
-        case FEATURE_ADVANCED_GRADING:        return true;
-        case FEATURE_MOD_PURPOSE:             return MOD_PURPOSE_COLLABORATION;
-
-        default: return null;
-    }
+    return match ($feature) {
+        FEATURE_GROUPS => true,
+        FEATURE_GROUPINGS => true,
+        FEATURE_MOD_INTRO => true,
+        FEATURE_COMPLETION_TRACKS_VIEWS => true,
+        FEATURE_COMPLETION_HAS_RULES => true,
+        FEATURE_GRADE_HAS_GRADE => true,
+        FEATURE_GRADE_OUTCOMES => true,
+        FEATURE_RATE => true,
+        FEATURE_BACKUP_MOODLE2 => true,
+        FEATURE_SHOW_DESCRIPTION => true,
+        FEATURE_PLAGIARISM => true,
+        FEATURE_ADVANCED_GRADING => true,
+        FEATURE_MOD_PURPOSE => MOD_PURPOSE_COLLABORATION,
+        FEATURE_MOD_OTHERPURPOSE => MOD_PURPOSE_COMMUNICATION,
+        FEATURE_CAN_UNINSTALL => false,
+        default => null,
+    };
 }
 
 /**
@@ -526,13 +528,6 @@ function forum_user_complete($course, $user, $mod, $forum) {
 }
 
 /**
- * @deprecated since Moodle 3.3, when the block_course_overview block was removed.
- */
-function forum_filter_user_groups_discussions() {
-    throw new coding_exception('forum_filter_user_groups_discussions() can not be used any more and is obsolete.');
-}
-
-/**
  * Returns whether the discussion group is visible by the current user or not.
  *
  * @since Moodle 2.8, 2.7.1, 2.6.4
@@ -556,13 +551,6 @@ function forum_is_user_group_discussion(cm_info $cm, $discussiongroupid) {
     }
 
     return false;
-}
-
-/**
- * @deprecated since Moodle 3.3, when the block_course_overview block was removed.
- */
-function forum_print_overview() {
-    throw new coding_exception('forum_print_overview() can not be used any more and is obsolete.');
 }
 
 /**
@@ -2105,6 +2093,7 @@ function forum_get_course_forum($courseid, $type) {
             $forum->introformat = FORMAT_HTML;
             $forum->forcesubscribe = $CFG->forum_announcementsubscription;
             $forum->maxattachments = $CFG->forum_announcementmaxattachments;
+            $forum->maxbytes = $CFG->forum_announcementmaxbytes;
             $forum->assessed = 0;
             if ($courseid == SITEID) {
                 $forum->name  = get_string("sitenews");
@@ -2148,7 +2137,7 @@ function forum_get_course_forum($courseid, $type) {
         echo $OUTPUT->notification("Could not add a new course module to the course '" . $courseid . "'");
         return false;
     }
-    $sectionid = course_add_cm_to_section($courseid, $mod->coursemodule, 0);
+    $sectionid = course_add_cm_to_section($courseid, $mod->coursemodule, 0, null, 'forum');
     return $DB->get_record("forum", array("id" => "$forum->id"));
 }
 
@@ -2598,7 +2587,14 @@ function forum_print_attachments($post, $cm, $type) {
                             'style' => 'max-width: 24px; max-height: 24px; vertical-align: middle;',
                     ]
             );
-            $path = file_encode_url($CFG->wwwroot.'/pluginfile.php', '/'.$context->id.'/mod_forum/attachment/'.$post->id.'/'.$filename);
+            $path = url::make_pluginfile_url(
+                contextid: $context->id,
+                component: 'mod_forum',
+                area: 'attachment',
+                itemid: $post->id,
+                pathname: '/',
+                filename: $filename
+            )->out();
 
             if ($type == 'html') {
                 $output .= "<a href=\"$path\">$iconimage</a> ";
@@ -4053,7 +4049,7 @@ function forum_print_recent_mod_activity($activity, $courseid, $detail, $modname
         'border' => '0',
         'cellpadding' => '3',
         'cellspacing' => '0',
-        'class' => 'forum-recent'
+        'class' => 'forum-recent table-reboot',
     ];
     $output = html_writer::start_tag('table', $tableoptions);
     $output .= html_writer::start_tag('tr');
@@ -4594,45 +4590,6 @@ function forum_tp_delete_read_records($userid=-1, $postid=-1, $discussionid=-1, 
         return $DB->delete_records_select('forum_read', $select, $params);
     }
 }
-/**
- * Get a list of forums not tracked by the user.
- *
- * @global object
- * @global object
- * @param int $userid The id of the user to use.
- * @param int $courseid The id of the course being checked.
- * @return mixed An array indexed by forum id, or false.
- */
-function forum_tp_get_untracked_forums($userid, $courseid) {
-    global $CFG, $DB;
-
-    if ($CFG->forum_allowforcedreadtracking) {
-        $trackingsql = "AND (f.trackingtype = ".FORUM_TRACKING_OFF."
-                            OR (f.trackingtype = ".FORUM_TRACKING_OPTIONAL." AND (ft.id IS NOT NULL
-                                OR (SELECT trackforums FROM {user} WHERE id = ?) = 0)))";
-    } else {
-        $trackingsql = "AND (f.trackingtype = ".FORUM_TRACKING_OFF."
-                            OR ((f.trackingtype = ".FORUM_TRACKING_OPTIONAL." OR f.trackingtype = ".FORUM_TRACKING_FORCED.")
-                                AND (ft.id IS NOT NULL
-                                    OR (SELECT trackforums FROM {user} WHERE id = ?) = 0)))";
-    }
-
-    $sql = "SELECT f.id
-              FROM {forum} f
-                   LEFT JOIN {forum_track_prefs} ft ON (ft.forumid = f.id AND ft.userid = ?)
-             WHERE f.course = ?
-                   $trackingsql";
-
-    if ($forums = $DB->get_records_sql($sql, array($userid, $courseid, $userid))) {
-        foreach ($forums as $forum) {
-            $forums[$forum->id] = $forum;
-        }
-        return $forums;
-
-    } else {
-        return array();
-    }
-}
 
 /**
  * Determine if a user can track forums and optionally a particular forum.
@@ -4678,8 +4635,14 @@ function forum_tp_can_track_forums($forum=false, $user=false) {
         $forum = $DB->get_record('forum', array('id' => $forum), '', 'id,trackingtype');
     }
 
-    $forumallows = ($forum->trackingtype == FORUM_TRACKING_OPTIONAL);
-    $forumforced = ($forum->trackingtype == FORUM_TRACKING_FORCED);
+    if (method_exists($forum, 'get_tracking_type')) {
+        $trackingtype = $forum->get_tracking_type();
+    } else {
+        $trackingtype = $forum->trackingtype;
+    }
+
+    $forumallows = ($trackingtype == FORUM_TRACKING_OPTIONAL);
+    $forumforced = ($trackingtype == FORUM_TRACKING_FORCED);
 
     if ($CFG->forum_allowforcedreadtracking) {
         // If we allow forcing, then forced forums takes procidence over user setting.
@@ -5942,7 +5905,7 @@ function forum_get_posts_by_user($user, array $courses, $musthaveaccess = false,
 
     // Prepare SQL to both count and search.
     // We alias user.id to useridx because we forum_posts already has a userid field and not aliasing this would break
-    // oracle and mssql.
+    // mssql.
     $userfieldsapi = \core_user\fields::for_userpic();
     $userfields = $userfieldsapi->get_sql('u', false, '', 'useridx', false)->selects;
     $countsql = 'SELECT COUNT(*) ';

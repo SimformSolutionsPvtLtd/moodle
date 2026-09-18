@@ -15,6 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace aiplacement_courseassist\external;
+use core_ai\aiactions\summarise_text;
 
 /**
  * Test summarise text external webservice calls.
@@ -31,8 +32,6 @@ final class summarise_text_test extends \advanced_testcase {
     public function test_execute(): void {
         $this->resetAfterTest();
         set_config('enabled', 1, 'aiplacement_courseassist');
-        set_config('enabled', 1, 'aiprovider_openai');
-        set_config('apikey', '123', 'aiprovider_openai');
         $this->setAdminUser();
 
         // Get course context.
@@ -50,6 +49,11 @@ final class summarise_text_test extends \advanced_testcase {
 
         $mockmanager = $this->createMock(\core_ai\manager::class);
         $mockmanager->method('process_action')->willReturn($response);
+        $mockmanager->method('is_action_available')->willReturn(true);
+        $mockmanager->method('is_action_enabled')->willReturn(true);
+        $mockmanager->method('get_providers_for_actions')->willReturn([
+            summarise_text::class => ['aiprovider_openai'],
+        ]);
         \core\di::set(\core_ai\manager::class, function() use ($mockmanager) {
             return $mockmanager;
         });

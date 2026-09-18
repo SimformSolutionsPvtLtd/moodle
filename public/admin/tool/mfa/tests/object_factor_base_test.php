@@ -15,10 +15,6 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace tool_mfa;
-use tool_mfa\tool_mfa_trait;
-
-defined('MOODLE_INTERNAL') || die();
-require_once(__DIR__ . '/tool_mfa_trait.php');
 
 /**
  * Tests for base factor implementation methods.
@@ -30,7 +26,7 @@ require_once(__DIR__ . '/tool_mfa_trait.php');
  */
 final class object_factor_base_test extends \advanced_testcase {
 
-    use tool_mfa_trait;
+    use \tool_mfa\tests\mfa_settings_trait;
 
     /**
      * Test deleting user's configured factors
@@ -114,5 +110,42 @@ final class object_factor_base_test extends \advanced_testcase {
         $activefactors = $factor->get_active_user_factors($user);
         $this->assertEquals(1, count($activefactors));
         $this->assertEquals($factor2->id, $activefactors[0]->id);
+    }
+
+    /**
+     * Tests that the lock counter does not exceed the lockout threshold.
+     *
+     * @covers ::increment_lock_counter
+     * @covers ::get_remaining_attempts
+     * @return void
+     */
+    public function test_increment_lock_counter_does_not_exceed_threshold(): void {
+        $this->resetAfterTest();
+        $user = $this->getDataGenerator()->create_user();
+        $this->setUser($user);
+
+        $this->set_factor_state('totp', 1, 100);
+
+        $lockoutthreshold = 3;
+        set_config('lockout', $lockoutthreshold, 'tool_mfa');
+
+        $totpfactor = \tool_mfa\plugininfo\factor::get_factor('totp');
+        $totpfactor->setup_user_factor((object) ['secret' => 'fakekey', 'devicename' => 'fakedevice']);
+
+        // Reach the lockout threshold.
+        $factor = \tool_mfa\plugininfo\factor::get_factor('totp');
+        for ($i = 0; $i < $lockoutthreshold; $i++) {
+            $factor->increment_lock_counter();
+        }
+
+        $this->assertEquals(0, $factor->get_remaining_attempts());
+        $this->assertEquals(\tool_mfa\plugininfo\factor::STATE_LOCKED, $factor->get_state());
+
+        // Simulate a page refresh, remaining attempts must not go negative.
+        $refreshedfactor = \tool_mfa\plugininfo\factor::get_factor('totp');
+        $refreshedfactor->increment_lock_counter();
+
+        $this->assertEquals(0, $refreshedfactor->get_remaining_attempts());
+        $this->assertEquals(\tool_mfa\plugininfo\factor::STATE_LOCKED, $refreshedfactor->get_state());
     }
 }

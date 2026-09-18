@@ -21,7 +21,7 @@
  * needed during the very first steps of installation. This file was
  * generated automatically by export-installer.php (which is part of AMOS
  * {@link https://moodledev.io/general/projects/api/amos}) using the
- * list of strings defined in install/stringnames.txt file.
+ * list of strings defined in public/install/stringnames.txt file.
  *
  * @package   installer
  * @license   https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -36,6 +36,7 @@ $string['chooselanguagesub'] = 'Ju lutemi zgjidhni një gjuhë për instalimin. 
 $string['clialreadyconfigured'] = 'Skedari i konfigurimit config.php ekziston tashmë. Ju lutemi përdorni admin/cli/install_database.php për të instaluar Moodle për këtë sajt.';
 $string['clialreadyinstalled'] = 'Skedari i konfigurimit config.php ekziston tashmë. Ju lutemi përdorni admin/cli/install_database.php për të përmirësuar Moodle për këtë sajt.';
 $string['cliinstallheader'] = 'Programi i instalimit nga linja e komandës për Moodle {$a}';
+$string['clitablesexist'] = 'Tabelat e bazës së të dhënave ekzistojnë tashmë; instalimi përmes Ndërfaqes së Linjës së Komandës (CLI) nuk mund të vazhdojë.';
 $string['databasehost'] = 'Pritësi (host) i bazës së të dhënave';
 $string['databasename'] = 'Emri i bazës së të dhënave';
 $string['databasetypehead'] = 'Zgjidh drejtuesin e bazës së të dhënave';
@@ -68,6 +69,8 @@ $string['pathsunsecuredataroot'] = 'Vendndodhja e dataroot nuk është e sigurt'
 $string['pathswrongadmindir'] = 'Drejtoria admin nuk ekziston';
 $string['phpextension'] = 'Zgjerimi PHP {$a}';
 $string['phpversion'] = 'Versioni i PHP-së';
+$string['webserverconfigproblemdescription'] = 'Serveri juaj i uebit nuk është konfiguruar për të parandaluar qasjen në skedarët jashtë drejtorisë /public. Për detaje mbi mënyrën e konfigurimit të saktë të serverit tuaj të uebit, shihni dokumentacionin <a href="https://docs.moodle.org/en/Upgrading#Code_directories_restructure">Përmirësimi - Ristrukturimi i drejtorive të kodit</a>. Pasi ta keni rikonfiguruar, <a href="{$a}">rizhitni rrënjën e uebit</a>.';
+$string['webservernotconfigured'] = 'Serveri i uebit nuk është konfiguruar';
 $string['welcomep10'] = '{$a->installername} ({$a->installerversion})';
 $string['welcomep20'] = 'Po shihni këtë faqe sepse keni instaluar dhe lëshuar me sukses paketën <strong>{$a->packname} {$a->packversion}</strong> në kompjuterin tuaj. Urime!';
 $string['welcomep30'] = 'Ky lëshim i <strong>{$a->installername}</strong> përfshin aplikacionet për të krijuar një mjedis në të cilin do të operojë <strong>Moodle</strong>, përkatësisht:';

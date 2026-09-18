@@ -29,13 +29,11 @@ namespace core_user;
 use core_external\external_api;
 use core_files_external;
 use core_user_external;
-use externallib_advanced_testcase;
 
 defined('MOODLE_INTERNAL') || die();
 
 global $CFG;
 
-require_once($CFG->dirroot . '/webservice/tests/helpers.php');
 require_once($CFG->dirroot . '/user/externallib.php');
 require_once($CFG->dirroot . '/files/externallib.php');
 
@@ -45,8 +43,7 @@ require_once($CFG->dirroot . '/files/externallib.php');
  * @package core_user
  * @covers \core_user_external
  */
-final class externallib_test extends externallib_advanced_testcase {
-
+final class externallib_test extends \core_external\tests\externallib_testcase {
     /**
      * Test get_users
      */
@@ -499,7 +496,7 @@ final class externallib_test extends externallib_advanced_testcase {
 
         $this->resetAfterTest(true);
 
-        $user1 = array(
+        $user1 = [
             'username' => 'usernametest1',
             'password' => 'Moodle2012!',
             'idnumber' => 'idnumbertest1',
@@ -513,20 +510,22 @@ final class externallib_test extends externallib_advanced_testcase {
             'description' => 'This is a description for user 1',
             'city' => 'Perth',
             'country' => 'AU',
-            'preferences' => [[
+            'preferences' => [
+                [
                     'type' => 'htmleditor',
-                    'value' => 'atto'
-                ], [
+                    'value' => 'tiny',
+                ],
+                [
                     'type' => 'invalidpreference',
-                    'value' => 'abcd'
-                ]
+                    'value' => 'abcd',
+                ],
             ],
             'department' => 'College of Science',
             'institution' => 'National Institute of Physics',
             'phone1' => '01 2345 6789',
             'maildisplay' => 1,
-            'interests' => 'badminton, basketball, cooking,  '
-        );
+            'interests' => 'badminton, basketball, cooking,  ',
+        ];
 
         // User with an authentication method done externally.
         $user2 = array(
@@ -555,7 +554,7 @@ final class externallib_test extends externallib_advanced_testcase {
 
             if ($createduser['username'] === $user1['username']) {
                 $usertotest = $user1;
-                $this->assertEquals('atto', get_user_preferences('htmleditor', null, $dbuser));
+                $this->assertEquals('tiny', get_user_preferences('htmleditor', null, $dbuser));
                 $this->assertEquals(null, get_user_preferences('invalidpreference', null, $dbuser));
                 // Confirm user interests have been saved.
                 $interests = \core_tag_tag::get_item_tags_array('core', 'user', $createduser['id'],
@@ -810,7 +809,7 @@ final class externallib_test extends externallib_advanced_testcase {
 
         $user1 = self::getDataGenerator()->create_user();
 
-        $user1 = array(
+        $user1 = [
             'id' => $user1->id,
             'username' => 'usernametest1',
             'password' => 'Moodle2012!',
@@ -826,20 +825,22 @@ final class externallib_test extends externallib_advanced_testcase {
             'city' => 'Perth',
             'userpicture' => $draftid,
             'country' => 'AU',
-            'preferences' => [[
+            'preferences' => [
+                [
                     'type' => 'htmleditor',
-                    'value' => 'atto'
-                ], [
+                    'value' => 'textarea',
+                ],
+                [
                     'type' => 'invialidpreference',
-                    'value' => 'abcd'
-                ]
+                    'value' => 'abcd',
+                ],
             ],
             'department' => 'College of Science',
             'institution' => 'National Institute of Physics',
             'phone1' => '01 2345 6789',
             'maildisplay' => 1,
-            'interests' => 'badminton, basketball, cooking,  '
-        );
+            'interests' => 'badminton, basketball, cooking,  ',
+        ];
 
         $context = \context_system::instance();
         $roleid = $this->assignUserCapability('moodle/user:update', $context->id);
@@ -892,7 +893,7 @@ final class externallib_test extends externallib_advanced_testcase {
         $this->assertEquals($dbuser->institution, $user1['institution']);
         $this->assertEquals($dbuser->phone1, $user1['phone1']);
         $this->assertEquals($dbuser->maildisplay, $user1['maildisplay']);
-        $this->assertEquals('atto', get_user_preferences('htmleditor', null, $dbuser));
+        $this->assertEquals('textarea', get_user_preferences('htmleditor', null, $dbuser));
         $this->assertEquals(null, get_user_preferences('invalidpreference', null, $dbuser));
 
         // Confirm user interests have been saved.
@@ -1385,7 +1386,7 @@ final class externallib_test extends externallib_advanced_testcase {
         $preferences = array(
             array(
                 'name' => 'htmleditor',
-                'value' => 'atto',
+                'value' => 'textarea',
                 'userid' => $user1->id,
             ),
             array(
@@ -1401,7 +1402,7 @@ final class externallib_test extends externallib_advanced_testcase {
         $this->assertCount(2, $result['saved']);
 
         // Get preference from DB to avoid cache.
-        $this->assertEquals('atto', $DB->get_field('user_preferences', 'value',
+        $this->assertEquals('textarea', $DB->get_field('user_preferences', 'value',
             array('userid' => $user1->id, 'name' => 'htmleditor')));
         $this->assertEquals('tiny', $DB->get_field('user_preferences', 'value',
             array('userid' => $user2->id, 'name' => 'htmleditor')));
@@ -1525,7 +1526,7 @@ final class externallib_test extends externallib_advanced_testcase {
         $preferences = array(
             array(
                 'name' => 'htmleditor',
-                'value' => 'atto',
+                'value' => 'textarea',
                 'userid' => $user->id,
             )
         );
@@ -1536,7 +1537,7 @@ final class externallib_test extends externallib_advanced_testcase {
         $this->assertCount(1, $result['saved']);
 
         // Get preference from DB to avoid cache.
-        $this->assertEquals('atto', $DB->get_field('user_preferences', 'value',
+        $this->assertEquals('textarea', $DB->get_field('user_preferences', 'value',
             array('userid' => $user->id, 'name' => 'htmleditor')));
 
         // Now, unset.

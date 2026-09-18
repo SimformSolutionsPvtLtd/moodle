@@ -48,8 +48,7 @@ final class question_bank_view_test extends \advanced_testcase {
 
         // Create a question in the default category.
         $contexts = new question_edit_contexts($context);
-        question_make_default_categories($contexts->all());
-        $cat = question_get_default_category($context->id);
+        $cat = question_get_default_category($context->id, true);
         $question = $questiongenerator->create_question('numerical', null,
             ['name' => 'Example question', 'category' => $cat->id]);
         // Create another version.

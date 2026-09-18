@@ -16,6 +16,7 @@
 
 namespace assignfeedback_editpdf;
 
+use assignfeedback_editpdf\task\convert_submission;
 use mod_assign_test_generator;
 
 defined('MOODLE_INTERNAL') || die();
@@ -246,9 +247,14 @@ final class feedback_test extends \advanced_testcase {
         $this->assertEquals($combinedpdf->get_contenthash(), document_services::BLANK_PDF_HASH);
 
         // Generate page images and verify that the combined pdf has been replaced.
-        document_services::get_page_images_for_attempt($assign, $student->id, -1);
+        $pageimages = document_services::get_page_images_for_attempt($assign, $student->id, -1);
         $combinedpdf = $fs->get_file($contextid, $component, $filearea, $itemid, $filepath, $filename);
         $this->assertNotEquals($combinedpdf->get_contenthash(), document_services::BLANK_PDF_HASH);
+
+        // Verify that the file name contains the page number from Ghostscript.
+        foreach ($pageimages as $index => $image) {
+            $this->assertTrue(str_contains($image->get_filename(), "page{$index}"));
+        }
 
         $notempty = page_editor::has_annotations_or_comments($grade->id, false);
         $this->assertFalse($notempty);
@@ -360,7 +366,7 @@ final class feedback_test extends \advanced_testcase {
         $this->add_file_submission($student, $assign);
 
         // Run the conversion task.
-        $task = \core\task\manager::get_next_adhoc_task(time());
+        $task = \core\task\manager::get_next_adhoc_task(time(), true, convert_submission::class);
         ob_start();
         $task->execute();
         \core\task\manager::adhoc_task_complete($task);
@@ -369,14 +375,14 @@ final class feedback_test extends \advanced_testcase {
         // Confirm, that submission has been converted and the task queue is now empty.
         $this->assertStringContainsString('Converting submission for user id ' . $student->id, $output);
         $this->assertStringContainsString('The document has been successfully converted', $output);
-        $this->assertNull(\core\task\manager::get_next_adhoc_task(time()));
+        $this->assertNull(\core\task\manager::get_next_adhoc_task(time(), true, convert_submission::class));
 
         // Trigger a re-queue by 'updating' a submission.
         $submission = $assign->get_user_submission($student->id, true);
         $plugin = $assign->get_submission_plugin_by_type('file');
         $plugin->save($submission, (new \stdClass));
 
-        $task = \core\task\manager::get_next_adhoc_task(time());
+        $task = \core\task\manager::get_next_adhoc_task(time(), true, convert_submission::class);
         // Verify that queued a conversion task.
         $this->assertNotNull($task);
 
@@ -388,7 +394,7 @@ final class feedback_test extends \advanced_testcase {
         // Confirm, that submission has been converted and the task queue is now empty.
         $this->assertStringContainsString('Converting submission for user id ' . $student->id, $output);
         $this->assertStringContainsString('The document has been successfully converted', $output);
-        $this->assertNull(\core\task\manager::get_next_adhoc_task(time()));
+        $this->assertNull(\core\task\manager::get_next_adhoc_task(time(), true, convert_submission::class));
     }
 
     /**

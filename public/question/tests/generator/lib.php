@@ -23,6 +23,7 @@
  */
 
 use core_question\local\bank\question_version_status;
+use core\exception\coding_exception;
 
 /**
  * Class core_question_generator for generating question data.
@@ -71,9 +72,29 @@ class core_question_generator extends component_generator_base {
             if (isset($record['parent'])) {
                 $record['contextid'] = $DB->get_field('question_categories', 'contextid', ['id' => $record['parent']]);
             } else {
-                $record['contextid'] = context_system::instance()->id;
+                $qbank = $this->datagenerator->create_module('qbank', ['course' => SITEID]);
+                $record['contextid'] = context_module::instance($qbank->cmid)->id;
             }
+        } else {
+            // Any requests for a question category in a contextlevel that is no longer supported
+            // will have a qbank instance created on the associated context and then the category
+            // will be made for that context instead.
+            $context = context::instance_by_id($record['contextid']);
+            if ($context->contextlevel !== CONTEXT_MODULE) {
+                $course = match ($context->contextlevel) {
+                    CONTEXT_COURSE => get_course($context->instanceid),
+                    CONTEXT_SYSTEM => get_site(),
+                    CONTEXT_COURSECAT => $this->datagenerator->create_course(['category' => $context->instanceid]),
+                    default => throw new \Exception('Invalid context to infer a question bank from.'),
+                };
+                $qbank = \core_question\local\bank\question_bank_helper::get_default_open_instance_system_type($course, true);
+                $bankcontext = context_module::instance($qbank->id);
+            } else {
+                $bankcontext = $context;
+            }
+            $record['contextid'] = $bankcontext->id;
         }
+
         if (!isset($record['parent'])) {
             $record['parent'] = question_get_top_category($record['contextid'], true)->id;
         }
@@ -141,14 +162,14 @@ class core_question_generator extends component_generator_base {
 
         $question = question_bank::get_qtype($qtype)->save_question($question, $fromform);
 
-        if ($overrides && (array_key_exists('createdby', $overrides) || array_key_exists('modifiedby', $overrides))) {
-            // Manually update the createdby and modifiedby because questiontypebase forces
-            // current user and some tests require a specific user.
-            if (array_key_exists('createdby', $overrides)) {
-                $question->createdby = $overrides['createdby'];
-            }
-            if (array_key_exists('modifiedby', $overrides)) {
-                $question->modifiedby = $overrides['modifiedby'];
+        $validoverrides = ['createdby', 'modifiedby', 'timemodified'];
+        if ($overrides && !empty(array_intersect($validoverrides, array_keys($overrides)))) {
+            // Manually update the createdby, modifiedby and timemodified because questiontypebase forces
+            // current user and time and some tests require a specific user or time.
+            foreach ($validoverrides as $validoverride) {
+                if (array_key_exists($validoverride, $overrides)) {
+                    $question->{$validoverride} = $overrides[$validoverride];
+                }
             }
             $DB->update_record('question', $question);
         }
@@ -158,37 +179,38 @@ class core_question_generator extends component_generator_base {
         $question->version = $questionversion->version;
         $question->status = $questionversion->status;
 
+        // Add any tags if they are provided in the overrides.
+        if (array_key_exists('tags', (array)$overrides)) {
+            $tags = array_filter(
+                array_map(
+                    'trim',
+                    explode(',', $overrides['tags']),
+                ),
+            );
+            foreach ($tags as $tag) {
+                $tag = trim($tag);
+                $this->create_question_tag(['questionid' => $question->id, 'tag' => $tag]);
+            }
+        }
+
         return $question;
     }
 
     /**
-     * Setup a course category, course, a question category, and 2 questions
-     * for testing.
+     * Set up a course category, a course, a mod_qbank instance, a question category for the mod_qbank instance,
+     * and 2 questions for testing.
      *
-     * @param string $type The type of question category to create.
-     * @return array The created data objects
+     * @return array of the data objects mentioned above
      */
-    public function setup_course_and_questions($type = 'course') {
+    public function setup_course_and_questions() {
         $datagenerator = $this->datagenerator;
         $category = $datagenerator->create_category();
         $course = $datagenerator->create_course([
             'numsections' => 5,
             'category' => $category->id
         ]);
-
-        switch ($type) {
-            case 'category':
-                $context = context_coursecat::instance($category->id);
-                break;
-
-            case 'system':
-                $context = context_system::instance();
-                break;
-
-            default:
-                $context = context_course::instance($course->id);
-                break;
-        }
+        $qbank = $datagenerator->create_module('qbank', ['course' => $course->id]);
+        $context = context_module::instance($qbank->cmid);
 
         $qcat = $this->create_question_category(['contextid' => $context->id]);
 
@@ -197,7 +219,7 @@ class core_question_generator extends component_generator_base {
                 $this->create_question('shortanswer', null, ['category' => $qcat->id]),
         ];
 
-        return [$category, $course, $qcat, $questions];
+        return [$category, $course, $qcat, $questions, $qbank];
     }
 
     /**
@@ -265,5 +287,52 @@ class core_question_generator extends component_generator_base {
         }
 
         return $postdata;
+    }
+
+    /**
+     * Given a context and a structure of categories and questions, generate that structure.
+     *
+     * The $structure parameter takes a multi-dimensional array of categories and questions, like this:
+     * [
+     *    'categoryname' => [
+     *        'question1name' => 'questiontype',
+     *        'question2name' => 'questiontype',
+     *        'subcategoryname' => [
+     *            'subquestion1name' => 'questiontype',
+     *        ],
+     *    ],
+     * ]
+     * Arrays are treated as categories, strings are treated as questions. The key in each case is used for the name of the category
+     * or question. For subcategories, the method is called recursively to create all descendants.
+     * The 'questiontype' string is the type of question to be generated, and will be passed to create_question.
+     *
+     * @param context $context The context to create the structure in.
+     * @param array $structure The array of categories and questions, see above.
+     * @param ?int $parentid The category to create the category or question within.
+     * @return array The input structure, with the generated questions in place of the question types.
+     */
+    public function create_categories_and_questions(context $context, array $structure, ?int $parentid = null) {
+        $createdcategories = [];
+        foreach ($structure as $name => $item) {
+            if (is_array($item)) {
+                $categorydata = [
+                    'name' => $name,
+                    'contextid' => $context->id,
+                ];
+                if ($parentid) {
+                    $categorydata['parent'] = $parentid;
+                }
+                $category = $this->create_question_category($categorydata);
+                $createdcategories[$name] = $this->create_categories_and_questions($context, $item, $category->id);
+            } else if (is_string($item)) {
+                if (!$parentid) {
+                    throw new coding_exception('You cannot create questions in a top-level category.');
+                }
+                $createdcategories[$name] = $this->create_question($item, null, ['name' => $name, 'category' => $parentid]);
+            } else {
+                throw new coding_exception('Structure items must be arrays or strings, ' . gettype($item) . ' found.');
+            }
+        }
+        return $createdcategories;
     }
 }

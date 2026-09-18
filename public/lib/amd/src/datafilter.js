@@ -21,7 +21,6 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import CourseFilter from 'core/datafilter/filtertypes/courseid';
 import GenericFilter from 'core/datafilter/filtertype';
 import {getStrings} from 'core/str';
 import Notification from 'core/notification';
@@ -44,9 +43,7 @@ export default class {
         this.filterSet = filterSet;
         this.applyCallback = applyCallback;
         // Keep a reference to all of the active filters.
-        this.activeFilters = {
-            courseid: new CourseFilter('courseid', filterSet),
-        };
+        this.activeFilters = {};
     }
 
     /**
@@ -63,7 +60,6 @@ export default class {
 
             if (e.target.closest(Selectors.filterset.actions.applyFilters)) {
                 e.preventDefault();
-
                 this.updateTableFromFilter();
             }
 
@@ -192,7 +188,14 @@ export default class {
         // Instantiate the Filter class.
         let Filter = GenericFilter;
         if (filterDataNode.dataset.filterTypeClass) {
-            Filter = await import(filterDataNode.dataset.filterTypeClass);
+
+            // Ensure the filter class passed through exists, otherwise the filtering will break.
+            try {
+                Filter = await import(filterDataNode.dataset.filterTypeClass);
+            } catch (error) {
+                Notification.exception(error);
+            }
+
         }
         this.activeFilters[filterType] = new Filter(filterType, this.filterSet, initialFilterValues, filterOptions);
 
@@ -413,17 +416,28 @@ export default class {
 
     /**
      * Update the Dynamic table based upon the current filter.
+     *
+     * @param {bool} validate Should we validate the filters? We might want to skip this if the filters won't have changed,
+     *     for example for pagination/sorting.
      */
-    updateTableFromFilter() {
+    updateTableFromFilter(validate = true) {
         const pendingPromise = new Pending('core/datafilter:updateTableFromFilter');
 
         const filters = {};
+        let valid = true;
         Object.values(this.activeFilters).forEach(filter => {
+            if (validate) {
+                valid = valid && filter.validate();
+            }
             filters[filter.filterValue.name] = filter.filterValue;
         });
-
-        if (this.applyCallback) {
+        if (validate) {
+            valid = valid && document.querySelector(Selectors.filter.region).closest('form').reportValidity();
+        }
+        if (this.applyCallback && valid) {
             this.applyCallback(filters, pendingPromise);
+        } else {
+            pendingPromise.resolve();
         }
     }
 

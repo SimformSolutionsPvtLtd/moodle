@@ -103,16 +103,13 @@ class system_report_table extends base_report_table {
         }
 
         // If we are aggregating any columns, we should group by the remaining ones.
-        $aggregatedcolumns = array_filter($columns, static function(column $column): bool {
-            return !empty($column->get_aggregation());
-        });
-
+        $aggregatedcolumns = array_filter($columns, fn(column $column): bool => !empty($column->get_aggregation()));
         $hasaggregatedcolumns = !empty($aggregatedcolumns);
         if ($hasaggregatedcolumns) {
             $groupby = $fields;
         }
 
-        $columnheaders = $columnheaderattributes = $columnattributes = [];
+        $columnheaders = $columnheaderattributes = $columnattributes = $columnicons = [];
 
         // Check whether report has checkbox toggle defined, note that select all is excluded during download.
         if (($checkbox = $this->report->get_checkbox_toggleall(true)) && !$this->is_downloading()) {
@@ -132,7 +129,8 @@ class system_report_table extends base_report_table {
             }
 
             // We need to determine for each column whether we should group by its fields, to support aggregation.
-            if ($hasaggregatedcolumns && empty($column->get_aggregation())) {
+            $columnaggregation = $column->get_aggregation();
+            if ($hasaggregatedcolumns && (empty($columnaggregation) || $columnaggregation::column_groupby())) {
                 $groupby = array_merge($groupby, $column->get_groupby_sql());
             }
 
@@ -146,15 +144,16 @@ class system_report_table extends base_report_table {
                 $this->no_sorting($column->get_column_alias());
             }
 
-            // Generate column attributes to be included in each cell.
+            // Generate column attributes/icons for the table.
             $columnheaderattributes[$column->get_column_alias()] = $column->get_header_attributes();
             $columnattributes[$column->get_column_alias()] = $column->get_attributes();
+            $columnicons[] = $column->get_help_icon();
         }
 
         // If the report has any actions then append appropriate column, note that actions are excluded during download.
         if ($this->report->has_actions() && !$this->is_downloading()) {
             $columnheaders['actions'] = html_writer::tag('span', get_string('actions', 'core_reportbuilder'), [
-                'class' => 'sr-only',
+                'class' => 'visually-hidden',
             ]);
             $this->no_sorting('actions');
         }
@@ -162,9 +161,10 @@ class system_report_table extends base_report_table {
         $this->define_columns(array_keys($columnheaders));
         $this->define_headers(array_values($columnheaders));
 
-        // Add column attributes to the table.
+        // Add column attributes/icons to the table.
         $this->set_columnheadersattributes($columnheaderattributes);
         $this->set_columnsattributes($columnattributes);
+        $this->define_help_for_headers($columnicons);
 
         // Initial table sort column.
         if ($sortcolumn = $this->report->get_initial_sort_column()) {

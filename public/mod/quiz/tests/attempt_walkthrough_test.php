@@ -106,8 +106,8 @@ final class attempt_walkthrough_test extends \advanced_testcase {
             3 => [
                 'frog' => 'amphibian',
                 'cat' => 'mammal',
-                'newt' => ''
-            ]
+                'newt' => '',
+            ],
         ];
 
         $attemptobj->process_submitted_actions($timenow, false, $tosubmit);
@@ -118,8 +118,8 @@ final class attempt_walkthrough_test extends \advanced_testcase {
             3 => [
                 'frog' => 'amphibian',
                 'cat' => 'mammal',
-                'newt' => 'amphibian'
-            ]
+                'newt' => 'amphibian',
+            ],
         ];
 
         $attemptobj->process_submitted_actions($timenow, false, $tosubmit);
@@ -129,21 +129,30 @@ final class attempt_walkthrough_test extends \advanced_testcase {
         // Finish the attempt.
         $attemptobj = quiz_attempt::create($attempt->id);
         $this->assertTrue($attemptobj->has_response_to_at_least_one_graded_question());
-        $attemptobj->process_finish($timenow, false);
+        $attemptobj->process_submit($timenow, false);
 
         // Re-load quiz attempt data.
         $attemptobj = quiz_attempt::create($attempt->id);
 
         // Check that results are stored as expected.
         $this->assertEquals(1, $attemptobj->get_attempt_number());
-        $this->assertEquals(3, $attemptobj->get_sum_marks());
-        $this->assertEquals(true, $attemptobj->is_finished());
+        $this->assertEquals(false, $attemptobj->is_finished());
         $this->assertEquals($timenow, $attemptobj->get_submitted_date());
         $this->assertEquals($user1->id, $attemptobj->get_userid());
         $this->assertTrue($attemptobj->has_response_to_at_least_one_graded_question());
         $this->assertEquals(0, $attemptobj->get_number_of_unanswered_questions());
+        // Check we don't have grades yet.
+        $this->assertEmpty(quiz_get_user_grades($quiz, $user1->id));
+        $this->assertNull($attemptobj->get_sum_marks());
+
+        // Now grade the submission.
+        $attemptobj->process_grade_submission($timenow);
+        $attemptobj = quiz_attempt::create($attempt->id);
 
         // Check quiz grades.
+        $this->assertEquals(true, $attemptobj->is_finished());
+        $this->assertEquals(3, $attemptobj->get_sum_marks());
+
         $grades = quiz_get_user_grades($quiz, $user1->id);
         $grade = array_shift($grades);
         $this->assertEquals(100.0, $grade->rawgrade);
@@ -155,14 +164,26 @@ final class attempt_walkthrough_test extends \advanced_testcase {
         $this->assertEquals(100, $gradebookgrade->grade);
 
         // Update question in quiz.
-        $newsa = $questiongenerator->update_question($saq, null,
-            ['name' => 'This is the second version of shortanswer']);
-        $newnumbq = $questiongenerator->update_question($numq, null,
-            ['name' => 'This is the second version of numerical']);
-        $newmatch = $questiongenerator->update_question($matchq, null,
-            ['name' => 'This is the second version of match']);
-        $newdescription = $questiongenerator->update_question($description, null,
-            ['name' => 'This is the second version of description']);
+        $newsa = $questiongenerator->update_question(
+            $saq,
+            null,
+            ['name' => 'This is the second version of shortanswer']
+        );
+        $newnumbq = $questiongenerator->update_question(
+            $numq,
+            null,
+            ['name' => 'This is the second version of numerical']
+        );
+        $newmatch = $questiongenerator->update_question(
+            $matchq,
+            null,
+            ['name' => 'This is the second version of match']
+        );
+        $newdescription = $questiongenerator->update_question(
+            $description,
+            null,
+            ['name' => 'This is the second version of description']
+        );
 
         // Update the attempt to use this questions.
         // Would not normally be done for a non-preview, but this is just a unit test.
@@ -202,6 +223,193 @@ final class attempt_walkthrough_test extends \advanced_testcase {
     }
 
     /**
+     * Tests that a quiz attempt with random questions correctly handles cases when question versions have been deleted.
+     *
+     * @param array $deleteversions Array of identifiers for the question versions to be deleted. Valid array values:
+     *                              - q1v1 (question 1, version 1)
+     *                              - q1v2 (question 1, version 2)
+     *                              - q2v1 (question 2, version 1)
+     *                              - q2v2 (question 2, version 2)
+     * @param bool $canpreview Whether the given user has capability to preview the quiz.
+     * @param array $expectedversions Array of expected question versions per slot after a new attempt following question
+     *                                version removal. Valid key-value pairs:
+     *                                - 1 => q1v1 (slot 1; question 1, version 1)
+     *                                - 1 => q1v2 (slot 1; question 1, version 1)
+     *                                - 2 => q2v1 (slot 2; question 2, version 1)
+     *                                - 2 => q2v2 (slot 2; question 2, version 2)
+     * @param string|null $expectedupdateattempterror The expected error message when quiz attempts are updated following
+     *                                                question version removal (if applicable).
+     * @param int|null $expectedslotfewquestions The expected random question slot (number) with insufficient questions
+     *                                           in the category following question version removal (if applicable).
+     * @dataProvider quiz_random_question_deletion_provider
+     */
+    public function test_quiz_attempt_with_random_questions_when_versions_are_deleted(
+        array $deleteversions,
+        bool $canpreview,
+        array $expectedversions,
+        ?string $expectedupdateattempterror = null,
+        ?int $expectedslotfewquestions = null
+    ): void {
+        global $DB;
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        // Create a course and enrol a teacher.
+        $course = $this->getDataGenerator()->create_course();
+        $teacher = $this->getDataGenerator()->create_user();
+        $teacherrole = $DB->get_record('role', ['shortname' => 'editingteacher']);
+        $this->getDataGenerator()->enrol_user($teacher->id, $course->id, $teacherrole->id);
+
+        // Create quiz.
+        $quiz = $this->getDataGenerator()->create_module('quiz', [
+            'course' => $course->id,
+            'grade' => 100.0,
+            'sumgrades' => 3,
+        ]);
+
+        // Create question categories.
+        $questiongenerator = $this->getDataGenerator()->get_plugin_generator('core_question');
+
+        $cat1 = $questiongenerator->create_question_category();
+        $cat2 = $questiongenerator->create_question_category();
+
+        // Create questions.
+        $questions = [
+            'q1v1' => $questiongenerator->create_question('shortanswer', null, ['category' => $cat1->id]),
+            'q2v1' => $questiongenerator->create_question('essay', null, ['category' => $cat2->id]),
+        ];
+
+        // Update the questions to generate new versions.
+        $questions['q1v2'] = $questiongenerator->update_question(
+            $questions['q1v1'],
+            null,
+            ['name' => 'This is the latest version']
+        );
+        $questions['q2v2'] = $questiongenerator->update_question(
+            $questions['q2v1'],
+            null,
+            ['name' => 'This is the latest version']
+        );
+
+        // Add random questions to quiz.
+        $this->add_random_questions($quiz->id, 1, $cat1->id, 1);
+        $this->add_random_questions($quiz->id, 1, $cat2->id, 1);
+
+        // Start attempt.
+        $quizobj = quiz_settings::create($quiz->id, $teacher->id);
+        $attempt = quiz_prepare_and_start_new_attempt($quizobj, 1, null, userid: $teacher->id);
+        $attemptobj = quiz_attempt::create($attempt->id);
+
+        // Delete the question versions defined in the data provider.
+        $deleteids = array_map(fn($label) => $questions[$label]->id, $deleteversions);
+        \qbank_deletequestion\helper::delete_questions($deleteids, false);
+
+        if (!$canpreview) { // Update the 'mod/quiz:preview' capability as defined by the data provider.
+            $this->setUser($teacher);
+            unassign_capability('mod/quiz:preview', $teacherrole->id);
+        }
+
+        // Update the quiz attempts.
+        try {
+            $attemptobj->update_questions_to_new_version_if_changed();
+            // An exception is expected if the last preview/attempt is invalidated due to question versions removed for
+            // this preview/attempt.
+            if ($expectedupdateattempterror) {
+                $this->fail('Exception expected due to preview is deleted');
+            }
+        } catch (\moodle_exception $e) {
+            // Verify the expected exception message.
+            $this->assertEquals($expectedupdateattempterror, $e->getMessage());
+        }
+
+        // An exception is expected if an existing random question lacks sufficient questions in the category due to
+        // question version removal.
+        // The new attempt should fail as a result.
+        if ($expectedslotfewquestions) {
+            $structure = $quizobj->get_structure();
+            $slot = $structure->get_slot_by_number($expectedslotfewquestions);
+            // Verify the expected exception message.
+            $this->expectExceptionMessage(
+                get_string(
+                    'notenoughrandomquestions',
+                    'quiz',
+                    (object) [
+                        'category' => $slot->category,
+                        'name' => 'Random question',
+                        'id' => $slot->slotid,
+                    ]
+                )
+            );
+        }
+
+        // Start a new quiz attempt.
+        $attempt = quiz_prepare_and_start_new_attempt($quizobj, 2, $attempt, userid: $teacher->id);
+        $attemptobj = quiz_attempt::create($attempt->id);
+
+        // Verify the expected question versions for each slot for the given quiz attempt.
+        foreach ($expectedversions as $slot => $expectedversion) {
+            $this->assertEquals($questions[$expectedversion]->id, $attemptobj->get_question_attempt($slot)->get_question_id());
+        }
+    }
+
+    /**
+     * Data provider for test_quiz_attempt_with_random_questions_when_versions_are_deleted.
+     *
+     * @return array
+     */
+    public static function quiz_random_question_deletion_provider(): array {
+        return [
+            'Delete only latest versions for both q1 and q2; quiz preview available' => [
+                ['q1v2', 'q2v2'],
+                true,
+                [
+                    1 => 'q1v1',
+                    2 => 'q2v1',
+                ],
+                get_string('attempterrorcontentchange', 'quiz'),
+            ],
+            'Delete only latest versions for both q1 and q2; quiz preview not available' => [
+                ['q1v2', 'q2v2'],
+                false,
+                [
+                    1 => 'q1v1',
+                    2 => 'q2v1',
+                ],
+                get_string('attempterrorcontentchangeforuser', 'quiz'),
+            ],
+            'Delete all question versions for q1 only; quiz preview available' => [
+                ['q1v1', 'q1v2'],
+                true,
+                [
+                    1 => 'q1v1',
+                    2 => 'q2v1',
+                ],
+                get_string('attempterrorcontentchange', 'quiz'),
+                1,
+            ],
+            'Delete all question versions for q2 only; quiz preview not available' => [
+                ['q2v1', 'q2v2'],
+                false,
+                [
+                    1 => 'q1v1',
+                    2 => 'q2v1',
+                ],
+                get_string('attempterrorcontentchangeforuser', 'quiz'),
+                2,
+            ],
+            'Delete only initial question versions for q1 and q2; quiz preview available' => [
+                ['q1v1', 'q2v1'],
+                true,
+                [
+                    1 => 'q1v2',
+                    2 => 'q2v2',
+                ],
+            ],
+        ];
+    }
+
+    /**
      * Create a quiz containing one question and a close time.
      *
      * The question is the standard shortanswer test question.
@@ -220,8 +428,10 @@ final class attempt_walkthrough_test extends \advanced_testcase {
         $quizgenerator = $this->getDataGenerator()->get_plugin_generator('mod_quiz');
 
         $quiz = $quizgenerator->create_instance(
-                ['course' => $SITE->id, 'timeclose' => $timeclose,
-                        'overduehandling' => $overduehandling, 'graceperiod' => HOURSECS]);
+            ['course' => $SITE->id, 'timeclose' => $timeclose,
+            'overduehandling' => $overduehandling,
+            'graceperiod' => HOURSECS]
+        );
 
         // Create a question.
         /** @var \core_question_generator $questiongenerator */
@@ -398,19 +608,30 @@ final class attempt_walkthrough_test extends \advanced_testcase {
             $attemptobj = quiz_attempt::create($attempt->id);
             $this->assertTrue($attemptobj->has_response_to_at_least_one_graded_question());
             $this->assertEquals(0, $attemptobj->get_number_of_unanswered_questions());
-            $attemptobj->process_finish($timenow, false);
+            $attemptobj->process_submit($timenow, false);
 
             // Re-load quiz attempt data.
             $attemptobj = quiz_attempt::create($attempt->id);
 
             // Check that results are stored as expected.
             $this->assertEquals(1, $attemptobj->get_attempt_number());
-            $this->assertEquals(4, $attemptobj->get_sum_marks());
-            $this->assertEquals(true, $attemptobj->is_finished());
+            $this->assertEquals(false, $attemptobj->is_finished());
             $this->assertEquals($timenow, $attemptobj->get_submitted_date());
             $this->assertEquals($user1->id, $attemptobj->get_userid());
             $this->assertTrue($attemptobj->has_response_to_at_least_one_graded_question());
             $this->assertEquals(0, $attemptobj->get_number_of_unanswered_questions());
+
+            // Check we don't have grades yet.
+            $this->assertEmpty(quiz_get_user_grades($quiz, $user1->id));
+            $this->assertNull($attemptobj->get_sum_marks());
+
+            // Now grade the submission.
+            $attemptobj->process_grade_submission($timenow);
+            $attemptobj = quiz_attempt::create($attempt->id);
+
+            // Check quiz grades.
+            $this->assertEquals(true, $attemptobj->is_finished());
+            $this->assertEquals(4, $attemptobj->get_sum_marks());
 
             // Check quiz grades.
             $grades = quiz_get_user_grades($quiz, $user1->id);
@@ -425,11 +646,16 @@ final class attempt_walkthrough_test extends \advanced_testcase {
         }
     }
 
-
+    /**
+     * Get the correct response for variants.
+     *
+     * @return array
+     */
     public static function get_correct_response_for_variants(): array {
         return [[1, 9.9], [2, 8.5], [5, 14.2], [10, 6.8, true]];
     }
 
+    /** @var ?\quiz A quiz with variants */
     protected $quizwithvariants = null;
 
     /**
@@ -491,20 +717,30 @@ final class attempt_walkthrough_test extends \advanced_testcase {
         $this->assertTrue($attemptobj->has_response_to_at_least_one_graded_question());
         $this->assertEquals(0, $attemptobj->get_number_of_unanswered_questions());
 
-        $attemptobj->process_finish($timenow, false);
+        $attemptobj->process_submit($timenow, false);
 
         // Re-load quiz attempt data.
         $attemptobj = quiz_attempt::create($attempt->id);
 
         // Check that results are stored as expected.
         $this->assertEquals(1, $attemptobj->get_attempt_number());
-        $this->assertEquals(1, $attemptobj->get_sum_marks());
-        $this->assertEquals(true, $attemptobj->is_finished());
+        $this->assertEquals(false, $attemptobj->is_finished());
         $this->assertEquals($timenow, $attemptobj->get_submitted_date());
         $this->assertEquals($user1->id, $attemptobj->get_userid());
         $this->assertTrue($attemptobj->has_response_to_at_least_one_graded_question());
         $this->assertEquals(0, $attemptobj->get_number_of_unanswered_questions());
 
+        // Check we don't have grades yet.
+        $this->assertEmpty(quiz_get_user_grades($this->quizwithvariants, $user1->id));
+        $this->assertNull($attemptobj->get_sum_marks());
+
+        // Now grade the submission.
+        $attemptobj->process_grade_submission($timenow);
+        $attemptobj = quiz_attempt::create($attempt->id);
+
+        // Check quiz grades.
+        $this->assertEquals(true, $attemptobj->is_finished());
+        $this->assertEquals(1, $attemptobj->get_sum_marks());
         // Check quiz grades.
         $grades = quiz_get_user_grades($this->quizwithvariants, $user1->id);
         $grade = array_shift($grades);
@@ -563,8 +799,10 @@ final class attempt_walkthrough_test extends \advanced_testcase {
         $this->assertEquals(quiz_attempt::IN_PROGRESS, $attemptobj->get_state());
         $this->assertEquals(0, $attemptobj->get_submitted_date());
         $this->assertEquals($user->id, $attemptobj->get_userid());
-        $this->assertEquals($overriddentimeclose,
-                $attemptobj->get_access_manager($reopentime)->get_end_time($attemptobj->get_attempt()));
+        $this->assertEquals(
+            $overriddentimeclose,
+            $attemptobj->get_access_manager($reopentime)->get_end_time($attemptobj->get_attempt())
+        );
 
         // Verify this was logged correctly.
         $events = $sink->get_events();
@@ -573,8 +811,10 @@ final class attempt_walkthrough_test extends \advanced_testcase {
         $reopenedevent = array_shift($events);
         $this->assertInstanceOf('\mod_quiz\event\attempt_reopened', $reopenedevent);
         $this->assertEquals($attemptobj->get_context(), $reopenedevent->get_context());
-        $this->assertEquals(new moodle_url('/mod/quiz/review.php', ['attempt' => $attemptobj->get_attemptid()]),
-                $reopenedevent->get_url());
+        $this->assertEquals(
+            new moodle_url('/mod/quiz/review.php', ['attempt' => $attemptobj->get_attemptid()]),
+            $reopenedevent->get_url()
+        );
     }
 
     public function test_quiz_attempt_walkthrough_abandoned_attempt_reopened_after_close_time(): void {
@@ -618,18 +858,106 @@ final class attempt_walkthrough_test extends \advanced_testcase {
 
         // Verify this was logged correctly - there are some gradebook events between the two we want to check.
         $events = $sink->get_events();
-        $this->assertGreaterThanOrEqual(2, $events);
+        $this->assertGreaterThanOrEqual(3, $events);
 
+        $attempturl = new moodle_url(
+            '/mod/quiz/review.php',
+            ['attempt' => $attemptobj->get_attemptid()],
+        );
         $reopenedevent = array_shift($events);
         $this->assertInstanceOf('\mod_quiz\event\attempt_reopened', $reopenedevent);
         $this->assertEquals($attemptobj->get_context(), $reopenedevent->get_context());
-        $this->assertEquals(new moodle_url('/mod/quiz/review.php', ['attempt' => $attemptobj->get_attemptid()]),
-                $reopenedevent->get_url());
 
-        $submittedevent = array_pop($events);
+        $this->assertEquals($attempturl, $reopenedevent->get_url());
+
+        $submittedevent = array_shift($events);
         $this->assertInstanceOf('\mod_quiz\event\attempt_submitted', $submittedevent);
         $this->assertEquals($attemptobj->get_context(), $submittedevent->get_context());
-        $this->assertEquals(new moodle_url('/mod/quiz/review.php', ['attempt' => $attemptobj->get_attemptid()]),
-                $submittedevent->get_url());
+
+        $this->assertEquals($attempturl, $submittedevent->get_url());
+
+        $gradedevent = array_pop($events);
+        $this->assertInstanceOf('\mod_quiz\event\attempt_graded', $gradedevent);
+        $this->assertEquals($attemptobj->get_context(), $gradedevent->get_context());
+        $this->assertEquals($attempturl, $gradedevent->get_url());
+    }
+
+    /**
+     * Create a quiz with questions, pre-create an attempt, edit a question, then begin the attempt.
+     */
+    public function test_quiz_attempt_walkthrough_update_question_after_precreate(): void {
+        global $SITE;
+
+        $this->resetAfterTest(true);
+
+        // Make a quiz.
+        $quizgenerator = $this->getDataGenerator()->get_plugin_generator('mod_quiz');
+
+        $quiz = $quizgenerator->create_instance(
+            [
+                'course' => $SITE->id,
+                'questionsperpage' => 0,
+                'grade' => 100.0,
+                'sumgrades' => 3,
+            ],
+        );
+
+        // Create a couple of questions.
+        $questiongenerator = $this->getDataGenerator()->get_plugin_generator('core_question');
+
+        $cat = $questiongenerator->create_question_category();
+        $saq = $questiongenerator->create_question('shortanswer', null, ['category' => $cat->id]);
+        $numq = $questiongenerator->create_question('numerical', null, ['category' => $cat->id]);
+        $matchq = $questiongenerator->create_question('match', null, ['category' => $cat->id]);
+        $description = $questiongenerator->create_question('description', null, ['category' => $cat->id]);
+
+        // Add them to the quiz.
+        quiz_add_quiz_question($saq->id, $quiz);
+        quiz_add_quiz_question($numq->id, $quiz);
+        quiz_add_quiz_question($matchq->id, $quiz);
+        quiz_add_quiz_question($description->id, $quiz);
+
+        // Make a user to do the quiz.
+        $user1 = $this->getDataGenerator()->create_user();
+
+        $quizobj = quiz_settings::create($quiz->id, $user1->id);
+
+        // Start the attempt.
+        $quba = question_engine::make_questions_usage_by_activity('mod_quiz', $quizobj->get_context());
+        $quba->set_preferred_behaviour($quizobj->get_quiz()->preferredbehaviour);
+
+        $timenow = time();
+        $attempt = quiz_create_attempt($quizobj, 1, false, $timenow, false, $user1->id);
+
+        quiz_start_new_attempt($quizobj, $quba, $attempt, 1, $timenow);
+        $this->assertEquals('1,2,3,4,0', $attempt->layout);
+
+        quiz_attempt_save_not_started($quba, $attempt);
+
+        $attemptobj = quiz_attempt::create($attempt->id);
+
+        // Update question in quiz.
+        $newsa = $questiongenerator->update_question($saq, null,
+            ['name' => 'This is the second version of shortanswer']);
+        $newnumbq = $questiongenerator->update_question($numq, null,
+            ['name' => 'This is the second version of numerical']);
+        $newmatch = $questiongenerator->update_question($matchq, null,
+            ['name' => 'This is the second version of match']);
+        $newdescription = $questiongenerator->update_question($description, null,
+            ['name' => 'This is the second version of description']);
+
+        $this->assertEquals($saq->id, $attemptobj->get_question_attempt(1)->get_question_id());
+        $this->assertEquals($numq->id, $attemptobj->get_question_attempt(2)->get_question_id());
+        $this->assertEquals($matchq->id, $attemptobj->get_question_attempt(3)->get_question_id());
+        $this->assertEquals($description->id, $attemptobj->get_question_attempt(4)->get_question_id());
+
+        quiz_attempt_save_started($quizobj, $quba, $attempt);
+
+        // Verify that the started attempt contains the new questions.
+        $attemptobj = quiz_attempt::create($attempt->id);
+        $this->assertEquals($newsa->id, $attemptobj->get_question_attempt(1)->get_question_id());
+        $this->assertEquals($newnumbq->id, $attemptobj->get_question_attempt(2)->get_question_id());
+        $this->assertEquals($newmatch->id, $attemptobj->get_question_attempt(3)->get_question_id());
+        $this->assertEquals($newdescription->id, $attemptobj->get_question_attempt(4)->get_question_id());
     }
 }

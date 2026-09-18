@@ -54,8 +54,6 @@ define('SCORM_DISPLAY_ATTEMPTSTATUS_ENTRY', 3);
 define('SCORM_EVENT_TYPE_OPEN', 'open');
 define('SCORM_EVENT_TYPE_CLOSE', 'close');
 
-require_once(__DIR__ . '/deprecatedlib.php');
-
 /**
  * Return an array of status options
  *
@@ -1033,21 +1031,20 @@ function scorm_pluginfile($course, $cm, $context, $filearea, $args, $forcedownlo
  * @return mixed True if module supports feature, false if not, null if doesn't know or string for the module purpose.
  */
 function scorm_supports($feature) {
-    switch($feature) {
-        case FEATURE_GROUPS:                  return true;
-        case FEATURE_GROUPINGS:               return true;
-        case FEATURE_MOD_INTRO:               return true;
-        case FEATURE_COMPLETION_TRACKS_VIEWS: return true;
-        case FEATURE_COMPLETION_HAS_RULES:    return true;
-        case FEATURE_GRADE_HAS_GRADE:         return true;
-        case FEATURE_GRADE_OUTCOMES:          return true;
-        case FEATURE_BACKUP_MOODLE2:          return true;
-        case FEATURE_SHOW_DESCRIPTION:        return true;
-        case FEATURE_MOD_PURPOSE:
-            return MOD_PURPOSE_INTERACTIVECONTENT;
-
-        default: return null;
-    }
+    return match ($feature) {
+        FEATURE_GROUPS => true,
+        FEATURE_GROUPINGS => true,
+        FEATURE_MOD_INTRO => true,
+        FEATURE_COMPLETION_TRACKS_VIEWS => true,
+        FEATURE_COMPLETION_HAS_RULES => true,
+        FEATURE_GRADE_HAS_GRADE => true,
+        FEATURE_GRADE_OUTCOMES => true,
+        FEATURE_BACKUP_MOODLE2 => true,
+        FEATURE_SHOW_DESCRIPTION => true,
+        FEATURE_MOD_PURPOSE => MOD_PURPOSE_INTERACTIVECONTENT,
+        FEATURE_MOD_OTHERPURPOSE => MOD_PURPOSE_CONTENT,
+        default => null,
+    };
 }
 
 /**
@@ -1102,13 +1099,6 @@ function scorm_debug_log_remove($type, $scoid) {
     }
 
     return @unlink($logfile);
-}
-
-/**
- * @deprecated since Moodle 3.3, when the block_course_overview block was removed.
- */
-function scorm_print_overview() {
-    throw new coding_exception('scorm_print_overview() can not be used any more and is obsolete.');
 }
 
 /**
@@ -1463,7 +1453,7 @@ function mod_scorm_get_fontawesome_icon_map() {
     return [
         'mod_scorm:asset' => 'fa-regular fa-file-zipper',
         'mod_scorm:assetc' => 'fa-regular fa-file-zipper',
-        'mod_scorm:browsed' => 'fa-book',
+        'mod_scorm:browsed' => 'fa-regular fa-eye',
         'mod_scorm:completed' => 'fa-regular fa-square-check',
         'mod_scorm:failed' => 'fa-xmark',
         'mod_scorm:incomplete' => 'fa-regular fa-pen-to-square',

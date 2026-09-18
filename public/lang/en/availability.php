@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Strings for availability system.
+ * Strings for component 'core_availability', language 'en'.
  *
  * @package core_availability
  * @copyright 2014 The Open University
@@ -37,11 +37,11 @@ $string['hidden_individual'] = 'Hidden entirely if student doesn\'t meet this co
 $string['invalid'] = 'Please set';
 $string['itemheading'] = '{$a->number} {$a->type} restriction';
 $string['item_unknowntype'] = 'These restrictions use a plugin which is no longer available (if it is okay to remove that restriction, delete it below)';
-$string['shown_individual'] = 'Displayed if student doesn\'t meet this condition';
+$string['shown_individual'] = 'Item name displayed with access restriction information if student doesn\'t meet this condition';
 $string['hide_verb'] = 'Click to hide';
 $string['show_verb'] = 'Click to display';
 $string['hidden_all'] = 'Hidden entirely if student doesn\'t meet the conditions';
-$string['shown_all'] = 'Displayed if student doesn\'t meet the conditions';
+$string['shown_all'] = 'Item name displayed with access restriction information if student doesn\'t meet the conditions';
 $string['label_multi'] = 'Required restrictions';
 $string['label_sign'] = 'Restriction type';
 $string['list_and'] = 'All of:';
@@ -68,6 +68,3 @@ $string['restrictaccess'] = 'Restrict access';
 $string['restrictbygroup'] = 'Add group/grouping access restriction';
 $string['setheading'] = '{$a->number} Set of {$a->count} restriction(s)';
 $string['unknowncondition'] = 'Unknown condition (deleted condition plugin)';
-
-// Deprecated since Moodle 4.3.
-$string['showmore'] = 'Show more';

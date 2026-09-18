@@ -23,6 +23,7 @@ require_once($CFG->libdir . "/questionlib.php");
 use context;
 use core_question\category_manager;
 use core_question\local\bank\question_version_status;
+use core_question\output\question_category_selector;
 use moodle_exception;
 use html_writer;
 
@@ -46,18 +47,16 @@ class helper {
     /**
      * Remove stale questions from a category.
      *
-     * While questions should not be left behind when they are not used any more,
-     * it does happen, maybe via restore, or old logic, or uncovered scenarios. When
-     * this happens, the users are unable to delete the question category unless
-     * they move those stale questions to another one category, but to them the
-     * category is empty as it does not contain anything. The purpose of this function
-     * is to detect the questions that may have gone stale and remove them.
+     * This finds and removes any old-style random questions (qtype = random),
+     * or any questions that were deleted while they were in use by a quiz (status = hidden),
+     * but those usages have since been removed.
+     *
+     * If a category only contains stale questions, the users are unable to delete the question
+     * category unless they move those stale questions to another one category, but to them the
+     * category may appear empty. The purpose of this function is to detect the questions that
+     * may have gone stale and remove them.
      *
      * You will typically use this prior to checking if the category contains questions.
-     *
-     * The stale questions (unused and hidden to the user) handled are:
-     * - hidden questions
-     * - random questions
      *
      * @param int $categoryid The category ID.
      * @throws \dml_exception
@@ -70,14 +69,30 @@ class helper {
                   JOIN {question_versions} qv ON qv.questionid = q.id
                   JOIN {question_bank_entries} qbe ON qbe.id = qv.questionbankentryid
                  WHERE qbe.questioncategoryid = :categoryid
-                   AND (q.qtype = :qtype OR qv.status = :status)";
+                   AND (q.qtype = :qtype OR qv.status = :status)
+                   AND q.id > :lastid
+              ORDER BY q.id";
 
-        $params = ['categoryid' => $categoryid, 'qtype' => 'random', 'status' => question_version_status::QUESTION_STATUS_HIDDEN];
-        $questions = $DB->get_records_sql($sql, $params);
-        foreach ($questions as $question) {
-            // The function question_delete_question does not delete questions in use.
-            question_delete_question($question->id);
-        }
+        $lastid = 0;
+        $params = [
+            'categoryid' => $categoryid,
+            'qtype' => 'random',
+            'status' => question_version_status::QUESTION_STATUS_HIDDEN,
+            'lastid' => $lastid,
+        ];
+
+        // Process the questions in batches, to avoid running out of memory.
+        $batchsize = 50000;
+        do {
+            $questions = $DB->get_records_sql($sql, $params, 0, $batchsize);
+            $recordcount = 0;
+            foreach ($questions as $question) {
+                $lastid = $question->id;
+                // The function question_delete_question does not delete questions in use.
+                question_delete_question($question->id);
+                $recordcount++;
+            }
+        } while ($recordcount === $batchsize);
     }
 
     /**
@@ -168,8 +183,7 @@ class helper {
 
         // Recursively indent the children.
         foreach ($categories[$id]->childids as $childid) {
-            [$childcategory, ] = explode(',', $childid);
-            if ($childcategory != $nochildrenof) {
+            if ($childid != $nochildrenof) {
                 $newcategories = $newcategories + self::flatten_category_tree(
                     $categories,
                     $childid,
@@ -275,7 +289,7 @@ class helper {
         );
         $attrs = [
             'id' => 'id_movetocategory',
-            'class' => 'custom-select',
+            'class' => 'form-select',
             'data-action' => 'toggle',
             'data-togglegroup' => 'qbank',
             'data-toggle' => 'action',
@@ -294,7 +308,7 @@ class helper {
      * Get all the category objects, including a count of the number of questions in that category,
      * for all the categories in the lists $contexts.
      *
-     * @param string $contexts
+     * @param string $contexts comma separated list of contextids
      * @param string $sortorder used as the ORDER BY clause in the select statement.
      * @param bool $top Whether to return the top categories or not.
      * @param int $showallversions 1 to show all versions not only the latest.
@@ -307,34 +321,7 @@ class helper {
         bool $top = false,
         int $showallversions = 0,
     ): array {
-        global $DB;
-        $topwhere = $top ? '' : 'AND c.parent <> 0';
-        $statuscondition = "AND qv.status <> :status";
-        $params = [
-            'status' => question_version_status::QUESTION_STATUS_HIDDEN,
-            'substatus' => question_version_status::QUESTION_STATUS_HIDDEN,
-        ];
-        $sql = "SELECT c.*,
-                    (SELECT COUNT(1)
-                       FROM {question} q
-                       JOIN {question_versions} qv ON qv.questionid = q.id
-                       JOIN {question_bank_entries} qbe ON qbe.id = qv.questionbankentryid
-                      WHERE q.parent = '0'
-                        $statuscondition
-                            AND c.id = qbe.questioncategoryid
-                            AND ($showallversions = 1
-                                OR (qv.version = (SELECT MAX(v.version)
-                                                    FROM {question_versions} v
-                                                    JOIN {question_bank_entries} be ON be.id = v.questionbankentryid
-                                                   WHERE be.id = qbe.id AND v.status <> :substatus)
-                                   )
-                                )
-                            ) AS questioncount
-                  FROM {question_categories} c
-                 WHERE c.contextid IN ($contexts) $topwhere
-              ORDER BY $sortorder";
-
-        return $DB->get_records_sql($sql, $params);
+        return (new question_category_selector())->get_categories_for_contexts($contexts, $sortorder, $top, $showallversions);
     }
 
     /**
@@ -357,71 +344,14 @@ class helper {
         int $nochildrenof = -1,
         bool $escapecontextnames = true,
     ): array {
-        global $CFG;
-        $pcontexts = [];
-        foreach ($contexts as $context) {
-            $pcontexts[] = $context->id;
-        }
-        $contextslist = join(', ', $pcontexts);
-
-        $categories = self::get_categories_for_contexts($contextslist, 'parent, sortorder, name ASC', $top);
-
-        if ($top) {
-            $categories = self::question_fix_top_names($categories);
-        }
-
-        $categories = self::question_add_context_in_key($categories);
-        $categories = self::add_indented_names($categories, $nochildrenof);
-
-        // Sort cats out into different contexts.
-        $categoriesarray = [];
-        foreach ($pcontexts as $contextid) {
-            $context = \context::instance_by_id($contextid);
-            $contextstring = $context->get_context_name(true, true, $escapecontextnames);
-            foreach ($categories as $category) {
-                if ($category->contextid == $contextid) {
-                    $cid = $category->id;
-                    if ("{$currentcat},{$contextid}" != $cid || $currentcat == 0) {
-                        $a = new \stdClass();
-                        $a->name = format_string(
-                            $category->indentedname,
-                            true,
-                            ['context' => $context]
-                        );
-                        if ($category->idnumber !== null && $category->idnumber !== '') {
-                            $a->idnumber = s($category->idnumber);
-                        }
-                        if (!empty($category->questioncount)) {
-                            $a->questioncount = $category->questioncount;
-                        }
-                        if (isset($a->idnumber) && isset($a->questioncount)) {
-                            $formattedname = get_string('categorynamewithidnumberandcount', 'question', $a);
-                        } else if (isset($a->idnumber)) {
-                            $formattedname = get_string('categorynamewithidnumber', 'question', $a);
-                        } else if (isset($a->questioncount)) {
-                            $formattedname = get_string('categorynamewithcount', 'question', $a);
-                        } else {
-                            $formattedname = $a->name;
-                        }
-                        $categoriesarray[$contextstring][$cid] = $formattedname;
-                    }
-                }
-            }
-        }
-        if ($popupform) {
-            $popupcats = [];
-            foreach ($categoriesarray as $contextstring => $optgroup) {
-                $group = [];
-                foreach ($optgroup as $key => $value) {
-                    $key = str_replace($CFG->wwwroot, '', $key);
-                    $group[$key] = $value;
-                }
-                $popupcats[] = [$contextstring => $group];
-            }
-            return $popupcats;
-        } else {
-            return $categoriesarray;
-        }
+        return (new question_category_selector())->question_category_options(
+            $contexts,
+            $top,
+            $currentcat,
+            $popupform,
+            $nochildrenof,
+            $escapecontextnames,
+        );
     }
 
     /**
@@ -431,13 +361,7 @@ class helper {
      * @return array
      */
     public static function question_add_context_in_key(array $categories): array {
-        $newcatarray = [];
-        foreach ($categories as $id => $category) {
-            $category->parent = "$category->parent,$category->contextid";
-            $category->id = "$category->id,$category->contextid";
-            $newcatarray["$id,$category->contextid"] = $category;
-        }
-        return $newcatarray;
+        return (new question_category_selector())->question_add_context_in_key($categories);
     }
 
     /**
@@ -449,15 +373,7 @@ class helper {
      * @throws \coding_exception
      */
     public static function question_fix_top_names(array $categories, bool $escape = true): array {
-
-        foreach ($categories as $id => $category) {
-            if ($category->parent == 0) {
-                $context = \context::instance_by_id($category->contextid);
-                $categories[$id]->name = get_string('topfor', 'question', $context->get_context_name(false, false, $escape));
-            }
-        }
-
-        return $categories;
+        return (new question_category_selector())->question_fix_top_names($categories, $escape);
     }
 
     /**

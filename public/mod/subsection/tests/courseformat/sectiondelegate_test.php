@@ -22,15 +22,12 @@ namespace mod_subsection\courseformat;
  * @package    mod_subsection
  * @copyright  2024 Sara Arjona <sara@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @covers     \mod_subsection\courseformat\sectiondelegate
- * @coversDefaultClass \mod_subsection\courseformat\sectiondelegate
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(sectiondelegate::class)]
 final class sectiondelegate_test extends \advanced_testcase {
-
     /**
      * Test has_delegate_class().
      *
-     * @covers ::has_delegate_class
      */
     public function test_has_delegate_class(): void {
         $this->assertTrue(sectiondelegate::has_delegate_class('mod_subsection'));
@@ -39,16 +36,12 @@ final class sectiondelegate_test extends \advanced_testcase {
     /**
      * Test get_section_action_menu().
      *
-     * @covers ::get_section_action_menu
      */
     public function test_get_section_action_menu(): void {
         global $PAGE;
 
         $this->resetAfterTest();
         $this->setAdminUser();
-
-        $manager = \core_plugin_manager::resolve_plugininfo_class('mod');
-        $manager::enable_plugin('subsection', 1);
 
         $course = $this->getDataGenerator()->create_course(['format' => 'topics', 'numsections' => 1]);
         $this->getDataGenerator()->create_module('subsection', ['course' => $course->id, 'section' => 1]);
@@ -67,8 +60,9 @@ final class sectiondelegate_test extends \advanced_testcase {
         // Highlight is only present in section menu (not module), so they shouldn't be found in the result.
         // Duplicate is not implemented yet, so they shouldn't be found in the result.
         // The possible options are: View, Edit, Show, Hide, Delete and Permalink.
-        if (get_string_manager()->string_exists('editsection', 'format_'.$format->get_format())) {
-            $streditsection = get_string('editsection', 'format_'.$format->get_format());
+        $formatprovider = 'format_' . $format->get_format();
+        if (get_string_manager()->string_exists('editsection', $formatprovider)) {
+            $streditsection = get_string('editsection', $formatprovider);
         } else {
             $streditsection = get_string('editsection');
         }

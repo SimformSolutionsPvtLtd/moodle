@@ -19,6 +19,7 @@ namespace core_customfield;
 /**
  * Functional test for class \core_customfield\api
  *
+ * @covers     \core_customfield\api
  * @package    core_customfield
  * @category   test
  * @copyright  2018 Toni Barbera <toni@moodle.com>
@@ -181,7 +182,14 @@ final class api_test extends \advanced_testcase {
 
         $handler = \core_course\customfield\course_handler::create();
         $c1id = $handler->create_category();
-        $c1 = $handler->get_categories_with_fields()[$c1id];
+        $categories = $handler->get_categories_with_fields();
+        $c1 = $handler->get_category_from_array(
+            $categories,
+            $c1id,
+            $handler->get_component(),
+            $handler->get_area(),
+            $handler->get_itemid()
+        );
         $this->assertEquals('Other fields', $c1->get('name'));
         $this->assertEquals($handler->get_component(), $c1->get('component'));
         $this->assertEquals($handler->get_area(), $c1->get('area'));
@@ -191,8 +199,21 @@ final class api_test extends \advanced_testcase {
         // Generate more categories and make sure they have different names.
         $c2id = $handler->create_category();
         $c3id = $handler->create_category();
-        $c2 = $handler->get_categories_with_fields()[$c2id];
-        $c3 = $handler->get_categories_with_fields()[$c3id];
+        $categories = $handler->get_categories_with_fields();
+        $c2 = $handler->get_category_from_array(
+            $categories,
+            $c2id,
+            $handler->get_component(),
+            $handler->get_area(),
+            $handler->get_itemid()
+        );
+        $c3 = $handler->get_category_from_array(
+            $categories,
+            $c3id,
+            $handler->get_component(),
+            $handler->get_area(),
+            $handler->get_itemid()
+        );
         $this->assertEquals('Other fields 1', $c2->get('name'));
         $this->assertEquals('Other fields 2', $c3->get('name'));
     }
@@ -250,5 +271,59 @@ final class api_test extends \advanced_testcase {
         list($sql, $p) = $DB->get_in_or_equal($category1fieldsids);
         $this->assertCount(6, $DB->get_records_select(\core_customfield\field::TABLE, 'id '.$sql, $p));
         $this->assertCount(6, $DB->get_records_select(\core_customfield\data::TABLE, 'fieldid '.$sql, $p));
+    }
+
+    /**
+     * Test for function api::is_shortname_unique()
+     */
+    public function test_is_shortname_unique(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        /** @var \core_customfield_generator $generator */
+        $generator = $this->getDataGenerator()->get_plugin_generator('core_customfield');
+
+        // Create shared category and fields.
+        $sharedcategory = $generator->create_category(['component' => 'core_customfield', 'area' => 'shared']);
+        $generator->create_field([
+            'categoryid' => $sharedcategory->get('id'),
+            'name' => 'My shared field',
+            'shortname' => 'mysharedfield',
+            'type' => 'text',
+        ]);
+        $sharedfield2 = $generator->create_field([
+            'categoryid' => $sharedcategory->get('id'),
+            'name' => 'My shared field 2',
+            'shortname' => 'mysharedfield2',
+            'type' => 'text',
+        ]);
+
+        // Create a course category and fields.
+        $coursecategory = $generator->create_category(['component' => 'core_course', 'area' => 'course']);
+        $generator->create_field([
+            'categoryid' => $coursecategory->get('id'),
+            'name' => 'My course field',
+            'shortname' => 'mycoursefield',
+            'type' => 'text',
+        ]);
+        $coursefield2 = $generator->create_field([
+            'categoryid' => $coursecategory->get('id'),
+            'name' => 'My course field 2',
+            'shortname' => 'mycoursefield2',
+            'type' => 'text',
+        ]);
+
+        $coursehandler = \core_course\customfield\course_handler::create();
+        $sharedhandler = \core_customfield\customfield\shared_handler::create();
+
+        $this->assertTrue(api::is_shortname_unique($coursehandler, 'otherfield', $coursefield2->get('id')));
+        $this->assertTrue(api::is_shortname_unique($coursehandler, 'mycoursefield2', $coursefield2->get('id')));
+        $this->assertFalse(api::is_shortname_unique($coursehandler, 'mycoursefield', $coursefield2->get('id')));
+        $this->assertFalse(api::is_shortname_unique($coursehandler, 'mysharedfield', $coursefield2->get('id')));
+
+        $this->assertTrue(api::is_shortname_unique($sharedhandler, 'otherfield', $sharedfield2->get('id')));
+        $this->assertTrue(api::is_shortname_unique($sharedhandler, 'mysharedfield2', $sharedfield2->get('id')));
+        $this->assertFalse(api::is_shortname_unique($sharedhandler, 'mycoursefield', $sharedfield2->get('id')));
+        $this->assertFalse(api::is_shortname_unique($sharedhandler, 'mysharedfield', $sharedfield2->get('id')));
     }
 }

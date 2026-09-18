@@ -10,8 +10,8 @@ Feature: Use the qbank plugin manager page for comment
       | activity   | name      | course | idnumber |
       | quiz       | Test quiz | C1     | quiz1    |
     And the following "question categories" exist:
-      | contextlevel | reference | name           |
-      | Course         | C1     | Test questions |
+      | contextlevel    | reference | name           |
+      | Activity module | quiz1     | Test questions |
     And the following "questions" exist:
       | questioncategory | qtype     | name           | questiontext              |
       | Test questions   | truefalse | First question | Answer the first question |
@@ -23,8 +23,10 @@ Feature: Use the qbank plugin manager page for comment
     And I should see "Question comments"
     And I click on "Disable" "link" in the "Question comments" "table_row"
     And I am on the "Test quiz" "mod_quiz > question bank" page
+    And I apply question bank filter "Category" with value "Test questions"
     Then "#categoryquestions .header.commentcount" "css_element" should not be visible
     And I navigate to "Plugins > Question bank plugins > Manage question bank plugins" in site administration
     And I click on "Enable" "link" in the "Question comments" "table_row"
     And I am on the "Test quiz" "mod_quiz > question bank" page
+    And I apply question bank filter "Category" with value "Test questions"
     And "#categoryquestions .header.commentcount" "css_element" should be visible

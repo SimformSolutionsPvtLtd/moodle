@@ -44,7 +44,13 @@ if (empty($CFG->enableoutcomes)) {
 }
 
 // First make sure we have proper final grades.
-grade_regrade_final_grades_if_required($course);
+$regradetask = \core_course\task\regrade_final_grades::create($courseid);
+$indicatormessage = get_string('recalculatinggradesadhoc', 'grades');
+$indicatorheading = get_string('recalculatinggrades', 'grades');
+$taskindicator = new \core\output\task_indicator($regradetask, $indicatorheading, $indicatormessage, $PAGE->url);
+if (!$taskindicator->has_task_record()) {
+    grade_regrade_final_grades_if_required($course);
+}
 
 // Grab all outcomes used in course.
 $report_info = array();
@@ -96,7 +102,16 @@ foreach ($outcomes as $outcomeid => $outcome) {
     }
 }
 
-$html = '<table class="generaltable boxaligncenter" width="90%" cellspacing="1" cellpadding="5" summary="Outcomes Report">' . "\n";
+print_grade_page_head($courseid, 'report', 'outcomes');
+
+if ($taskindicator->has_task_record()) {
+    echo $OUTPUT->render($taskindicator);
+    echo $OUTPUT->footer();
+    exit;
+}
+
+$html = '<table class="table generaltable table-hover" width="90%" cellspacing="1" cellpadding="5" ' .
+    'summary="Outcomes Report">' . "\n";
 $html .= '<tr><th class="header c0" scope="col">' . get_string('outcomeshortname', 'grades') . '</th>';
 $html .= '<th class="header c1" scope="col">' . get_string('courseavg', 'grades') . '</th>';
 $html .= '<th class="header c2" scope="col">' . get_string('sitewide', 'grades') . '</th>';
@@ -175,8 +190,6 @@ foreach ($report_info as $outcomeid => $outcomedata) {
 }
 
 $html .= '</table>';
-
-print_grade_page_head($courseid, 'report', 'outcomes');
 
 echo $html;
 

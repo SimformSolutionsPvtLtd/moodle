@@ -22,7 +22,6 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import $ from 'jquery';
 import menu_navigation from "core/menu_navigation";
 /**
  * Moremenu selectors.
@@ -43,7 +42,7 @@ const Selectors = {
     },
     attributes: {
         menu: '[role="menu"]',
-        dropdowntoggle: '[data-toggle="dropdown"]'
+        dropdowntoggle: '[data-bs-toggle="dropdown"]'
     }
 };
 
@@ -237,22 +236,10 @@ export default menu => {
         menu_navigation(menu);
     });
 
-    const toggledropdown = e => {
-        const dropDownItem = e.target.parentNode.querySelector(`.${Selectors.classes.dropdownitem}`);
-        const innerMenu = e.target.parentNode.querySelector(Selectors.attributes.menu);
-        if (innerMenu) {
-            innerMenu.classList.toggle('show');
-            if (dropDownItem) {
-                dropDownItem.setAttribute('aria-expanded', innerMenu.classList.contains('show'));
-            }
-        }
-        e.stopPropagation();
-    };
+    const toggledropdown = e => e.stopPropagation();
 
-    // If there are dropdowns in the MoreMenu, add a new
-    // event listener to show the contents on click and prevent the
-    // moreMenu from closing.
-    $('.' + Selectors.classes.dropdownmoremenu).on('show.bs.dropdown', function() {
+    // If there are dropdowns in the "More" menu, add an event listener on click to prevent the menu from closing.
+    document.querySelector('.' + Selectors.classes.dropdownmoremenu).addEventListener('show.bs.dropdown', () => {
         const moreDropdown = menu.querySelector(Selectors.regions.moredropdown);
         moreDropdown.querySelectorAll('.dropdown').forEach((dropdown) => {
             dropdown.removeEventListener('click', toggledropdown, true);

@@ -15,9 +15,13 @@
     along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 }}
 {{!
+    @deprecated since Moodle 5.1
+
+    Please use core/checkbox-toggleall-target instead.
+
     @template core/checkbox-toggleall-slave
 
-    Template for a slave checkbox in a toggle group.
+    Template for a target checkbox in a toggle group.
 
     Data attributes required for JS:
     * data-action
@@ -37,10 +41,10 @@
 }}
 <input id="{{id}}" name="{{name}}" type="checkbox" {{#classes}}class="{{.}}"{{/classes}} value="{{value}}"
        data-action="toggle"
-       data-toggle="slave"
+       data-toggle="target"
        data-togglegroup="{{togglegroup}}"
        {{#checked}}checked="checked"{{/checked}}
-/>
+>
 {{#label}}
     <label for="{{id}}" class="{{labelclasses}}">{{{.}}}</label>
 {{/label}}

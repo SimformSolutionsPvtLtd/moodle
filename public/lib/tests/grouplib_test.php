@@ -501,7 +501,7 @@ final class grouplib_test extends \advanced_testcase {
                 'userid' => $user2->id,
                 'groupnames' => $group1->name,
             ],
-        ], $records);
+        ], array_values($records));
     }
 
     public function test_groups_get_group_by_name(): void {
@@ -1158,7 +1158,7 @@ final class grouplib_test extends \advanced_testcase {
         $this->assertEquals([$c1group1->id], array_keys($groups));
         $this->assertEqualsCanonicalizing(
                 [$c1user1->id, $c12user1->id],
-                $groups[$c1group1->id]->members
+                array_values($groups[$c1group1->id]->members),
         );
     }
 
@@ -1236,14 +1236,18 @@ final class grouplib_test extends \advanced_testcase {
     /**
      * Create dummy groups array for use in menu tests
      * @param int $number
+     * @param bool $alternateparticipation If true, set participation = 1 for even groups, and 0 for odd groups.
      * @return array
      */
-    protected function make_group_list($number) {
+    protected function make_group_list($number, $alternateparticipation = false) {
         $testgroups = array();
         for ($a = 0; $a < $number; $a++) {
             $grp = new \stdClass();
             $grp->id = 100 + $a;
             $grp->name = 'test group ' . $grp->id;
+            if ($alternateparticipation) {
+                $grp->participation = ($a % 2 == 0);
+            }
             $testgroups[$grp->id] = $grp;
         }
         return $testgroups;
@@ -1300,6 +1304,82 @@ final class grouplib_test extends \advanced_testcase {
                 112 => 'test group 112',
             )),
         ), groups_sort_menu_options($this->make_group_list(13), $this->make_group_list(2)));
+    }
+
+    /**
+     * Splitting allowed groups by participation returns an optgroup for non-participation groups.
+     *
+     * @covers ::groups_sort_menu_options()
+     * @return void
+     */
+    public function test_groups_split_participation_allowed_groups_only(): void {
+        $this->assertEquals(
+            [
+                100 => 'test group 100',
+                3 => [
+                    get_string('nonparticipation', 'group') => [
+                        101 => 'test group 101',
+                    ],
+                ],
+            ],
+            groups_sort_menu_options($this->make_group_list(2, true), [], true),
+        );
+    }
+
+    /**
+     * Splitting user groups by participation returns an optgroup for non-participation groups.
+     *
+     * @covers ::groups_sort_menu_options()
+     * @return void
+     */
+    public function test_groups_split_participation_options_user_groups_only(): void {
+        $this->assertEquals(
+            [
+                100 => 'test group 100',
+                3 => [
+                        get_string('nonparticipation', 'group') => [
+                                101 => 'test group 101',
+                        ],
+                ],
+            ],
+            groups_sort_menu_options([], $this->make_group_list(2, true), true),
+        );
+    }
+
+    /**
+     * Splitting allowed and user groups by participation returns optgroups.
+     *
+     * One optgroup for user participation groups, one for other participation groups, and one for non-participation groups.
+     *
+     * @covers ::groups_sort_menu_options()
+     * @return void
+     */
+    public function test_groups_split_participation_options_user_both(): void {
+        $this->assertEquals(
+            [
+                1 => [
+                    get_string('mygroups', 'group') => [
+                        100 => 'test group 100',
+                    ],
+                ],
+                2 => [
+                    get_string('othergroups', 'group') => [
+                        102 => 'test group 102',
+                    ],
+                ],
+                3 => [
+                    get_string('nonparticipation', 'group') => [
+                        101 => 'test group 101',
+                        103 => 'test group 103',
+                    ],
+                ],
+            ],
+            groups_sort_menu_options(
+                $this->make_group_list(4, true),
+                $this->make_group_list(2, true),
+                true
+            ),
+        );
     }
 
     /**

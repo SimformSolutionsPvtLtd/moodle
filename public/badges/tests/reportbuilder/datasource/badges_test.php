@@ -192,12 +192,12 @@ final class badges_test extends core_reportbuilder_testcase {
         $this->assertEmpty($fullname);
         $this->assertEquals($expectedbadgetwolink, $namewithlink);
         $this->assertEquals($image . ' ' . $expectedbadgetwolink, $namewithimagelink);
-        $this->assertEquals('Criteria for this badge have not been set up yet.', $criteria);
+        $this->assertStringContainsString('no-criteria-set', $criteria);
         $this->assertStringContainsString('Image caption', $image);
         $this->assertEquals('English', $language);
         $this->assertEquals(2, $version);
         $this->assertEquals('Available', $status);
-        $this->assertEquals('Never', $expiry);
+        $this->assertEquals('Never: this badge does not expire.', $expiry);
         $this->assertEmpty($tag);
         $this->assertEmpty($expires);
         $this->assertEmpty($visible);
@@ -260,6 +260,14 @@ final class badges_test extends core_reportbuilder_testcase {
             'Filter badge name (no match)' => ['badge:name', [
                 'badge:name_operator' => text::IS_EQUAL_TO,
                 'badge:name_value' => 'Other badge',
+            ], false],
+            'Filter badge language' => ['badge:language', [
+                'badge:language_operator' => select::EQUAL_TO,
+                'badge:language_value' => 'en',
+            ], true],
+            'Filter badge language (no match)' => ['badge:language', [
+                'badge:language_operator' => select::NOT_EQUAL_TO,
+                'badge:language_value' => 'en',
             ], false],
             'Filter badge version' => ['badge:version', [
                 'badge:version_operator' => text::IS_EQUAL_TO,
@@ -368,6 +376,7 @@ final class badges_test extends core_reportbuilder_testcase {
         $generator = $this->getDataGenerator()->get_plugin_generator('core_badges');
         $badge = $generator->create_badge([
             'name' => 'Course badge',
+            'language' => 'en',
             'version' => '2.0',
             'type' => BADGE_TYPE_COURSE,
             'courseid' => $course->id,

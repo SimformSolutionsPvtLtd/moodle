@@ -41,8 +41,8 @@ final class generator_test extends \advanced_testcase {
         $count = $DB->count_records('question_categories');
 
         $cat = $generator->create_question_category();
-        $count += $count ? 1 : 2; // Calling $generator->create_question_category() for the first time
-                                  // creates a Top category as well.
+        $count += $count ? 1 : 3; // Calling $generator->create_question_category() for the first time
+                                  // creates a Top and Default category as well.
         $this->assertEquals($count, $DB->count_records('question_categories'));
 
         $cat = $generator->create_question_category(['name' => 'My category', 'sortorder' => 1]);
@@ -77,5 +77,41 @@ final class generator_test extends \advanced_testcase {
         // Check can add an idnumber of 0.
         $quest4 = $generator->create_question('shortanswer', null, ['name' => 'sa1', 'category' => $qcat1->id, 'idnumber' => '0']);
         $this->assertSame('0', $quest4->idnumber);
+    }
+
+    /**
+     * Tests for create_question() to correctly applies tags and stores them.
+     *
+     * @covers \core_question_generator::create_question
+     * @covers \core_question_generator::update_question
+     */
+    public function test_update_question_with_tags(): void {
+        $this->resetAfterTest();
+
+        $generator = $this->getDataGenerator()->get_plugin_generator('core_question');
+
+        // Create a question category.
+        $category = $generator->create_question_category();
+
+        // Create a question with tags.
+        $question = $generator->create_question('multichoice', null, [
+            'category' => $category->id,
+            'name' => 'Tag test question',
+            'questiontext' => 'Some question text',
+            'tags' => 'tag1, tag2 ,tag3',
+        ]);
+
+        // Assert.
+        $tags = \core_tag_tag::get_item_tags(
+            'core_question',
+            'question',
+            $question->id
+        );
+
+        $tagnames = array_map(fn($t) => $t->name, $tags);
+        sort($tagnames);
+
+        $this->assertCount(3, $tags);
+        $this->assertEquals(['tag1', 'tag2', 'tag3'], $tagnames);
     }
 }

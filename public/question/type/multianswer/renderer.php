@@ -219,12 +219,12 @@ abstract class qtype_multianswer_subq_renderer_base extends qtype_renderer {
             'role' => 'button',
             'tabindex' => 0,
             'class' => 'feedbacktrigger btn btn-link p-0',
-            'data-toggle' => 'popover',
-            'data-container' => 'body',
-            'data-content' => $feedbackcontents,
-            'data-placement' => 'right',
-            'data-trigger' => 'hover focus',
-            'data-html' => 'true',
+            'data-bs-toggle' => 'popover',
+            'data-bs-container' => 'body',
+            'data-bs-content' => $feedbackcontents,
+            'data-bs-placement' => 'right',
+            'data-bs-trigger' => 'hover focus',
+            'data-bs-html' => 'true',
         ]);
     }
 
@@ -377,6 +377,7 @@ class qtype_multianswer_multichoice_inline_renderer
 
         $inputattributes = array(
             'id' => $qa->get_qt_field_name($fieldname),
+            'class' => 'form-select d-inline-block mb-1',
         );
         if ($options->readonly) {
             $inputattributes['disabled'] = 'disabled';
@@ -384,7 +385,7 @@ class qtype_multianswer_multichoice_inline_renderer
 
         $feedbackimg = '';
         if ($options->correctness) {
-            $inputattributes['class'] = $this->feedback_class($matchinganswer->fraction);
+            $inputattributes['class'] .= $this->feedback_class($matchinganswer->fraction);
             $feedbackimg = $this->feedback_image($matchinganswer->fraction);
         }
         $select = html_writer::select($choices, $qa->get_qt_field_name($fieldname),
@@ -532,7 +533,7 @@ class qtype_multianswer_multichoice_vertical_renderer extends qtype_multianswer_
     protected function all_choices_wrapper_start() {
         $wrapperstart = html_writer::start_tag('fieldset', array('class' => 'answer'));
         $legendtext = $this->get_answer_label('multichoicex', 'qtype_multianswer');
-        $wrapperstart .= html_writer::tag('legend', $legendtext, ['class' => 'sr-only']);
+        $wrapperstart .= html_writer::tag('legend', $legendtext, ['class' => 'visually-hidden']);
         return $wrapperstart;
     }
 
@@ -566,7 +567,7 @@ class qtype_multianswer_multichoice_horizontal_renderer
     protected function all_choices_wrapper_start() {
         $wrapperstart = html_writer::start_tag('fieldset', ['class' => 'answer']);
         $captiontext = $this->get_answer_label('multichoicex', 'qtype_multianswer');
-        $wrapperstart .= html_writer::tag('legend', $captiontext, ['class' => 'sr-only']);
+        $wrapperstart .= html_writer::tag('legend', $captiontext, ['class' => 'visually-hidden']);
         return $wrapperstart;
     }
 

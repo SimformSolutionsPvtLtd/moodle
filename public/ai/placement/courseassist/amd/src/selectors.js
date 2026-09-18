@@ -20,21 +20,28 @@
  * @copyright  2024 Huong Nguyen <huongnv13@gmail.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+
+const courseAssistControls = '.course-assist-controls';
+
 export default {
     ELEMENTS: {
         AIDRAWER: '#ai-drawer',
         AIDRAWER_BODY: '#ai-drawer .ai-drawer-body',
         PAGE: '#page',
         MAIN_REGION: '[role="main"]',
-        JUMPTO: '.ai-course-summarise-controls [data-region="jumpto"]',
         AIDRAWER_CLOSE: '#ai-drawer-close',
+        RESPONSE: '.course-assist-response',
+        COURSE_ASSIST_CONTROLS: courseAssistControls,
+        JUMPTO: `${courseAssistControls} [data-region="jumpto"]`,
+        ACTION: `${courseAssistControls} [data-input-type="action"]`,
     },
     ACTIONS: {
-        SUMMARY: '[data-action="course-summarise"]',
-        RETRY: '[data-action="course-summarise-retry"]',
+        SUMMARY: `${courseAssistControls} [data-action="summarise_text"]`,
+        EXPLAIN: `${courseAssistControls} [data-action="explain_text"]`,
+        RETRY: `${courseAssistControls} [data-action="retry"]`,
         DECLINE: '.ai-policy-block [data-action="decline"]',
         ACCEPT: '.ai-policy-block [data-action="accept"]',
-        REGENERATE: '[data-action="course-summarise-regenerate"]',
-        CANCEL: '[data-action="course-summarise-cancel"]',
+        REGENERATE: `${courseAssistControls} [data-action="regenerate"]`,
+        CANCEL: `${courseAssistControls} [data-action="cancel"]`,
     }
 };

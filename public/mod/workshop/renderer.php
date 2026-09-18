@@ -321,7 +321,13 @@ class mod_workshop_renderer extends plugin_renderer_base {
                         } else {
                             $icon = new pix_icon('i/marker', get_string('switchphase'.$phasecode, 'mod_workshop'));
                         }
-                        $actions .= $this->output->action_icon($action->url, $icon, null, null, true);
+                        $actions .= $this->output->action_icon(
+                            $action->url,
+                            $icon,
+                            null,
+                            ['class' => 'action-icon ms-0 ps-0'],
+                            true
+                        );
                     }
                 }
             }
@@ -435,7 +441,7 @@ class mod_workshop_renderer extends plugin_renderer_base {
         }
 
         $table = new html_table();
-        $table->attributes['class'] = 'grading-report table-striped table-hover';
+        $table->attributes['class'] = 'grading-report table table-striped table-hover';
 
         $sortbyfirstname = $this->helper_sortable_heading(get_string('firstname'), 'firstname', $options->sortby, $options->sorthow);
         $sortbylastname = $this->helper_sortable_heading(get_string('lastname'), 'lastname', $options->sortby, $options->sorthow);
@@ -1388,7 +1394,10 @@ class mod_workshop_renderer extends plugin_renderer_base {
                     $data = $workshop->prepare_grading_report_data($USER->id, $groupid, $page, $perpage, $sortby, $sorthow);
                     if ($data) {
                         $countparticipants = $workshop->count_participants();
-                        $countsubmissions = $workshop->count_submissions(array_keys($data->grades), $groupid);
+                        $countsubmissions = $workshop->count_all_submissions(
+                            array_keys($data->grades),
+                            $groupid ? [$groupid] : [],
+                        );
                         $a = new stdClass();
                         $a->submitted = $countsubmissions;
                         $a->notsubmitted = $data->totalcount - $countsubmissions;

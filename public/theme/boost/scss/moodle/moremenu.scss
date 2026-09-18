@@ -31,7 +31,7 @@
         &:focus {
             position: relative;
         }
-        &[data-toggle="tab"] {
+        &[data-bs-toggle="tab"] {
             display: inline-flex;
             flex-direction: column;
             align-items: center;
@@ -102,7 +102,7 @@
             }
         }
         &:before {
-            @extend .fa-solid;
+            font: var(--fa-font-solid);
             content: fa-content($fa-var-check);
         }
     }

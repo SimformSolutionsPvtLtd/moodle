@@ -35,6 +35,7 @@ import * as FocusLock from 'core/local/aria/focuslock';
 import * as Aria from 'core/aria';
 import * as Fullscreen from 'core/fullscreen';
 import {removeToastRegion} from './toast';
+import {dispatchEvent} from 'core/event_dispatcher';
 
 /**
  * A configuration to provide to the modal.
@@ -582,6 +583,7 @@ export default class Modal {
             .then((result) => {
                 FilterEvents.notifyFilterContentUpdated(body);
                 this.getRoot().trigger(ModalEvents.bodyRendered, this);
+                dispatchEvent('core/modal:bodyRendered', this, this.modal[0]);
                 return result;
             })
             .then(() => {
@@ -896,7 +898,10 @@ export default class Modal {
             this.accessibilityShow();
             this.getModal().focus();
             $('body').addClass('modal-open');
+            const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+            $('body').css({overflow: "hidden", paddingRight: `${scrollbarWidth}px`});
             this.root.trigger(ModalEvents.shown, this);
+            dispatchEvent('core/modal:shown', this, this.modal[0]);
 
             return;
         })
@@ -911,7 +916,11 @@ export default class Modal {
     hideIfNotForm() {
         const formElement = this.modal.find(SELECTORS.FORM);
         if (formElement.length == 0) {
-            this.hide();
+            if (this.removeOnClose) {
+                this.destroy();
+            } else {
+                this.hide();
+            }
         }
     }
 
@@ -928,6 +937,7 @@ export default class Modal {
                 // Hide the backdrop if we're the last open modal.
                 backdrop.hide();
                 $('body').removeClass('modal-open');
+                $('body').css({overflow: "", paddingRight: ""});
             }
 
             const currentIndex = parseInt(this.root.css('z-index'));
@@ -951,7 +961,7 @@ export default class Modal {
             }
 
             // Closes popover elements that are inside the modal at the time the modal is closed.
-            this.getRoot().find('[data-toggle="popover"]').each(function() {
+            this.getRoot().find('[data-bs-toggle="popover"]').each(function() {
                 document.getElementById(this.getAttribute('aria-describedby'))?.remove();
             });
 

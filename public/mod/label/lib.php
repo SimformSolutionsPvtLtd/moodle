@@ -195,46 +195,48 @@ function label_reset_userdata($data) {
  * @return mixed True if module supports feature, false if not, null if doesn't know or string for the module purpose.
  */
 function label_supports($feature) {
-    switch($feature) {
-        case FEATURE_IDNUMBER:                return true;
-        case FEATURE_GROUPS:                  return false;
-        case FEATURE_GROUPINGS:               return false;
-        case FEATURE_MOD_INTRO:               return true;
-        case FEATURE_COMPLETION_TRACKS_VIEWS: return false;
-        case FEATURE_GRADE_HAS_GRADE:         return false;
-        case FEATURE_GRADE_OUTCOMES:          return false;
-        case FEATURE_MOD_ARCHETYPE:           return MOD_ARCHETYPE_RESOURCE;
-        case FEATURE_BACKUP_MOODLE2:          return true;
-        case FEATURE_NO_VIEW_LINK:            return true;
-        case FEATURE_MOD_PURPOSE:             return MOD_PURPOSE_CONTENT;
-
-        default: return null;
-    }
+    return match ($feature) {
+        FEATURE_IDNUMBER => true,
+        FEATURE_GROUPS => false,
+        FEATURE_GROUPINGS => false,
+        FEATURE_MOD_INTRO => true,
+        FEATURE_COMPLETION_TRACKS_VIEWS => false,
+        FEATURE_GRADE_HAS_GRADE => false,
+        FEATURE_GRADE_OUTCOMES => false,
+        FEATURE_MOD_ARCHETYPE => MOD_ARCHETYPE_RESOURCE,
+        FEATURE_BACKUP_MOODLE2 => true,
+        FEATURE_NO_VIEW_LINK => true,
+        FEATURE_MOD_PURPOSE => MOD_PURPOSE_CONTENT,
+        default => null,
+    };
 }
 
 /**
- * Register the ability to handle drag and drop file uploads
+ * Register the ability to handle drag and drop file uploads.
+ *
  * @return array containing details of the files / types the mod can handle
  */
 function label_dndupload_register() {
     $strdnd = get_string('dnduploadlabel', 'mod_label');
-    if (get_config('label', 'dndmedia')) {
-        $mediaextensions = file_get_typegroup('extension', ['web_image', 'web_video', 'web_audio']);
-        $files = array();
-        foreach ($mediaextensions as $extn) {
-            $extn = trim($extn, '.');
-            $files[] = array('extension' => $extn, 'message' => $strdnd);
-        }
-        $ret = array('files' => $files);
-    } else {
-        $ret = array();
+
+    $mediaextensions = file_get_typegroup('extension', ['web_image', 'web_video', 'web_audio']);
+    $files = [];
+    foreach ($mediaextensions as $extn) {
+        $extn = trim($extn, '.');
+        $files[] = ['extension' => $extn, 'message' => $strdnd];
     }
+    $ret = ['files' => $files];
 
     $strdndtext = get_string('dnduploadlabeltext', 'mod_label');
-    return array_merge($ret, array('types' => array(
-        array('identifier' => 'text/html', 'message' => $strdndtext, 'noname' => true),
-        array('identifier' => 'text', 'message' => $strdndtext, 'noname' => true)
-    )));
+    return array_merge(
+        $ret,
+        [
+            'types' => [
+                ['identifier' => 'text/html', 'message' => $strdndtext, 'noname' => true],
+                ['identifier' => 'text', 'message' => $strdndtext, 'noname' => true],
+            ],
+        ],
+    );
 }
 
 /**

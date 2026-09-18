@@ -891,16 +891,17 @@ function lesson_get_overview_report_table_and_data(lesson $lesson, $currentgroup
         $deselectall = get_string('deselectallattempts', 'lesson');
         // Build the select/deselect all control.
         $selectallid = 'selectall-attempts';
-        $mastercheckbox = new \core\output\checkbox_toggleall('lesson-attempts', true, [
+        $togglercheckbox = new \core\output\checkbox_toggleall('lesson-attempts', true, [
             'id' => $selectallid,
             'name' => $selectallid,
             'value' => 1,
             'label' => $selectall,
             'selectall' => $selectall,
             'deselectall' => $deselectall,
-            'labelclasses' => 'form-check-label'
+            'classes' => 'form-check-input',
+            'labelclasses' => 'form-check-label',
         ]);
-        $attemptsheader = $OUTPUT->render($mastercheckbox);
+        $attemptsheader = $OUTPUT->render($togglercheckbox);
     }
     $headers [] = $attemptsheader;
 
@@ -995,9 +996,11 @@ function lesson_get_overview_report_table_and_data(lesson $lesson, $currentgroup
                     $checkbox = new \core\output\checkbox_toggleall('lesson-attempts', false, [
                         'id' => $attemptid,
                         'name' => $attemptname,
-                        'label' => $attemptlink
+                        'label' => $attemptlink,
+                        'classes' => 'form-check-input',
+                        'labelclasses' => 'form-check-label',
                     ]);
-                    $attemptlink = $OUTPUT->render($checkbox);
+                    $attemptlink = html_writer::div($OUTPUT->render($checkbox), 'form-check p-0');
                 }
 
                 // build up the attempts array
@@ -1962,7 +1965,6 @@ class lesson extends lesson_base {
         }
         return $DB->get_records('lesson_attempts', $params, 'timeseen ASC');
     }
-
 
     /**
      * Get a list of content pages (formerly known as branch tables) viewed in the lesson for the given user during an attempt.
@@ -2977,11 +2979,12 @@ class lesson extends lesson_base {
             $attempt = end($allattempts);
             $attemptpage = $this->load_page($attempt->pageid);
             $jumpto = $DB->get_field('lesson_answers', 'jumpto', array('id' => $attempt->answerid));
+            $maxattempts = $this->properties->maxattempts;
             // Convert the jumpto to a proper page id.
             if ($jumpto == 0) {
                 // Check if a question has been incorrectly answered AND no more attempts at it are left.
                 $nattempts = $this->get_attempts($attempt->retry, false, $attempt->pageid, $USER->id);
-                if (count($nattempts) >= $this->properties->maxattempts) {
+                if (count($nattempts) >= $maxattempts && $maxattempts > 0) { // If maxattempts is 0, unlimited attempts are allowed.
                     $lastpageseen = $this->get_next_page($attemptpage->nextpageid);
                 } else {
                     $lastpageseen = $attempt->pageid;
@@ -3032,6 +3035,81 @@ class lesson extends lesson_base {
         global $DB;
 
         return $DB->count_records('lesson_grades', array("lessonid" => $this->properties->id, "userid" => $userid));
+    }
+
+    /**
+     * Count all submissions by all users in the lesson.
+     *
+     * @param array $groups the groups to filter by.
+     * @return int the number of submissions (grades table) by all users in the lesson
+     */
+    public function count_all_submissions(array $groups): int {
+        $db = \core\di::get(\moodle_database::class);
+
+        [$esql, $eparams] = get_enrolled_sql(
+            context: $this->get_context(),
+            withcapability: 'mod/lesson:view',
+            groupids: $groups,
+        );
+        $sql = "SELECT COUNT(lg.id)
+                  FROM {lesson_grades} lg
+                  JOIN ($esql) e ON e.id = lg.userid
+                 WHERE lg.lessonid = :lessonid";
+
+        return $db->count_records_sql($sql, ["lessonid" => $this->properties->id] + $eparams);
+    }
+
+    /**
+     * Count the number of participants that have attempted the lesson.
+     *
+     * @param array $groups the groups to filter by.
+     * @return int the number of users that have attempted the lesson
+     */
+    public function count_submitted_participants(array $groups): int {
+        $db = \core\di::get(\moodle_database::class);
+        [$esql, $eparams] = get_enrolled_sql(
+            context: $this->get_context(),
+            withcapability: 'mod/lesson:view',
+            groupids: $groups,
+        );
+        $sql = "SELECT COUNT(DISTINCT lg.userid)
+                  FROM {lesson_grades} lg
+                  JOIN ($esql) e ON e.id = lg.userid
+                 WHERE lg.lessonid = :lessonid";
+
+        return $db->count_records_sql($sql, ["lessonid" => $this->properties->id] + $eparams);
+    }
+
+    /**
+     * Count the number of participants that have access to the lesson.
+     *
+     * @param array $groups the groups to filter by.
+     * @return int the number of users that have access to view the lesson
+     */
+    public function count_all_participants(array $groups): int {
+        $db = \core\di::get(\moodle_database::class);
+
+        $join = get_enrolled_with_capabilities_join(
+            context: $this->get_context(),
+            prefix: '',
+            capability: 'mod/lesson:view',
+            groupids: $groups
+        );
+        $managersjoin = get_with_capability_join($this->get_context(), 'mod/lesson:manage', 'u.id');
+        if (!$managersjoin->cannotmatchanyrows) {
+            $join = new \core\dml\sql_join(
+                $join->joins . "\n LEFT " . str_replace('ra', 'manager', $managersjoin->joins),
+                $join->wheres . " AND manager.userid IS NULL",
+                $join->params
+            );
+        }
+
+        $sql = "SELECT COUNT(DISTINCT u.id)
+                  FROM {user} u
+                 $join->joins
+                 WHERE $join->wheres";
+
+        return $db->count_records_sql($sql, $join->params);
     }
 
     /**
@@ -3762,8 +3840,6 @@ abstract class lesson_base {
         }
         return !empty($this->properties->{$key});
     }
-
-    //NOTE: E_STRICT does not allow to change function signature!
 
     /**
      * If implemented should create a new instance, save it in the DB and return it

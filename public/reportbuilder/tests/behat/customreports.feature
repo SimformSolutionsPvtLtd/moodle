@@ -1,4 +1,4 @@
-@core_reportbuilder @javascript
+@core @core_reportbuilder @javascript
 Feature: Manage custom reports
   In order to manage custom reports
   As an admin
@@ -96,8 +96,8 @@ Feature: Manage custom reports
     And I click on "Save" "button" in the "New report" "dialogue"
     And I click on "Close 'Manager report' editor" "button"
     And the following should exist in the "Reports list" table:
-      | Name           | Tags     | Report source |
-      | Manager report | Cat, Dog | Users         |
+      | Name           | Tags    | Report source |
+      | Manager report | Cat Dog | Users         |
     # Manager can edit their own report, but not those of other users.
     And I set the field "Edit report name" in the "Manager report" "table_row" to "Manager report (renamed)"
     Then the "Edit report content" item should exist in the "Actions" action menu of the "Manager report (renamed)" "table_row"
@@ -148,8 +148,8 @@ Feature: Manage custom reports
     And I click on "Save" "button" in the "Edit report details" "dialogue"
     Then "Report updated" "toast_message" should be visible
     And the following should exist in the "Reports list" table:
-      | Name              | Tags     | Report source |
-      | My renamed report | Cat, Dog | Users         |
+      | Name              | Tags    | Report source |
+      | My renamed report | Cat Dog | Users         |
 
   Scenario Outline: Filter custom reports
     Given the following "core_reportbuilder > Reports" exist:
@@ -159,9 +159,9 @@ Feature: Manage custom reports
     And I log in as "admin"
     When I navigate to "Reports > Report builder > Custom reports" in site administration
     And the following should exist in the "Reports list" table:
-      | Name       | Tags     | Report source |
-      | My users   | Cat, Dog | Users         |
-      | My courses |          | Courses       |
+      | Name       | Tags    | Report source |
+      | My users   | Cat Dog | Users         |
+      | My courses |         | Courses       |
     And I click on "Filters" "button"
     And I set the following fields in the "<filter>" "core_reportbuilder > Filter" to these values:
       | <filter> operator | Is equal to |
@@ -169,8 +169,8 @@ Feature: Manage custom reports
     And I click on "Apply" "button" in the "[data-region='report-filters']" "css_element"
     Then "Filters applied" "toast_message" should be visible
     And the following should exist in the "Reports list" table:
-      | Name     | Tags     | Report source |
-      | My users | Cat, Dog | Users         |
+      | Name     | Tags    | Report source |
+      | My users | Cat Dog | Users         |
     And I should not see "My courses" in the "Reports list" "table"
     Examples:
       | filter        | value    |
@@ -178,24 +178,67 @@ Feature: Manage custom reports
       | Report source | Users    |
       | Tags          | Cat      |
 
-  Scenario: Filter custom reports by date
+  Scenario: Filter custom reports by user
+    Given the following "users" exist:
+      | username  | firstname | lastname |
+      | user1     | User      | 1        |
+    And the following "core_reportbuilder > Report" exists:
+      | name    | My report                                |
+      | source  | core_user\reportbuilder\datasource\users |
+    And I log in as "admin"
+    When I navigate to "Reports > Report builder > Custom reports" in site administration
+    And I click on "Filters" "button"
+    And I set the following fields in the "Modified by" "core_reportbuilder > Filter" to these values:
+      | Modified by operator | Select     |
+      | Modified by value    | Admin User |
+    And I click on "Apply" "button" in the "[data-region='report-filters']" "css_element"
+    Then I should see "My report" in the "Reports list" "table"
+    And I set the field "Modified by value" in the "Modified by" "core_reportbuilder > Filter" to "User 1"
+    And I click on "Apply" "button" in the "[data-region='report-filters']" "css_element"
+    And I should see "Nothing to display"
+    And "Reports list" "table" should not exist
+
+  Scenario Outline: Filter custom reports by date
     Given the following "core_reportbuilder > Report" exists:
       | name    | My report                                |
       | source  | core_user\reportbuilder\datasource\users |
     And I log in as "admin"
     When I navigate to "Reports > Report builder > Custom reports" in site administration
     And I click on "Filters" "button"
-    And I set the following fields in the "Time created" "core_reportbuilder > Filter" to these values:
-      | Time created operator | Range          |
-      | Time created from     | ##2 days ago## |
-      | Time created to       | ##tomorrow##   |
+    And I set the following fields in the "<filter>" "core_reportbuilder > Filter" to these values:
+      | <filter> operator | Range          |
+      | <filter> from     | ##2 days ago## |
+      | <filter> to       | ##tomorrow##   |
     And I click on "Apply" "button" in the "[data-region='report-filters']" "css_element"
-    Then "Filters applied" "toast_message" should be visible
-    And I should see "My report" in the "Reports list" "table"
-    And I set the field "Time created to" in the "Time created" "core_reportbuilder > Filter" to "##yesterday##"
+    Then I should see "My report" in the "Reports list" "table"
+    And I set the field "<filter> to" in the "<filter>" "core_reportbuilder > Filter" to "##yesterday##"
     And I click on "Apply" "button" in the "[data-region='report-filters']" "css_element"
     And I should see "Nothing to display"
     And "Reports list" "table" should not exist
+    Examples:
+      | filter        |
+      | Time created  |
+      | Time modified |
+
+  Scenario: Filter custom reports by schedule presence
+    Given the following "core_reportbuilder > Reports" exist:
+      | name       | source                                       |
+      | My users   | core_user\reportbuilder\datasource\users     |
+      | My courses | core_course\reportbuilder\datasource\courses |
+    And the following "core_reportbuilder > Schedules" exist:
+      | report   | name        |
+      | My users | My schedule |
+    And I log in as "admin"
+    When I navigate to "Reports > Report builder > Custom reports" in site administration
+    And I click on "Filters" "button"
+    And I set the field "Schedules operator" in the "Schedules" "core_reportbuilder > Filter" to "Yes"
+    And I click on "Apply" "button" in the "[data-region='report-filters']" "css_element"
+    Then I should see "My users" in the "Reports list" "table"
+    And I should not see "My courses" in the "Reports list" "table"
+    And I set the field "Schedules operator" in the "Schedules" "core_reportbuilder > Filter" to "No"
+    And I click on "Apply" "button" in the "[data-region='report-filters']" "css_element"
+    And I should see "My courses" in the "Reports list" "table"
+    And I should not see "My users" in the "Reports list" "table"
 
   Scenario: Reset filters in system report
     Given the following "core_reportbuilder > Report" exists:
@@ -215,7 +258,7 @@ Feature: Manage custom reports
     And I should not see "Filters (1)" in the "#dropdownFiltersButton" "css_element"
     And I should see "Filters" in the "#dropdownFiltersButton" "css_element"
     And "[data-region='report-filters']" "css_element" should be visible
-    Then "Filters reset" "toast_message" should be visible
+    Then I should see "Filters reset"
     And the following fields in the "Name" "core_reportbuilder > Filter" match these values:
       | Name operator | Is any value |
     And I should see "My report" in the "Reports list" "table"
@@ -234,6 +277,53 @@ Feature: Manage custom reports
     And "Tags" "link" should not exist in the "Reports list" "table"
     And I click on "Filters" "button"
     And "Tags" "core_reportbuilder > Filter" should not exist
+
+  Scenario: Duplicate custom report
+    Given the following "users" exist:
+      | username  | firstname | lastname | email             | suspended |
+      | user1     | User      | 1        | user1@example.com | 1         |
+      | user2     | User      | 2        | user2@example.com | 0         |
+    And the following "custom field categories" exist:
+      | name   | component          | area   | itemid |
+      | Newcat | core_reportbuilder | report | 0      |
+    And the following "custom fields" exist:
+      | name        | category | type     | shortname | description | configdata |
+      | Myshorttext | Newcat   | text     | f1        | d1          |            |
+    And the following "core_reportbuilder > Report" exists:
+      | name           | My report                                |
+      | source         | core_user\reportbuilder\datasource\users |
+      | default        | 1                                        |
+      | customfield_f1 | My short text                            |
+    And the following "core_reportbuilder > Audience" exists:
+      | report     | My report                                          |
+      | classname  | core_reportbuilder\reportbuilder\audience\allusers |
+      | configdata |                                                    |
+    And the following "core_reportbuilder > Schedule" exists:
+      | report | My report   |
+      | name   | My schedule |
+    When I log in as "admin"
+    And I navigate to "Reports > Report builder > Custom reports" in site administration
+    And I press "Duplicate report" action in the "My report" report row
+    And I set the following fields in the "Duplicate report" "dialogue" to these values:
+      | Name                | My duplicated report |
+      | Duplicate audiences | 1                    |
+      | Duplicate schedules | 1                    |
+    And I click on "Save" "button" in the "Duplicate report" "dialogue"
+    Then I should see "My duplicated report"
+    # Confirm we see the same columns in the report.
+    And I should see "Full name" in the "Users" "table"
+    And I should see "Username" in the "Users" "table"
+    And I should see "Email address" in the "Users" "table"
+    # Confirm we only see not suspended users in the report.
+    And I should see "Admin User" in the "Users" "table"
+    And I should see "User 2" in the "Users" "table"
+    And I should not see "User 1" in the "Users" "table"
+    And I click on the "Audience" dynamic tab
+    And "All users" "core_reportbuilder > Audience" should exist
+    And I click on the "Schedules" dynamic tab
+    And I should see "My schedule" in the "Report schedules" "table"
+    And I press "Edit details"
+    And the field "Myshorttext" matches value "My short text"
 
   Scenario: Delete custom report
     Given the following "core_reportbuilder > Reports" exist:

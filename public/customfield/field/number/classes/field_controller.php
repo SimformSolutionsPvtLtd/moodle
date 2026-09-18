@@ -50,20 +50,42 @@ class field_controller  extends \core_customfield\field_controller {
             }
         }
 
+        // Required for subsequent input field comparison rule.
+        $mform->addElement('hidden', "maximum", SQL_INT_MAX + 1);
+        $mform->setType("maximum", PARAM_INT);
+
         // Default value.
         $mform->addElement('float', 'configdata[defaultvalue]', get_string('defaultvalue', 'core_customfield'));
+        $mform->addRule(
+            ['configdata[defaultvalue]', 'maximum'],
+            get_string('maximumvalueerror', 'customfield_number', SQL_INT_MAX),
+            'compare',
+            'lt',
+        );
         if ($this->get_configdata_property('defaultvalue') === null) {
             $mform->setDefault('configdata[defaultvalue]', '');
         }
 
         // Minimum value.
         $mform->addElement('float', 'configdata[minimumvalue]', get_string('minimumvalue', 'customfield_number'));
+        $mform->addRule(
+            ['configdata[minimumvalue]', 'maximum'],
+            get_string('maximumvalueerror', 'customfield_number', SQL_INT_MAX),
+            'compare',
+            'lt',
+        );
         if ($this->get_configdata_property('minimumvalue') === null) {
             $mform->setDefault('configdata[minimumvalue]', '');
         }
 
         // Maximum value.
         $mform->addElement('float', 'configdata[maximumvalue]', get_string('maximumvalue', 'customfield_number'));
+        $mform->addRule(
+            ['configdata[maximumvalue]', 'maximum'],
+            get_string('maximumvalueerror', 'customfield_number', SQL_INT_MAX),
+            'compare',
+            'lt',
+        );
         if ($this->get_configdata_property('maximumvalue') === null) {
             $mform->setDefault('configdata[maximumvalue]', '');
         }
@@ -76,9 +98,8 @@ class field_controller  extends \core_customfield\field_controller {
         $mform->setType('configdata[decimalplaces]', PARAM_INT);
 
         // Display format settings.
-        // TODO: Change this after MDL-82996 fixed.
-        $randelname = 'str_display_format';
-        $mform->addGroup([], $randelname, html_writer::tag('h4', get_string('headerdisplaysettings', 'customfield_number')));
+        $mform->addElement('header', 'displayformatheader', get_string('headerdisplaysettings', 'customfield_number'));
+        $mform->setExpanded('displayformatheader');
 
         // Display template.
         $mform->addElement('text', 'configdata[display]', get_string('display', 'customfield_number'),

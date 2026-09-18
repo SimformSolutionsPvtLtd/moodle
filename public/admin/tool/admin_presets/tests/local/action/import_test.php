@@ -81,6 +81,9 @@ final class import_test extends \advanced_testcase {
         $action = new import();
         $sink = $this->redirectEvents();
         try {
+            // Suppress warnings and load XML.
+            $invokable = self::get_invokable();
+            set_error_handler($invokable, E_WARNING);
             $action->execute();
         } catch (\exception $e) {
             // If import action was successfull, redirect should be called so we will encounter an
@@ -90,6 +93,7 @@ final class import_test extends \advanced_testcase {
             } else {
                 $this->assertInstanceOf(\moodle_exception::class, $e);
             }
+            restore_error_handler();
         } finally {
             if ($expecteddebugging) {
                 $this->assertDebuggingCalled();
@@ -154,7 +158,7 @@ final class import_test extends \advanced_testcase {
                             'activity_modules' => 1,
                         ],
                         'mod' => [
-                            'chat' => 0,
+                            'page' => 0,
                             'data' => 0,
                             'lesson' => 1,
                         ],

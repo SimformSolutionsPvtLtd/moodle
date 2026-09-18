@@ -26,9 +26,8 @@
  * Quiz statistics report upgrade code.
  */
 function xmldb_quiz_statistics_upgrade($oldversion) {
-    // Automatically generated Moodle v4.1.0 release upgrade line.
-    // Put any upgrade step following this.
-
+    global $CFG, $DB;
+    $dbman = $DB->get_manager();
     // Automatically generated Moodle v4.2.0 release upgrade line.
     // Put any upgrade step following this.
 
@@ -41,8 +40,25 @@ function xmldb_quiz_statistics_upgrade($oldversion) {
     // Automatically generated Moodle v4.5.0 release upgrade line.
     // Put any upgrade step following this.
 
-    // Automatically generated Moodle v4.1.0 release upgrade line.
+    // Automatically generated Moodle v5.0.0 release upgrade line.
     // Put any upgrade step following this.
+
+    // Automatically generated Moodle v5.1.0 release upgrade line.
+    // Put any upgrade step following this.
+
+    if ($oldversion < 2025100601) {
+        // Define index hashcode (not unique) to be added to quiz_statistics.
+        $table = new xmldb_table('quiz_statistics');
+        $index = new xmldb_index('hashcode', XMLDB_INDEX_NOTUNIQUE, ['hashcode']);
+
+        // Conditionally launch add index hashcode.
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Statistics savepoint reached.
+        upgrade_plugin_savepoint(true, 2025100601, 'quiz', 'statistics');
+    }
 
     return true;
 }

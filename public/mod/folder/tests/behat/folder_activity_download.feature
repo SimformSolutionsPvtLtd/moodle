@@ -21,7 +21,7 @@ Feature: Folder files can be viewed without downloading
       | folder   | C1     | Folder 1   |
     And I am on the "Folder 1" "folder activity editing" page logged in as teacher1
     And I upload "lib/tests/fixtures/test.html" file to "Files" filemanager
-    And I upload "course/tests/fixtures/image.jpg" file to "Files" filemanager
+    And I upload "lib/tests/fixtures/1.jpg" file to "Files" filemanager
     And I press "Save and return to course"
 
   @javascript
@@ -37,7 +37,7 @@ Feature: Folder files can be viewed without downloading
 
     Examples:
       | filename  | mimetype   |
-      | image.jpg | image/jpeg |
+      | 1.jpg     | image/jpeg |
       | test.html | text/html  |
 
   @javascript
@@ -55,6 +55,6 @@ Feature: Folder files can be viewed without downloading
     And "<displayedtext>" "<elementtype>" should exist
 
     Examples:
-      | filename  | displayedtext                       | elementtype   |
-      | image.jpg | //img[contains(@src, '/image.jpg')] | xpath_element |
-      | test.html | This is an example HTML             | text          |
+      | filename  | displayedtext                   | elementtype   |
+      | 1.jpg     | //img[contains(@src, '/1.jpg')] | xpath_element |
+      | test.html | This is an example HTML         | text          |

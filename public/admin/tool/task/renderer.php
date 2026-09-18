@@ -58,7 +58,7 @@ class tool_task_renderer extends plugin_renderer_base {
             get_string('nextruntime', 'tool_task'),
         ];
 
-        $table->attributes['class'] = 'admintable generaltable';
+        $table->attributes['class'] = 'admintable table generaltable table-striped table-hover';
         $table->colclasses = [];
 
         // For each task entry (row) show action buttons/logs link depending on the user permissions.
@@ -93,6 +93,16 @@ class tool_task_renderer extends plugin_renderer_base {
                                 ['classname' => $classname]
                             ),
                             get_string('runclassname', 'tool_task')
+                        ),
+                        'task-runnow'
+                    );
+                    $duecontent .= html_writer::div(
+                        html_writer::link(
+                            new moodle_url(
+                                $adhocrunurl,
+                                ['classname' => $classname, 'dueonly' => 1]
+                            ),
+                            get_string('runclassnamedueonly', 'tool_task')
                         ),
                         'task-runnow'
                     );
@@ -190,8 +200,9 @@ class tool_task_renderer extends plugin_renderer_base {
             });
         }
 
-        return html_writer::table($table)
-            . html_writer::div(
+        $output = html_writer::table($table);
+        if ($canruntasks) {
+            $output .= html_writer::div(
                 html_writer::link(
                     new moodle_url(
                         $adhocrunurl,
@@ -200,7 +211,10 @@ class tool_task_renderer extends plugin_renderer_base {
                     get_string('runclassname', 'tool_task')
                 ),
                 'task-runnow'
-            )
+            );
+        }
+
+        return $output
             . html_writer::div(
                 html_writer::link(
                     new moodle_url(
@@ -233,6 +247,7 @@ class tool_task_renderer extends plugin_renderer_base {
      */
     private function generate_adhoc_tasks_simple_table(array $tasks, bool $wantruntasks = false): html_table {
         $adhocrunurl = '/admin/tool/task/run_adhoctasks.php';
+        $adhocdeleteurl = '/admin/tool/task/delete_adhoctasks.php';
         $now = time();
         $failedstr = get_string('failed', 'tool_task');
 
@@ -243,10 +258,12 @@ class tool_task_renderer extends plugin_renderer_base {
             get_string('taskid', 'tool_task'),
             get_string('nextruntime', 'tool_task'),
             get_string('payload', 'tool_task'),
-            $failedstr
+            $failedstr,
+            get_string('faildelay', 'tool_task'),
+            get_string('actions','tool_task'),
         ];
 
-        $table->attributes['class'] = 'generaltable';
+        $table->attributes['class'] = 'table generaltable table-hover';
         $table->colclasses = [];
 
         // For each task entry (row) show action buttons/logs link depending on the user permissions.
@@ -263,9 +280,9 @@ class tool_task_renderer extends plugin_renderer_base {
 
             // Mark cell if task has failed.
             $faildelay = $task->get_fail_delay();
-            $faildelaycell = new html_table_cell($faildelay ? $failedstr : '');
+            $failedcell = new html_table_cell($faildelay ? $failedstr : '');
             if ($faildelay) {
-                $faildelaycell->attributes['class'] = 'table-danger';
+                $failedcell->attributes['class'] = 'table-danger';
             }
 
             // Prepares the next run time cell contents.
@@ -293,11 +310,38 @@ class tool_task_renderer extends plugin_renderer_base {
                 }
             }
 
+            // Create fail delay cell.
+            $faildelaycellcontent = $faildelay;
+            $faildelaycell = new html_table_cell($faildelaycellcontent);
+
+            if ($faildelay) {
+                $faildelaycell->attributes['class'] = 'table-danger';
+            }
+
+            // Add delete link with modal trigger.
+            $deletelink = html_writer::link(
+                new moodle_url($adhocdeleteurl, ['taskid' => $taskid, 'sesskey' => sesskey()]),
+                get_string('delete'),
+                [
+                    'class' => 'btn btn-danger',
+                    'role' => 'button',
+                    'aria-label' => get_string('deleteadhoctask', 'tool_task', $taskid),
+                    'data-confirmation' => 'modal',
+                    'data-confirmation-type' => 'delete',
+                    'data-confirmation-title-str' => '["deleteadhoctask", "tool_task", ' . $taskid . ']',
+                    'data-confirmation-content-str' => '["confirmdeletetaskwithid", "tool_task", {"id":'.$taskid.'}]',
+                    'data-confirmation-yes-button-str' => '["delete", "core"]',
+                ]
+            );
+            $deletecell = new html_table_cell($deletelink);
+
             $data[] = new html_table_row([
                 $taskidcell,
                 new html_table_cell($nextrun),
                 new html_table_cell($task->get_custom_data_as_string()),
+                $failedcell,
                 $faildelaycell,
+                $deletecell,
             ]);
         }
         $table->data = $data;
@@ -344,7 +388,7 @@ class tool_task_renderer extends plugin_renderer_base {
             get_string('default', 'tool_task'),
         ];
 
-        $table->attributes['class'] = 'admintable generaltable';
+        $table->attributes['class'] = 'admintable table generaltable table-striped table-hover';
         $table->colclasses = [];
 
         if (!$showloglink) {
@@ -398,8 +442,8 @@ class tool_task_renderer extends plugin_renderer_base {
                         get_string('runnow', 'tool_task')), 'task-runnow');
             }
 
-            $faildelaycell = new html_table_cell($task->get_fail_delay());
-            if ($task->get_fail_delay()) {
+            if ($faildelay = $task->get_fail_delay()) {
+                $faildelaycell = new html_table_cell(format_time($faildelay));
                 $faildelaycell->text .= html_writer::div(
                     $this->output->single_button(
                         new moodle_url('/admin/tool/task/clear_fail_delay.php',
@@ -409,6 +453,8 @@ class tool_task_renderer extends plugin_renderer_base {
                     'task-runnow'
                 );
                 $faildelaycell->attributes['class'] = 'table-danger';
+            } else {
+                $faildelaycell = new html_table_cell(0);
             }
 
             $row = new html_table_row([

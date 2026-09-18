@@ -119,9 +119,6 @@ class behat_util extends testing_util {
         // Enable web cron.
         set_config('cronclionly', 0);
 
-        // Set editor autosave to high value, so as to avoid unwanted ajax.
-        set_config('autosavefrequency', '604800', 'editor_atto');
-
         // Set noreplyaddress to an example domain, as it should be valid email address and test site can be a localhost.
         set_config('noreplyaddress', 'noreply@example.com');
 
@@ -324,19 +321,22 @@ class behat_util extends testing_util {
      *
      * @return int Error code
      */
-    public static function get_behat_status() {
-
+    public static function get_behat_status(): int {
         if (!defined('BEHAT_UTIL')) {
             throw new coding_exception('This method can be only used by Behat CLI tool');
         }
 
         // Checks the behat set up and the PHP version, returning an error code if something went wrong.
-        if ($errorcode = behat_command::behat_setup_problem()) {
+        $errorcode = behat_command::behat_setup_problem();
+
+        if ($errorcode !== 0) {
             return $errorcode;
         }
 
         // Check that test environment is correctly set up, stops execution.
         self::test_environment_problem();
+
+        return $errorcode;
     }
 
     /**

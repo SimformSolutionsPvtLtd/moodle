@@ -118,6 +118,30 @@ M.form.dateselector = {
             showPrevMonth: true,
             showNextMonth: true,
             firstdayofweek: parseInt(config.firstdayofweek, 10),
+            headerRenderer: function(date) {
+                var calendar = this;
+                var headerNode = calendar.get('contentBox')
+                    .one('#' + calendar._calendarId + '_header');
+                var currentHeader = headerNode ? headerNode.getContent() : '';
+                var placeholder = M.util.get_string('loading', 'moodle');
+
+                // We fetch the current language's preferred time format from the language pack.
+                require(['core/user_date', 'core/notification'], function(UserDate, Notification) {
+                    UserDate.get([{
+                        timestamp: Math.floor(date.getTime() / 1000),
+                        format: M.util.get_string('strftimemonthyear', 'langconfig'),
+                    }]).then(function(dateStrs) {
+                        var headerNode = calendar.get('contentBox')
+                            .one('#' + calendar._calendarId + '_header');
+                        if (headerNode) {
+                            headerNode.setContent(dateStrs[0]);
+                        }
+                        return dateStrs[0];
+                    }).catch(Notification.exception);
+                });
+                return currentHeader || placeholder;
+            },
+
             WEEKDAYS_MEDIUM: [
                 config.sun,
                 config.mon,
@@ -125,7 +149,8 @@ M.form.dateselector = {
                 config.wed,
                 config.thu,
                 config.fri,
-                config.sat]
+                config.sat,
+            ],
         });
     },
     /**
@@ -459,7 +484,7 @@ CALENDAR.prototype = {
     },
     toggle_calendar_image: function() {
         // If the enable checkbox is not checked, disable the calendar image and prevent focus.
-        if (!this.enablecheckbox.get('checked')) {
+        if (!this.enablecheckbox.get('checked') || this.enablecheckbox.get('disabled')) {
             this.calendarimage.setAttribute('disabled');
             this.release_calendar();
         } else {

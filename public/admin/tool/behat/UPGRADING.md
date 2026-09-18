@@ -1,6 +1,6 @@
 # tool_behat Upgrade notes
 
-## 4.5.11
+## 5.1.4
 
 ### Added
 
@@ -8,7 +8,7 @@
 
   For more information see [MDL-75067](https://tracker.moodle.org/browse/MDL-75067)
 
-## 4.5.2
+## 5.0
 
 ### Added
 

@@ -207,72 +207,39 @@ class core_useragent {
     }
 
     /**
-     * Gets a list of known device types.
-     *
      * @deprecated Moodle 4.3 MDL-78468 - No longer used. Please use core_useragent::devicetypes instead.
-     * @todo Final deprecation on Moodle 4.7 MDL-79052
-     * @param bool $includecustomtypes If set to true we'll include types that have been added by the admin.
-     * @return array
      */
+    #[\core\attribute\deprecated('core_useragent::devicetypes', since: '4.3', mdl: 'MDL-78468', final: true)]
     public static function get_device_type_list($includecustomtypes = true) {
-        debugging(
-            __FUNCTION__ . '() is deprecated.' .
-                'All functions associated with devicedetectregex theme setting are being removed.
-                Please use core_useragent::devicetypes instead',
-            DEBUG_DEVELOPER
-        );
-        $types = self::$devicetypes;
-        if ($includecustomtypes) {
-            $instance = self::instance();
-            $types = array_merge($types, array_keys($instance->devicetypecustoms));
-        }
-        return $types;
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
     }
 
     /**
-     * Returns the theme to use for the given device type.
-     *
-     * This used to be get_selected_theme_for_device_type.
-     * @param null|string $devicetype The device type to find out for. Defaults to the device the user is using,
      * @deprecated since 4.3.
-     * @return bool
      */
+    #[\core\attribute\deprecated(
+        null,
+        since: '4.3',
+        reason: 'All functions associated with device specific themes are being removed',
+        mdl: 'MDL-77793',
+        final: true
+    )]
     public static function get_device_type_theme($devicetype = null) {
-        debugging(
-            __FUNCTION__ . '() is deprecated.' .
-                'All functions associated with device specific themes are being removed.',
-            DEBUG_DEVELOPER
-        );
-        global $CFG;
-        if ($devicetype === null) {
-            $devicetype = self::get_device_type();
-        }
-        $themevarname = self::get_device_type_cfg_var_name($devicetype);
-        if (empty($CFG->$themevarname)) {
-            return false;
-        }
-        return $CFG->$themevarname;
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
     }
 
     /**
-     * Returns the CFG var used to find the theme to use for the given device.
-     *
-     * Used to be get_device_cfg_var_name.
-     *
-     * @param null|string $devicetype The device type to find out for. Defaults to the device the user is using,
      * @deprecated since 4.3.
-     * @return string
      */
+    #[\core\attribute\deprecated(
+        null,
+        since: '4.3',
+        reason: 'All functions associated with device specific themes are being removed',
+        mdl: 'MDL-77793',
+        final: true
+    )]
     public static function get_device_type_cfg_var_name($devicetype = null) {
-        debugging(
-            __FUNCTION__ . '() is deprecated.' .
-                'All functions associated with device specific themes are being removed.',
-            DEBUG_DEVELOPER
-        );
-        if ($devicetype == self::DEVICETYPE_DEFAULT || empty($devicetype)) {
-            return 'theme';
-        }
-        return 'theme' . $devicetype;
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
     }
 
     /**

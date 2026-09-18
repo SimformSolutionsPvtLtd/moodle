@@ -94,6 +94,7 @@ $params = array();
 $PAGE->set_context($context);
 $PAGE->set_url('/my/index.php', $params);
 $PAGE->set_pagelayout('mydashboard');
+$PAGE->set_docs_path('dashboard');
 $PAGE->add_body_class('limitedwidth');
 $PAGE->set_pagetype('my-index');
 $PAGE->blocks->add_region('content');
@@ -155,8 +156,6 @@ if (empty($CFG->forcedefaultmymoodle) && $PAGE->user_allowed_editing()) {
     $params = array('edit' => !$edit);
 
     $resetbutton = '';
-    $resetstring = get_string('resetpage', 'my');
-    $reseturl = new moodle_url("$CFG->wwwroot/my/index.php", array('edit' => 1, 'reset' => 1));
 
     if (!$currentpage->userid) {
         // viewing a system page -- let the user customise it
@@ -166,7 +165,14 @@ if (empty($CFG->forcedefaultmymoodle) && $PAGE->user_allowed_editing()) {
         $editstring = get_string('updatemymoodleon');
     } else {
         $editstring = get_string('updatemymoodleoff');
-        $resetbutton = $OUTPUT->single_button($reseturl, $resetstring);
+        $resetbutton = $OUTPUT->single_button(
+            new moodle_url('/my/index.php', ['edit' => 1, 'reset' => 1]),
+            get_string('resetpage', 'my'),
+            options: [
+                'data-modal' => 'confirmation',
+                'data-modal-content-str' => json_encode(['resetpageconfirm', 'my']),
+            ],
+        );
     }
 
     $url = new moodle_url("$CFG->wwwroot/my/index.php", $params);

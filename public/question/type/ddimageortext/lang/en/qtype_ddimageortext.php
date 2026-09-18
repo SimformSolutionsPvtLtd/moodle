@@ -38,6 +38,10 @@ $string['draggableword'] = 'Draggable text';
 $string['dropbackground'] = 'Background image for dragging markers onto';
 $string['dropzone'] = 'Drop zone {$a}';
 $string['dropzoneheader'] = 'Drop zones';
+$string['dropzonevisibility'] = 'Drop zone visibility';
+$string['dropzonevisibility_help'] = 'Should drop zones be transparent so they don\'t cover up parts of the background image? Draggable items will snap to nearby drop zones.';
+$string['dropzonevisibility_hideoption'] = 'Transparent drop zones';
+$string['dropzonevisibility_showoption'] = 'Show drop zones';
 $string['formerror_disallowedtags'] = 'Only "{$a}" tags are allowed in this draggable text.';
 $string['formerror_dragrequired'] = 'You must add at least one draggable item to this question.';
 $string['formerror_droprequired'] = 'You must define at least one drop zone for this question.';
@@ -78,3 +82,6 @@ $string['summarisechoiceno'] = 'Item {$a}';
 $string['summariseplaceno'] = 'Drop zone {$a}';
 $string['xleft'] = 'Left';
 $string['ytop'] = 'Top';
+
+// Deprecated since Moodle 5.1.
+$string['dropzonevisibilitydesc'] = 'Borders will still be visible when editing the question to help with setting the drop zone.';

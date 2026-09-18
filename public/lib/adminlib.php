@@ -103,12 +103,12 @@
  */
 
 use core_admin\local\settings\linkable_settings_page;
+use core_admin\admin_search;
 
 defined('MOODLE_INTERNAL') || die();
 
 /// Add libraries
 require_once($CFG->libdir.'/ddllib.php');
-require_once($CFG->libdir.'/xmlize.php');
 require_once($CFG->libdir.'/messagelib.php');
 
 // Add classes, traits, and interfaces which should be autoloaded.
@@ -1234,6 +1234,9 @@ class admin_externalpage implements part_of_admin_tree, linkable_settings_page {
     /** @var array list of visible names of page parents */
     public $visiblepath;
 
+    /** @var string Capture the type of search matched from the query. */
+    public $searchmatchtype;
+
     /**
      * Constructor for adding an external page into the admin tree.
      *
@@ -1305,18 +1308,21 @@ class admin_externalpage implements part_of_admin_tree, linkable_settings_page {
      */
     public function search($query) {
         $found = false;
-        if (strpos(strtolower($this->name), $query) !== false) {
+        if (
+            strpos(core_text::strtolower($this->visiblename), $query) !== false ||
+            strpos(strtolower($this->name), $query) !== false
+        ) {
+            $type = admin_search::SEARCH_MATCH_PAGE_TITLE;
             $found = true;
-        } else if (strpos(core_text::strtolower($this->visiblename), $query) !== false) {
-                $found = true;
-            }
+        }
         if ($found) {
             $result = new stdClass();
-            $result->page     = $this;
-            $result->settings = array();
-            return array($this->name => $result);
+            $result->page = $this;
+            $result->settings = [];
+            $result->searchmatchtype = $type;
+            return [$this->name => $result];
         } else {
-            return array();
+            return [];
         }
     }
 
@@ -1531,35 +1537,43 @@ class admin_settingpage implements part_of_admin_tree, linkable_settings_page {
      * @return array
      */
     public function search($query) {
-        $found = array();
+        $found = false;
+        // Prioritise matching the page title.
+        if (
+            strpos(core_text::strtolower($this->visiblename), $query) !== false ||
+            strpos(strtolower($this->name), $query) !== false
+        ) {
+            $type = admin_search::SEARCH_MATCH_PAGE_TITLE;
+            $found = true;
+        }
+        if ($found) {
+            $result = new stdClass();
+            $result->page = $this;
+            $result->settings = [];
+            $result->searchmatchtype = $type;
+            return [$this->name => $result];
+        }
 
+        // Search related settings.
+        $foundrelated = [];
         foreach ($this->settings as $setting) {
             if ($setting->is_related($query)) {
-                $found[] = $setting;
+                $foundrelated[] = $setting;
             }
         }
 
-        if ($found) {
+        if (!empty($foundrelated)) {
+            $sortedresults = admin_search::sort_search_results($foundrelated);
+
             $result = new stdClass();
-            $result->page     = $this;
-            $result->settings = $found;
-            return array($this->name => $result);
+            $result->page = $this;
+            $result->settings = $sortedresults;
+            // Multiple related matches may have been found. Get the highest priority one.
+            $result->searchmatchtype = reset($sortedresults)->searchmatchtype;
+            return [$this->name => $result];
         }
 
-        $found = false;
-        if (strpos(strtolower($this->name), $query) !== false) {
-            $found = true;
-        } else if (strpos(core_text::strtolower($this->visiblename), $query) !== false) {
-                $found = true;
-            }
-        if ($found) {
-            $result = new stdClass();
-            $result->page     = $this;
-            $result->settings = array();
-            return array($this->name => $result);
-        } else {
-            return array();
-        }
+        return [];
     }
 
     /**
@@ -1731,6 +1745,8 @@ abstract class admin_setting {
     protected $customcontrol = false;
     /** @var mixed int means PARAM_XXX type, string is a allowed format in regex */
     public $paramtype;
+    /** @var string Capture the type of search matched from the query. */
+    public $searchmatchtype;
 
     /**
      * Constructor
@@ -2087,18 +2103,22 @@ abstract class admin_setting {
      */
     public function is_related($query) {
         if (strpos(strtolower($this->name), $query) !== false) {
+            $this->searchmatchtype = admin_search::SEARCH_MATCH_SETTING_SHORT_NAME;
             return true;
         }
         if (strpos(core_text::strtolower($this->visiblename), $query) !== false) {
+            $this->searchmatchtype = admin_search::SEARCH_MATCH_SETTING_DISPLAY_NAME;
             return true;
         }
         if (strpos(core_text::strtolower($this->description), $query) !== false) {
+            $this->searchmatchtype = admin_search::SEARCH_MATCH_SETTING_HELPER;
             return true;
         }
         $current = $this->get_setting();
         if (!is_null($current)) {
             if (is_string($current)) {
                 if (strpos(core_text::strtolower($current), $query) !== false) {
+                    $this->searchmatchtype = admin_search::SEARCH_MATCH_SETTING_VALUE;
                     return true;
                 }
             }
@@ -2107,6 +2127,7 @@ abstract class admin_setting {
         if (!is_null($default)) {
             if (is_string($default)) {
                 if (strpos(core_text::strtolower($default), $query) !== false) {
+                    $this->searchmatchtype = admin_search::SEARCH_MATCH_SETTING_HELPER;
                     return true;
                 }
             }
@@ -3211,6 +3232,7 @@ class admin_setting_configmulticheckbox extends admin_setting {
 
         foreach ($this->choices as $desc) {
             if (strpos(core_text::strtolower($desc), $query) !== false) {
+                $this->searchmatchtype = admin_search::SEARCH_MATCH_SETTING_VALUE;
                 return true;
             }
         }
@@ -3480,9 +3502,11 @@ class admin_setting_configselect extends admin_setting {
         }
         foreach ($this->choices as $key=>$value) {
             if (strpos(core_text::strtolower($key), $query) !== false) {
+                $this->searchmatchtype = admin_search::SEARCH_MATCH_SETTING_VALUE;
                 return true;
             }
             if (strpos(core_text::strtolower($value), $query) !== false) {
+                $this->searchmatchtype = admin_search::SEARCH_MATCH_SETTING_VALUE;
                 return true;
             }
         }
@@ -3682,11 +3706,14 @@ class admin_setting_configmultiselect extends admin_setting_configselect {
         if (!is_array($data)) {
             return ''; //ignore it
         }
-        if (!$this->load_choices() or empty($this->choices)) {
-            return '';
-        }
 
         unset($data['xxxxx']);
+
+        // Only reject when the caller actually supplied a value
+        // and there is no valid choices to validate against.
+        if (!empty($data) && (!$this->load_choices() || empty($this->choices))) {
+            return '';
+        }
 
         $save = array();
         foreach ($data as $value) {
@@ -3715,6 +3742,7 @@ class admin_setting_configmultiselect extends admin_setting_configselect {
 
         foreach ($this->choices as $desc) {
             if (strpos(core_text::strtolower($desc), $query) !== false) {
+                $this->searchmatchtype = admin_search::SEARCH_MATCH_SETTING_VALUE;
                 return true;
             }
         }
@@ -4275,8 +4303,9 @@ class admin_setting_configmixedhostiplist extends admin_setting_configtextarea {
             $badentries[] = $entry;
         }
 
-        if ($badentries) {
-            return get_string('validateerrorlist', 'admin', join(', ', $badentries));
+        if (count($badentries) > 0) {
+            $badentries = implode(get_string('listsep', 'core_langconfig') . ' ', $badentries);
+            return get_string('validateerrorlist', 'admin', $badentries);
         }
         return true;
     }
@@ -4393,7 +4422,8 @@ class admin_setting_configportlist extends admin_setting_configtextarea {
                 $badentries[] = $port;
             }
         }
-        if ($badentries) {
+        if (count($badentries) > 0) {
+            $badentries = implode(get_string('listsep', 'core_langconfig') . ' ', $badentries);
             return get_string('validateerrorlist', 'admin', $badentries);
         }
         return true;
@@ -5414,11 +5444,29 @@ class admin_settings_country_select extends admin_setting_configselect {
  * admin_setting_configselect for the default number of sections in a course,
  * simply so we can lazy-load the choices.
  *
+ * @deprecated since Moodle 5.2.
+ * @todo Remove this class in Moodle 6.0 (MDL-85272).
  * @copyright 2011 The Open University
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class admin_settings_num_course_sections extends admin_setting_configselect {
+    /**
+     * Constructor.
+     *
+     * @param string $name The name of the setting
+     * @param string $visiblename The visible name of the setting
+     * @param string $description The description of the setting
+     * @param int $defaultsetting The default setting value
+     * @deprecated since Moodle 5.2
+     * @todo Final deprecation in Moodle 6.0 (MDL-84291)
+     */
+    #[\core\attribute\deprecated(
+        replacement: 'admin_setting_configtext',
+        since: '5.1',
+        mdl: 'MDL-84291',
+    )]
     public function __construct($name, $visiblename, $description, $defaultsetting) {
+        \core\deprecation::emit_deprecation(__FUNCTION__);
         parent::__construct($name, $visiblename, $description, $defaultsetting, array());
     }
 
@@ -6652,11 +6700,13 @@ class admin_page_managemods extends admin_externalpage {
                     continue;
                 }
                 if (strpos($module->name, $query) !== false) {
+                    $type = admin_search::SEARCH_MATCH_SETTING_SHORT_NAME;
                     $found = true;
                     break;
                 }
                 $strmodulename = get_string('modulename', $module->name);
                 if (strpos(core_text::strtolower($strmodulename), $query) !== false) {
+                    $type = admin_search::SEARCH_MATCH_SETTING_DISPLAY_NAME;
                     $found = true;
                     break;
                 }
@@ -6666,6 +6716,7 @@ class admin_page_managemods extends admin_externalpage {
             $result = new stdClass();
             $result->page     = $this;
             $result->settings = array();
+            $result->searchmatchtype = $type;
             return array($this->name => $result);
         } else {
             return array();
@@ -6733,9 +6784,11 @@ class admin_setting_manageenrols extends admin_setting {
         foreach ($enrols as $name=>$enrol) {
             $localised = get_string('pluginname', 'enrol_'.$name);
             if (strpos(core_text::strtolower($name), $query) !== false) {
+                $this->searchmatchtype = admin_search::SEARCH_MATCH_SETTING_SHORT_NAME;
                 return true;
             }
             if (strpos(core_text::strtolower($localised), $query) !== false) {
+                $this->searchmatchtype = admin_search::SEARCH_MATCH_SETTING_DISPLAY_NAME;
                 return true;
             }
         }
@@ -6790,7 +6843,7 @@ class admin_setting_manageenrols extends admin_setting {
         $table->head  = array(get_string('name'), $strusage, $strversion, $strenable, $strup.'/'.$strdown, $strsettings, $strtest, $struninstall);
         $table->colclasses = array('leftalign', 'centeralign', 'centeralign', 'centeralign', 'centeralign', 'centeralign', 'centeralign', 'centeralign');
         $table->id = 'courseenrolmentplugins';
-        $table->attributes['class'] = 'admintable generaltable';
+        $table->attributes['class'] = 'admintable table generaltable table-hover';
         $table->data  = array();
 
         // Iterate through enrol plugins and add to the display table.
@@ -6933,11 +6986,13 @@ class admin_page_manageblocks extends admin_externalpage {
                     continue;
                 }
                 if (strpos($block->name, $query) !== false) {
+                    $type = admin_search::SEARCH_MATCH_SETTING_SHORT_NAME;
                     $found = true;
                     break;
                 }
                 $strblockname = get_string('pluginname', 'block_'.$block->name);
                 if (strpos(core_text::strtolower($strblockname), $query) !== false) {
+                    $type = admin_search::SEARCH_MATCH_SETTING_DISPLAY_NAME;
                     $found = true;
                     break;
                 }
@@ -6947,6 +7002,7 @@ class admin_page_manageblocks extends admin_externalpage {
             $result = new stdClass();
             $result->page     = $this;
             $result->settings = array();
+            $result->searchmatchtype = $type;
             return array($this->name => $result);
         } else {
             return array();
@@ -6990,11 +7046,13 @@ class admin_page_managemessageoutputs extends admin_externalpage {
                     continue;
                 }
                 if (strpos($processor->name, $query) !== false) {
+                    $type = admin_search::SEARCH_MATCH_SETTING_SHORT_NAME;
                     $found = true;
                     break;
                 }
                 $strprocessorname = get_string('pluginname', 'message_'.$processor->name);
                 if (strpos(core_text::strtolower($strprocessorname), $query) !== false) {
+                    $type = admin_search::SEARCH_MATCH_SETTING_DISPLAY_NAME;
                     $found = true;
                     break;
                 }
@@ -7004,6 +7062,7 @@ class admin_page_managemessageoutputs extends admin_externalpage {
             $result = new stdClass();
             $result->page     = $this;
             $result->settings = array();
+            $result->searchmatchtype = $type;
             return array($this->name => $result);
         } else {
             return array();
@@ -7044,6 +7103,7 @@ class admin_page_manageqbehaviours extends admin_externalpage {
         foreach (core_component::get_plugin_list('qbehaviour') as $behaviour => $notused) {
             if (strpos(core_text::strtolower(question_engine::get_behaviour_name($behaviour)),
                     $query) !== false) {
+                $type = admin_search::SEARCH_MATCH_SETTING_DISPLAY_NAME;
                 $found = true;
                 break;
             }
@@ -7052,6 +7112,7 @@ class admin_page_manageqbehaviours extends admin_externalpage {
             $result = new stdClass();
             $result->page     = $this;
             $result->settings = array();
+            $result->searchmatchtype = $type;
             return array($this->name => $result);
         } else {
             return array();
@@ -7091,6 +7152,7 @@ class admin_page_manageqtypes extends admin_externalpage {
         require_once($CFG->dirroot . '/question/engine/bank.php');
         foreach (question_bank::get_all_qtypes() as $qtype) {
             if (strpos(core_text::strtolower($qtype->local_name()), $query) !== false) {
+                $type = admin_search::SEARCH_MATCH_SETTING_DISPLAY_NAME;
                 $found = true;
                 break;
             }
@@ -7099,6 +7161,7 @@ class admin_page_manageqtypes extends admin_externalpage {
             $result = new stdClass();
             $result->page     = $this;
             $result->settings = array();
+            $result->searchmatchtype = $type;
             return array($this->name => $result);
         } else {
             return array();
@@ -7132,6 +7195,7 @@ class admin_page_manageportfolios extends admin_externalpage {
         $portfolios = core_component::get_plugin_list('portfolio');
         foreach ($portfolios as $p => $dir) {
             if (strpos($p, $query) !== false) {
+                $type = admin_search::SEARCH_MATCH_SETTING_SHORT_NAME;
                 $found = true;
                 break;
             }
@@ -7140,6 +7204,7 @@ class admin_page_manageportfolios extends admin_externalpage {
             foreach (portfolio_instances(false, false) as $instance) {
                 $title = $instance->get('name');
                 if (strpos(core_text::strtolower($title), $query) !== false) {
+                    $type = admin_search::SEARCH_MATCH_SETTING_DISPLAY_NAME;
                     $found = true;
                     break;
                 }
@@ -7150,6 +7215,7 @@ class admin_page_manageportfolios extends admin_externalpage {
             $result = new stdClass();
             $result->page     = $this;
             $result->settings = array();
+            $result->searchmatchtype = $type;
             return array($this->name => $result);
         } else {
             return array();
@@ -7183,6 +7249,7 @@ class admin_page_managerepositories extends admin_externalpage {
         $repositories= core_component::get_plugin_list('repository');
         foreach ($repositories as $p => $dir) {
             if (strpos($p, $query) !== false) {
+                $type = admin_search::SEARCH_MATCH_SETTING_SHORT_NAME;
                 $found = true;
                 break;
             }
@@ -7191,6 +7258,7 @@ class admin_page_managerepositories extends admin_externalpage {
             foreach (repository::get_types() as $instance) {
                 $title = $instance->get_typename();
                 if (strpos(core_text::strtolower($title), $query) !== false) {
+                    $type = admin_search::SEARCH_MATCH_SETTING_DISPLAY_NAME;
                     $found = true;
                     break;
                 }
@@ -7201,6 +7269,7 @@ class admin_page_managerepositories extends admin_externalpage {
             $result = new stdClass();
             $result->page     = $this;
             $result->settings = array();
+            $result->searchmatchtype = $type;
             return array($this->name => $result);
         } else {
             return array();
@@ -7265,11 +7334,13 @@ class admin_setting_manageauths extends admin_setting {
         $authsavailable = core_component::get_plugin_list('auth');
         foreach ($authsavailable as $auth => $dir) {
             if (strpos($auth, $query) !== false) {
+                $this->searchmatchtype = admin_search::SEARCH_MATCH_SETTING_SHORT_NAME;
                 return true;
             }
             $authplugin = get_auth_plugin($auth);
             $authtitle = $authplugin->get_title();
             if (strpos(core_text::strtolower($authtitle), $query) !== false) {
+                $this->searchmatchtype = admin_search::SEARCH_MATCH_SETTING_DISPLAY_NAME;
                 return true;
             }
         }
@@ -7341,7 +7412,7 @@ class admin_setting_manageauths extends admin_setting {
         $table->head  = array($txt->name, $txt->users, $txt->enable, $txt->updown, $txt->settings, $txt->testsettings, $txt->uninstall);
         $table->colclasses = array('leftalign', 'centeralign', 'centeralign', 'centeralign', 'centeralign', 'centeralign', 'centeralign');
         $table->data  = array();
-        $table->attributes['class'] = 'admintable generaltable';
+        $table->attributes['class'] = 'admintable table generaltable table-hover';
         $table->id = 'manageauthtable';
 
         //add always enabled plugins first
@@ -7493,9 +7564,11 @@ class admin_setting_manageantiviruses extends admin_setting {
         $antivirusesavailable = \core\antivirus\manager::get_available();
         foreach ($antivirusesavailable as $antivirus => $antivirusstr) {
             if (strpos($antivirus, $query) !== false) {
+                $this->searchmatchtype = admin_search::SEARCH_MATCH_SETTING_SHORT_NAME;
                 return true;
             }
             if (strpos(core_text::strtolower($antivirusstr), $query) !== false) {
+                $this->searchmatchtype = admin_search::SEARCH_MATCH_SETTING_DISPLAY_NAME;
                 return true;
             }
         }
@@ -7540,7 +7613,7 @@ class admin_setting_manageantiviruses extends admin_setting {
         $table->head  = array($txt->name, $txt->enable, $txt->updown, $txt->settings, $struninstall);
         $table->colclasses = array('leftalign', 'centeralign', 'centeralign', 'centeralign', 'centeralign');
         $table->id = 'antivirusmanagement';
-        $table->attributes['class'] = 'admintable generaltable';
+        $table->attributes['class'] = 'admintable table generaltable table-hover';
         $table->data  = array();
 
         // Iterate through auth plugins and add to the display table.
@@ -7670,8 +7743,12 @@ class admin_setting_manageformats extends admin_setting {
         }
         $formats = core_plugin_manager::instance()->get_plugins_of_type('format');
         foreach ($formats as $format) {
-            if (strpos($format->component, $query) !== false ||
-                    strpos(core_text::strtolower($format->displayname), $query) !== false) {
+            if (strpos($format->component, $query) !== false) {
+                $this->searchmatchtype = admin_search::SEARCH_MATCH_SETTING_SHORT_NAME;
+                return true;
+            }
+            if (strpos(core_text::strtolower($format->displayname), $query) !== false) {
+                $this->searchmatchtype = admin_search::SEARCH_MATCH_SETTING_DISPLAY_NAME;
                 return true;
             }
         }
@@ -7701,7 +7778,7 @@ class admin_setting_manageformats extends admin_setting {
         $table = new html_table();
         $table->head  = array($txt->name, $txt->enable, $txt->updown, $txt->uninstall, $txt->settings);
         $table->align = array('left', 'center', 'center', 'center', 'center');
-        $table->attributes['class'] = 'manageformattable generaltable admintable';
+        $table->attributes['class'] = 'manageformattable table generaltable admintable table-striped table-hover';
         $table->data  = array();
 
         $cnt = 0;
@@ -7820,8 +7897,12 @@ class admin_setting_managecustomfields extends admin_setting {
         }
         $formats = core_plugin_manager::instance()->get_plugins_of_type('customfield');
         foreach ($formats as $format) {
-            if (strpos($format->component, $query) !== false ||
-                    strpos(core_text::strtolower($format->displayname), $query) !== false) {
+            if (strpos($format->component, $query) !== false) {
+                $this->searchmatchtype = admin_search::SEARCH_MATCH_SETTING_SHORT_NAME;
+                return true;
+            }
+            if (strpos(core_text::strtolower($format->displayname), $query) !== false) {
+                $this->searchmatchtype = admin_search::SEARCH_MATCH_SETTING_DISPLAY_NAME;
                 return true;
             }
         }
@@ -7850,7 +7931,7 @@ class admin_setting_managecustomfields extends admin_setting {
         $table = new html_table();
         $table->head  = array($txt->name, $txt->enable, $txt->uninstall, $txt->settings);
         $table->align = array('left', 'center', 'center', 'center');
-        $table->attributes['class'] = 'managecustomfieldtable generaltable admintable';
+        $table->attributes['class'] = 'managecustomfieldtable table generaltable admintable table-striped table-hover';
         $table->data  = array();
 
         $spacer = $OUTPUT->pix_icon('spacer', '', 'moodle', array('class' => 'iconsmall'));
@@ -7944,8 +8025,12 @@ class admin_setting_managedataformats extends admin_setting {
         }
         $formats = core_plugin_manager::instance()->get_plugins_of_type('dataformat');
         foreach ($formats as $format) {
-            if (strpos($format->component, $query) !== false ||
-                    strpos(core_text::strtolower($format->displayname), $query) !== false) {
+            if (strpos($format->component, $query) !== false) {
+                $this->searchmatchtype = admin_search::SEARCH_MATCH_SETTING_SHORT_NAME;
+                return true;
+            }
+            if (strpos(core_text::strtolower($format->displayname), $query) !== false) {
+                $this->searchmatchtype = admin_search::SEARCH_MATCH_SETTING_DISPLAY_NAME;
                 return true;
             }
         }
@@ -7972,7 +8057,7 @@ class admin_setting_managedataformats extends admin_setting {
         $table = new html_table();
         $table->head  = array($txt->name, $txt->enable, $txt->updown, $txt->uninstall, $txt->settings);
         $table->align = array('left', 'center', 'center', 'center', 'center');
-        $table->attributes['class'] = 'manageformattable generaltable admintable';
+        $table->attributes['class'] = 'manageformattable table generaltable admintable table-striped table-hover';
         $table->data  = array();
 
         $cnt = 0;
@@ -8075,11 +8160,13 @@ class admin_page_managefilters extends admin_externalpage {
         $found = false;
         $filternames = filter_get_all_installed();
         foreach ($filternames as $path => $strfiltername) {
-            if (strpos(core_text::strtolower($strfiltername), $query) !== false) {
+            if (strpos($path, $query) !== false) {
+                $type = admin_search::SEARCH_MATCH_SETTING_SHORT_NAME;
                 $found = true;
                 break;
             }
-            if (strpos($path, $query) !== false) {
+            if (strpos(core_text::strtolower($strfiltername), $query) !== false) {
+                $type = admin_search::SEARCH_MATCH_SETTING_DISPLAY_NAME;
                 $found = true;
                 break;
             }
@@ -8089,6 +8176,7 @@ class admin_page_managefilters extends admin_externalpage {
             $result = new stdClass;
             $result->page = $this;
             $result->settings = array();
+            $result->searchmatchtype = $type;
             return array($this->name => $result);
         } else {
             return array();
@@ -8198,9 +8286,11 @@ abstract class admin_setting_manage_plugins extends admin_setting {
         foreach ($plugins as $name => $plugin) {
             $localised = $plugin->displayname;
             if (strpos(core_text::strtolower($name), $query) !== false) {
+                $this->searchmatchtype = admin_search::SEARCH_MATCH_SETTING_SHORT_NAME;
                 return true;
             }
             if (strpos(core_text::strtolower($localised), $query) !== false) {
+                $this->searchmatchtype = admin_search::SEARCH_MATCH_SETTING_DISPLAY_NAME;
                 return true;
             }
         }
@@ -8382,9 +8472,11 @@ class admin_setting_managemediaplayers extends admin_setting {
         foreach ($plugins as $name => $plugin) {
             $localised = $plugin->displayname;
             if (strpos(core_text::strtolower($name), $query) !== false) {
+                $this->searchmatchtype = admin_search::SEARCH_MATCH_SETTING_SHORT_NAME;
                 return true;
             }
             if (strpos(core_text::strtolower($localised), $query) !== false) {
+                $this->searchmatchtype = admin_search::SEARCH_MATCH_SETTING_DISPLAY_NAME;
                 return true;
             }
         }
@@ -8449,7 +8541,7 @@ class admin_setting_managemediaplayers extends admin_setting {
         $table->colclasses = array('leftalign', 'leftalign', 'centeralign',
             'centeralign', 'centeralign', 'centeralign', 'centeralign');
         $table->id = 'mediaplayerplugins';
-        $table->attributes['class'] = 'admintable generaltable';
+        $table->attributes['class'] = 'admintable table generaltable table-hover';
         $table->data  = array();
 
         // Iterate through media plugins and add to the display table.
@@ -8601,8 +8693,12 @@ class admin_setting_managecontentbankcontenttypes extends admin_setting {
         }
         $types = core_plugin_manager::instance()->get_plugins_of_type('contenttype');
         foreach ($types as $type) {
-            if (strpos($type->component, $query) !== false ||
-                strpos(core_text::strtolower($type->displayname), $query) !== false) {
+            if (strpos($type->component, $query) !== false) {
+                $this->searchmatchtype = admin_search::SEARCH_MATCH_SETTING_SHORT_NAME;
+                return true;
+            }
+            if (strpos(core_text::strtolower($type->displayname), $query) !== false) {
+                $this->searchmatchtype = admin_search::SEARCH_MATCH_SETTING_DISPLAY_NAME;
                 return true;
             }
         }
@@ -8627,7 +8723,7 @@ class admin_setting_managecontentbankcontenttypes extends admin_setting {
         $table = new html_table();
         $table->head  = array($txt->name, $txt->enable, $txt->order, $txt->settings, $txt->uninstall);
         $table->align = array('left', 'center', 'center', 'center', 'center');
-        $table->attributes['class'] = 'managecontentbanktable generaltable admintable';
+        $table->attributes['class'] = 'managecontentbanktable table generaltable admintable table-hover';
         $table->data  = array();
         $spacer = $OUTPUT->pix_icon('spacer', '', 'moodle', array('class' => 'iconsmall'));
 
@@ -9069,9 +9165,11 @@ function admin_search_settings_html($query) {
         'sesskey' => sesskey(),
     ];
 
-    foreach ($findings as $found) {
-        $page     = $found->page;
-        $settings = $found->settings;
+    $sortedresults = admin_search::sort_search_results($findings);
+
+    foreach ($sortedresults as $result) {
+        $page = $result->page;
+        $settings = $result->settings;
         if ($page->is_hidden()) {
         // hidden pages are not displayed in search results
             continue;
@@ -9471,12 +9569,14 @@ class admin_setting_managerepository extends admin_setting {
         $repositories= core_component::get_plugin_list('repository');
         foreach ($repositories as $p => $dir) {
             if (strpos($p, $query) !== false) {
+                $this->searchmatchtype = admin_search::SEARCH_MATCH_SETTING_SHORT_NAME;
                 return true;
             }
         }
         foreach (repository::get_types() as $instance) {
             $title = $instance->get_typename();
             if (strpos(core_text::strtolower($title), $query) !== false) {
+                $this->searchmatchtype = admin_search::SEARCH_MATCH_SETTING_DISPLAY_NAME;
                 return true;
             }
         }
@@ -9867,6 +9967,7 @@ class admin_setting_manageexternalservices extends admin_setting {
         $services = $DB->get_records('external_services', array(), 'id, name');
         foreach ($services as $service) {
             if (strpos(core_text::strtolower($service->name), $query) !== false) {
+                $this->searchmatchtype = admin_search::SEARCH_MATCH_SETTING_DISPLAY_NAME;
                 return true;
             }
         }
@@ -9910,7 +10011,7 @@ class admin_setting_manageexternalservices extends admin_setting {
             $table->head  = array($strservice, $strplugin, $strfunctions, $strusers, $stredit);
             $table->colclasses = array('leftalign service', 'leftalign plugin', 'centeralign functions', 'centeralign users', 'centeralign ');
             $table->id = 'builtinservices';
-            $table->attributes['class'] = 'admintable externalservices generaltable';
+            $table->attributes['class'] = 'admintable externalservices table generaltable table-hover';
             $table->data  = array();
 
             // iterate through auth plugins and add to the display table
@@ -9950,7 +10051,7 @@ class admin_setting_manageexternalservices extends admin_setting {
         $table->head  = array($strservice, $strdelete, $strfunctions, $strusers, $stredit);
         $table->colclasses = array('leftalign service', 'leftalign plugin', 'centeralign functions', 'centeralign users', 'centeralign ');
         $table->id = 'customservices';
-        $table->attributes['class'] = 'admintable externalservices generaltable';
+        $table->attributes['class'] = 'admintable externalservices table generaltable table-hover';
         $table->data  = array();
 
         // iterate through auth plugins and add to the display table
@@ -10055,7 +10156,7 @@ class admin_setting_webservicesoverview extends admin_setting {
             get_string('description'));
         $table->colclasses = array('leftalign step', 'leftalign status', 'leftalign description');
         $table->id = 'onesystemcontrol';
-        $table->attributes['class'] = 'admintable wsoverview generaltable';
+        $table->attributes['class'] = 'admintable wsoverview table generaltable table-hover';
         $table->data = array();
 
         $return .= $brtag . get_string('onesystemcontrollingdescription', 'webservice')
@@ -10179,7 +10280,7 @@ class admin_setting_webservicesoverview extends admin_setting {
             get_string('description'));
         $table->colclasses = array('leftalign step', 'leftalign status', 'leftalign description');
         $table->id = 'userasclients';
-        $table->attributes['class'] = 'admintable wsoverview generaltable';
+        $table->attributes['class'] = 'admintable wsoverview table generaltable table-hover';
         $table->data = array();
 
         $return .= $brtag . get_string('userasclientsdescription', 'webservice') .
@@ -10319,10 +10420,12 @@ class admin_setting_managewebserviceprotocols extends admin_setting {
         $protocols = core_component::get_plugin_list('webservice');
         foreach ($protocols as $protocol=>$location) {
             if (strpos($protocol, $query) !== false) {
+                $this->searchmatchtype = admin_search::SEARCH_MATCH_SETTING_SHORT_NAME;
                 return true;
             }
             $protocolstr = get_string('pluginname', 'webservice_'.$protocol);
             if (strpos(core_text::strtolower($protocolstr), $query) !== false) {
+                $this->searchmatchtype = admin_search::SEARCH_MATCH_SETTING_DISPLAY_NAME;
                 return true;
             }
         }
@@ -10370,7 +10473,7 @@ class admin_setting_managewebserviceprotocols extends admin_setting {
         $table->head  = array($strprotocol, $strversion, $strenable, $strsettings);
         $table->colclasses = array('leftalign', 'centeralign', 'centeralign', 'centeralign', 'centeralign');
         $table->id = 'webserviceprotocols';
-        $table->attributes['class'] = 'admintable generaltable';
+        $table->attributes['class'] = 'admintable table generaltable table-hover';
         $table->data  = array();
 
         // iterate through auth plugins and add to the display table
@@ -10749,206 +10852,6 @@ class admin_setting_configstoredfile extends admin_setting {
     }
 }
 
-
-/**
- * Administration interface for user specified regular expressions for device detection.
- *
- * @deprecated Moodle 4.3 MDL-78468 - No longer used since the devicedetectregex was removed.
- * @todo Final deprecation on Moodle 4.7 MDL-79052
- * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-class admin_setting_devicedetectregex extends admin_setting {
-
-    /**
-     * Calls parent::__construct with specific args
-     *
-     * @deprecated Moodle 4.3 MDL-78468 - No longer used since the devicedetectregex was removed.
-     * @todo Final deprecation on Moodle 4.7 MDL-79052
-     * @param string $name
-     * @param string $visiblename
-     * @param string $description
-     * @param mixed $defaultsetting
-     */
-    public function __construct($name, $visiblename, $description, $defaultsetting = '') {
-        debugging(
-            __FUNCTION__ . '() is deprecated.' .
-                'All functions associated with devicedetectregex theme setting are being removed.',
-            DEBUG_DEVELOPER
-        );
-        global $CFG;
-        parent::__construct($name, $visiblename, $description, $defaultsetting);
-    }
-
-    /**
-     * Return the current setting(s)
-     *
-     * @deprecated Moodle 4.3 MDL-78468 - No longer used since the devicedetectregex was removed.
-     * @todo Final deprecation on Moodle 4.7 MDL-79052
-     * @return ?array Current settings array
-     */
-    public function get_setting() {
-        debugging(
-            __FUNCTION__ . '() is deprecated.' .
-                'All functions associated with devicedetectregex theme setting are being removed.',
-            DEBUG_DEVELOPER
-        );
-        global $CFG;
-
-        $config = $this->config_read($this->name);
-        if (is_null($config)) {
-            return null;
-        }
-
-        return $this->prepare_form_data($config);
-    }
-
-    /**
-     * Save selected settings
-     *
-     * @deprecated Moodle 4.3 MDL-78468 - No longer used since the devicedetectregex was removed.
-     * @todo Final deprecation on Moodle 4.7 MDL-79052
-     * @param array $data Array of settings to save
-     * @return string error message or empty string on success
-     */
-    public function write_setting($data) {
-        debugging(
-            __FUNCTION__ . '() is deprecated.' .
-                'All functions associated with devicedetectregex theme setting are being removed.',
-            DEBUG_DEVELOPER
-        );
-        if (empty($data)) {
-            $data = array();
-        }
-
-        if ($this->config_write($this->name, $this->process_form_data($data))) {
-            return ''; // success
-        } else {
-            return get_string('errorsetting', 'admin') . $this->visiblename . html_writer::empty_tag('br');
-        }
-    }
-
-    /**
-     * Return XHTML field(s) for regexes
-     *
-     * @deprecated Moodle 4.3 MDL-78468 - No longer used since the devicedetectregex was removed.
-     * @todo Final deprecation on Moodle 4.7 MDL-79052
-     * @param array $data Array of options to set in HTML
-     * @return string XHTML string for the fields and wrapping div(s)
-     */
-    public function output_html($data, $query='') {
-        debugging(
-            __FUNCTION__ . '() is deprecated.' .
-                'All functions associated with devicedetectregex theme setting are being removed.',
-            DEBUG_DEVELOPER
-        );
-        global $OUTPUT;
-
-        $context = (object) [
-            'expressions' => [],
-            'name' => $this->get_full_name()
-        ];
-
-        if (empty($data)) {
-            $looplimit = 1;
-        } else {
-            $looplimit = (count($data)/2)+1;
-        }
-
-        for ($i=0; $i<$looplimit; $i++) {
-
-            $expressionname = 'expression'.$i;
-
-            if (!empty($data[$expressionname])){
-                $expression = $data[$expressionname];
-            } else {
-                $expression = '';
-            }
-
-            $valuename = 'value'.$i;
-
-            if (!empty($data[$valuename])){
-                $value = $data[$valuename];
-            } else {
-                $value= '';
-            }
-
-            $context->expressions[] = [
-                'index' => $i,
-                'expression' => $expression,
-                'value' => $value
-            ];
-        }
-
-        $element = $OUTPUT->render_from_template('core_admin/setting_devicedetectregex', $context);
-
-        return format_admin_setting($this, $this->visiblename, $element, $this->description, false, '', null, $query);
-    }
-
-    /**
-     * Converts the string of regexes
-     *
-     * @see self::process_form_data()
-     * @param $regexes string of regexes
-     * @return array of form fields and their values
-     */
-    protected function prepare_form_data($regexes) {
-
-        $regexes = json_decode($regexes);
-
-        $form = array();
-
-        $i = 0;
-
-        foreach ($regexes as $value => $regex) {
-            $expressionname  = 'expression'.$i;
-            $valuename = 'value'.$i;
-
-            $form[$expressionname] = $regex;
-            $form[$valuename] = $value;
-            $i++;
-        }
-
-        return $form;
-    }
-
-    /**
-     * Converts the data from admin settings form into a string of regexes
-     *
-     * @see self::prepare_form_data()
-     * @param array $data array of admin form fields and values
-     * @return false|string of regexes
-     */
-    protected function process_form_data(array $form) {
-
-        $count = count($form); // number of form field values
-
-        if ($count % 2) {
-            // we must get five fields per expression
-            return false;
-        }
-
-        $regexes = array();
-        for ($i = 0; $i < $count / 2; $i++) {
-            $expressionname  = "expression".$i;
-            $valuename       = "value".$i;
-
-            $expression = trim($form['expression'.$i]);
-            $value      = trim($form['value'.$i]);
-
-            if (empty($expression)){
-                continue;
-            }
-
-            $regexes[$value] = $expression;
-        }
-
-        $regexes = json_encode($regexes);
-
-        return $regexes;
-    }
-
-}
-
 /**
  * Multiselect for current modules
  *
@@ -11222,7 +11125,7 @@ class admin_setting_searchsetupinfo extends admin_setting {
         $table->head = array(get_string('step', 'search'), get_string('status'));
         $table->colclasses = array('leftalign step', 'leftalign status');
         $table->id = 'searchsetup';
-        $table->attributes['class'] = 'admintable generaltable';
+        $table->attributes['class'] = 'admintable table generaltable table-hover';
         $table->data = array();
 
         $return .= $brtag . get_string('searchsetupdescription', 'search') . $brtag . $brtag;

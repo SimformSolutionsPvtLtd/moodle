@@ -87,6 +87,9 @@ class message {
     /** @var string Complete message in html format. */
     private $fullmessagehtml;
 
+    /** @var string Complete message in sms format. */
+    private $fullmessagesms;
+
     /** @var  string Smaller version of the message. */
     private $smallmessage;
 
@@ -140,6 +143,7 @@ class message {
         'fullmessage',
         'fullmessageformat',
         'fullmessagehtml',
+        'fullmessagesms',
         'smallmessage',
         'notification',
         'contexturl',
@@ -185,6 +189,21 @@ class message {
             return $this->get_message_with_additional_content($processorname, 'fullmessage');
         } else {
             return $this->fullmessage;
+        }
+    }
+
+    /**
+     * Fullmessagesms content including any processor specific content.
+     *
+     * @param string $processorname Name of the processor.
+     *
+     * @return mixed|string
+     */
+    protected function get_fullmessagesms(string $processorname = '') {
+        if (!empty($processorname) && isset($this->additionalcontent[$processorname])) {
+            return $this->get_message_with_additional_content($processorname, 'fullmessagesms');
+        } else {
+            return $this->fullmessagesms;
         }
     }
 

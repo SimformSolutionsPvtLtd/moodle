@@ -21,7 +21,7 @@
  * needed during the very first steps of installation. This file was
  * generated automatically by export-installer.php (which is part of AMOS
  * {@link https://moodledev.io/general/projects/api/amos}) using the
- * list of strings defined in install/stringnames.txt file.
+ * list of strings defined in public/install/stringnames.txt file.
  *
  * @package   installer
  * @license   https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -49,7 +49,6 @@ $string['environmentsub2'] = 'མུ་ཌེལ་འཛིན་གྲོལ�
 $string['errorsinenvironment'] = 'གློག་རིག་གནས་སྟངས་ཞིབ་དཔྱད་མཐར་མ་ཕྱིན།';
 $string['installation'] = 'གཞི་བཙུགས།';
 $string['langdownloaderror'] = 'སྐད་ཡིག་ "{$a}"འདི་ གཞི་བཙུགས་འབད་དེ་མིན་ནུག། གཞི་བཙུགས་འདི་ ཨིན་སྐད་ནང་ འཕྲོ་མཐུད་དེ་འབད་ནི་ཨིན།';
-$string['memorylimithelp'] = '<p>ད་ལྟོ་ཁྱོད་ཀྱི་སར་བར་གྱི་དོན་ལུ་ PHP དྲན་ཚད་དེ་ $a ལུ་གཞི་སྒྲིག་འབད་དེ་འདུག།</p> <p> འདི་གིས་ཤུལ་ལས་ མུ་ཌལ་ལུ་ དྲན་ཚད་ཀྱི་དཀའ་ངལ་ཚུ་འབྱུང་བཅུག་འོང་ཝ། འདི་གི་ནང་ལས་ཡང་ ཁྱོད་ཀྱི་མུ་ཌལ་དང་ལག་ལེན་པ་ལོ་ཤ་ལྕོགས་ཅན་བཟོ་ཡོད་པ་ཅིན་ དཀའ་ངལ་འབྱུང་འོང་།</p> <p> ཁྱོད་ཀྱིས་ 40M བཟུམ་གྱི་ PHP དྲན་ཚད་ མང་སུ་ཡོད་མི་ རིམ་སྒྲིག་འབད་བ་ཅིན་ ལེགས་ཤོམ་འོང་། འདི་འབད་ནི་གི་དོན་ལུ་ ཐབས་ཤེས་ ལེ་ཤ་ཡོད་:</p> <ol> <li> ཁྱོད་ཀྱིས་ <i>--enable-memory-limit</i> དང་གཅིག་ཁར་ PHP ལོག་ཕྱོགས་སྒྲིག་འབད་ཚུགས་པ་ཅིན་ འདི་གི་ས་ མུ་ཌལ་གི་དྲན་ཚད་ཁོ་ར་གིས་སྦེ་ གཞི་སྒྲིག་འབད་ཚུགས།</li> <li>ཁྱོད་རའི་ php.ini ཡིག་སྣོད་ནང་འཛུལ་སྤྱོད་འབད་ཚུགས་པ་ཅིན་ ཁྱོད་ཀྱི་ <b>memory_limit</b>སྒྲིག་སྟངས་འདི་ 40M བཟུམ་གཅིག་ལུ་ བསྒྱུར་བཅོས་འབད་ཚུགས། ག་དེམ་ཅིག་སྦེ་འཛུལ་སྤྱོད་འབད་མ་ཚུགས་པ་ཅིན་ ཁྱོད་རའི་བདག་སྐྱོང་པ་ལུ་ འབད་བཅུག། <li> PHP སར་བར་ ལ་ལོ་གཅིག་ནང་ འོག་གི་གྲལ་ཐིག་ཚུ་ཡོད་མི་ མུ་ཌལ་སྣོད་ཐོ་ནང་ཁྱོད་ཀྱིས་ .htaccess ཡིག་སྣོད་གསར་བསྐྲུན་འབད་ཚུགས། <blockquote><div>php_value memory_limit 40M</div></blockquote> <p> དེ་འབདཝ་ད་ལུ་ སར་བར་ལ་ལོ་གཅིག་ནང་ འདི་གིས་ <b>all</b> PHP ཤོག་ལེབ་ཚུ་ གཡོག་བཀོལ་ནི་ལུ་སྔོན་བཀག་འབདཝ་ཨིན། (ཤོག་ལེབ་ཚུ་ནང་བལྟ་བའི་སྐབས་ འཛོལ་བ་ཚུ་མཐོང་འོང་) དེ་འབདཝ་ལས་ .htaccess ཡིག་སྣོད་་རྩ་བསྐྲད་གཏང་དགོ།</p></li> </ol>';
 $string['paths'] = 'འགྲུལ་ལམ་ཚུ་';
 $string['pathserrcreatedataroot'] = '({$a->dataroot}) ལྣོད་བསྡུས་འདི་ བཙུགས་སྒྲིག་འབད་མི་གིས་ གསར་འབད་མི་བཏུབ་པས།';
 $string['pathshead'] = 'རྒྱུད་ལམ་གཏན་འཁེལ་བཟོ།';
@@ -63,7 +62,6 @@ $string['pathsunsecuredataroot'] = 'སྣོད་བསྡུ་རྩ་ག�
 $string['pathswrongadmindir'] = 'བདག་སྐྱོང་མཛོད་འདི་མིན་འདུག';
 $string['phpextension'] = '{$a} PHPརྒྱ་སྐྱེད།';
 $string['phpversion'] = 'པི་ཨེཆ་པི་ཐོན་རིམ།';
-$string['phpversionhelp'] = '<p>མུ་ཌེལ་་ལུ་ ཐོན་རིམ་འདི་ ཉུང་མཐའ་ལུ་ ༤.༣.༠ ཡང་ན་ ༥.༡.༠ དགོ། (༥.༠.x ལུ་ ཤེས་ཚུགས་པའི་དཀའ་ངལ་ ལེ་ཤ་འདུག་)</p> <p>ཁྱོད་ད་ལྟོ་ཐོན་རིམ་$a གཡོག་བཀོལ་དོ་</p> <p>པི་ཨེཆ་པི་ཡར་བསྐྱེད་འབད་དགོ་ ཡང་ན་ པི་ཨེཆ་པི་ ཐོན་རིམ་གསརཔ་ཡོད་མི་ ཧོསིཊ་གཅིག་དང་གཅིག་ཁར་ སྤོ་བཤུད་འབད།!<br /> (༥.༠.x ནང་ལུ་ ཁྱོད་ཀྱིས་ ཐོན་རིམ་ ༤.༤.x ལུ་ མར་ཕབ་འབད་ཚུགས།)</p>';
 $string['welcomep10'] = '{$a->installername} ({$a->installerversion})';
 $string['welcomep20'] = 'ཁྱོད་རའི་ གློག་རིག་ནང་ <strong>{$a->packname} {$a->packversion}</strong>  ཐུམ་སྒྲིལ་ འདི་ མཐའ་འཁྱོལཅན་སྦེ་ གཞི་བཙུགས་དང་ གསར་བཙུགས་འབད་ཡོདཔ་ལས་བརྟེན་ ཁྱོད་ཀྱིས་འ་ནི་ ཤོག་ལེབ་འདི་བལྟ་ཚུགསཔ་ཨིན། བཀྲིས་བདེ་ལེགས་!';
 $string['welcomep30'] = '<strong>{$a->installername}</strong> གསར་བཏོན་འབད་མི་ནང་ <strong>མུ་ཌེལ་</strong> བཀོལ་སྤྱོད་འབད་བཏུབ་མི་གནས་སྟངས་གསར་བསྐྲུན་འབད་མི་གློག་རིམ་ཚུ་ཡང་ཚུདཔ་ཨིན།';

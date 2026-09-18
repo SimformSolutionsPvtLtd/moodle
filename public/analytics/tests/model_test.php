@@ -24,6 +24,8 @@
 
 namespace core_analytics;
 
+use core_analytics\tests\mlbackend_helper_trait;
+
 defined('MOODLE_INTERNAL') || die();
 
 require_once(__DIR__ . '/fixtures/test_indicator_max.php');
@@ -42,6 +44,7 @@ require_once(__DIR__ . '/fixtures/test_analysis.php');
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 final class model_test extends \advanced_testcase {
+    use mlbackend_helper_trait;
 
     /** @var model Store Model. */
     protected $model;
@@ -51,7 +54,7 @@ final class model_test extends \advanced_testcase {
 
     public function setUp(): void {
         parent::setUp();
-
+        $this->resetAfterTest();
         $this->setAdminUser();
 
         $target = \core_analytics\manager::get_target('test_target_shortname');
@@ -65,8 +68,6 @@ final class model_test extends \advanced_testcase {
     }
 
     public function test_enable(): void {
-        $this->resetAfterTest(true);
-
         $this->assertEquals(0, $this->model->get_model_obj()->enabled);
         $this->assertEquals(0, $this->model->get_model_obj()->trained);
         $this->assertEquals('', $this->model->get_model_obj()->timesplitting);
@@ -78,8 +79,6 @@ final class model_test extends \advanced_testcase {
     }
 
     public function test_create(): void {
-        $this->resetAfterTest(true);
-
         $target = \core_analytics\manager::get_target('\core_course\analytics\target\course_dropout');
         $indicators = array(
             \core_analytics\manager::get_indicator('\core\analytics\indicator\any_write_action'),
@@ -95,13 +94,16 @@ final class model_test extends \advanced_testcase {
     public function test_delete(): void {
         global $DB;
 
+        if (!self::is_mlbackend_python_configured()) {
+            $this->markTestSkipped('mlbackend_python is not configured.');
+        }
+
         $this->resetAfterTest(true);
         set_config('enabled_stores', 'logstore_standard', 'tool_log');
 
-        $coursepredict1 = $this->getDataGenerator()->create_course(array('visible' => 0));
-        $coursepredict2 = $this->getDataGenerator()->create_course(array('visible' => 0));
-        $coursetrain1 = $this->getDataGenerator()->create_course(array('visible' => 1));
-        $coursetrain2 = $this->getDataGenerator()->create_course(array('visible' => 1));
+        // Create some courses.
+        $this->generate_courses(2, ['visible' => 0]);
+        $this->generate_courses(2, ['visible' => 1]);
 
         $this->model->enable('\core\analytics\time_splitting\single_range');
 
@@ -110,9 +112,6 @@ final class model_test extends \advanced_testcase {
 
         // Fake evaluation results record to check that it is actually deleted.
         $this->add_fake_log();
-
-        $modeloutputdir = $this->model->get_output_dir(array(), true);
-        $this->assertTrue(is_dir($modeloutputdir));
 
         // Generate a prediction action to confirm that it is deleted when there is an important update.
         $predictions = $DB->get_records('analytics_predictions');
@@ -128,7 +127,6 @@ final class model_test extends \advanced_testcase {
         $this->assertEmpty($DB->count_records('analytics_train_samples'));
         $this->assertEmpty($DB->count_records('analytics_predict_samples'));
         $this->assertEmpty($DB->count_records('analytics_used_files'));
-        $this->assertFalse(is_dir($modeloutputdir));
 
         set_config('enabled_stores', '', 'tool_log');
         get_log_manager(true);
@@ -140,13 +138,16 @@ final class model_test extends \advanced_testcase {
     public function test_clear(): void {
         global $DB;
 
+        if (!self::is_mlbackend_python_configured()) {
+            $this->markTestSkipped('mlbackend_python is not configured.');
+        }
+
         $this->resetAfterTest(true);
         set_config('enabled_stores', 'logstore_standard', 'tool_log');
 
-        $coursepredict1 = $this->getDataGenerator()->create_course(array('visible' => 0));
-        $coursepredict2 = $this->getDataGenerator()->create_course(array('visible' => 0));
-        $coursetrain1 = $this->getDataGenerator()->create_course(array('visible' => 1));
-        $coursetrain2 = $this->getDataGenerator()->create_course(array('visible' => 1));
+        // Create some courses.
+        $this->generate_courses(2, ['visible' => 0]);
+        $this->generate_courses(2, ['visible' => 1]);
 
         $this->model->enable('\core\analytics\time_splitting\single_range');
 
@@ -167,7 +168,6 @@ final class model_test extends \advanced_testcase {
 
         // Update to an empty time splitting method to force model::clear execution.
         $this->model->clear();
-        $this->assertFalse(is_dir($modelversionoutputdir));
 
         // Check that most of the stuff got deleted.
         $this->assertEquals(1, $DB->count_records('analytics_models', array('id' => $this->modelobj->id)));
@@ -190,7 +190,6 @@ final class model_test extends \advanced_testcase {
      */
     public function test_clear_static(): void {
         global $DB;
-        $this->resetAfterTest();
 
         $statictarget = new \test_static_target_shortname();
         $indicators['test_indicator_max'] = \core_analytics\manager::get_indicator('test_indicator_max');
@@ -207,8 +206,6 @@ final class model_test extends \advanced_testcase {
     }
 
     public function test_model_manager(): void {
-        $this->resetAfterTest(true);
-
         $this->assertCount(3, $this->model->get_indicators());
         $this->assertInstanceOf('\core_analytics\local\target\binary', $this->model->get_target());
 
@@ -221,8 +218,6 @@ final class model_test extends \advanced_testcase {
     }
 
     public function test_output_dir(): void {
-        $this->resetAfterTest(true);
-
         $dir = make_request_directory();
         set_config('modeloutputdir', $dir, 'analytics');
 
@@ -233,9 +228,6 @@ final class model_test extends \advanced_testcase {
 
     public function test_unique_id(): void {
         global $DB;
-
-        $this->resetAfterTest(true);
-
         $originaluniqueid = $this->model->get_unique_id();
 
         // Same id across instances.
@@ -279,8 +271,6 @@ final class model_test extends \advanced_testcase {
      * @return void
      */
     public function test_exists(): void {
-        $this->resetAfterTest(true);
-
         $target = \core_analytics\manager::get_target('\core_course\analytics\target\no_teaching');
         $this->assertTrue(\core_analytics\model::exists($target));
 
@@ -298,9 +288,6 @@ final class model_test extends \advanced_testcase {
      */
     public function test_model_timelimit(): void {
         global $DB;
-
-        $this->resetAfterTest(true);
-
         set_config('modeltimelimit', 2, 'analytics');
 
         $courses = array();
@@ -361,8 +348,6 @@ final class model_test extends \advanced_testcase {
      * Test model_config::get_class_component.
      */
     public function test_model_config_get_class_component(): void {
-        $this->resetAfterTest(true);
-
         $this->assertEquals('core',
             \core_analytics\model_config::get_class_component('\\core\\analytics\\indicator\\read_actions'));
         $this->assertEquals('core',
@@ -379,7 +364,9 @@ final class model_test extends \advanced_testcase {
      * Test that import_model import models' configurations.
      */
     public function test_import_model_config(): void {
-        $this->resetAfterTest(true);
+        if (!self::is_mlbackend_python_configured()) {
+            $this->markTestSkipped('mlbackend_python is not configured.');
+        }
 
         $this->model->enable('\\core\\analytics\\time_splitting\\quarters');
         $zipfilepath = $this->model->export_model('yeah-config.zip');
@@ -400,8 +387,6 @@ final class model_test extends \advanced_testcase {
      * Test can export configuration
      */
     public function test_can_export_configuration(): void {
-        $this->resetAfterTest(true);
-
         // No time splitting method.
         $this->assertFalse($this->model->can_export_configuration());
 
@@ -421,7 +406,9 @@ final class model_test extends \advanced_testcase {
      * Test export_config
      */
     public function test_export_config(): void {
-        $this->resetAfterTest(true);
+        if (!self::is_mlbackend_python_configured()) {
+            $this->markTestSkipped('mlbackend_python is not configured.');
+        }
 
         $this->model->enable('\\core\\analytics\\time_splitting\\quarters');
 
@@ -451,8 +438,6 @@ final class model_test extends \advanced_testcase {
     public function test_inplace_editable_name(): void {
         global $PAGE;
 
-        $this->resetAfterTest();
-
         $output = new \core_renderer($PAGE, RENDERER_TARGET_GENERAL);
 
         // Check as a user with permission to edit the name.
@@ -476,8 +461,6 @@ final class model_test extends \advanced_testcase {
      */
     public function test_get_name_and_rename(): void {
         global $PAGE;
-
-        $this->resetAfterTest();
 
         $output = new \core_renderer($PAGE, RENDERER_TARGET_GENERAL);
 
@@ -506,8 +489,6 @@ final class model_test extends \advanced_testcase {
      * Tests model::get_potential_timesplittings()
      */
     public function test_potential_timesplittings(): void {
-        $this->resetAfterTest();
-
         $this->assertArrayNotHasKey('\core\analytics\time_splitting\no_splitting', $this->model->get_potential_timesplittings());
         $this->assertArrayHasKey('\core\analytics\time_splitting\single_range', $this->model->get_potential_timesplittings());
         $this->assertArrayHasKey('\core\analytics\time_splitting\quarters', $this->model->get_potential_timesplittings());
@@ -519,13 +500,11 @@ final class model_test extends \advanced_testcase {
      * @return null
      */
     public function test_get_samples(): void {
-        $this->resetAfterTest();
-
         if (!PHPUNIT_LONGTEST) {
             $this->markTestSkipped('PHPUNIT_LONGTEST is not defined');
         }
 
-        // 10000 should be enough to make oracle and mssql fail, if we want pgsql to fail we need around 70000
+        // 10000 should be enough to make mssql fail, if we want pgsql to fail we need around 70000
         // users, that is a few minutes just to create the users.
         $nusers = 10000;
 

@@ -50,19 +50,19 @@ define('WORKSHOP_SUBMISSION_TYPE_REQUIRED', 2);
  * @return mixed True if module supports feature, false if not, null if doesn't know or string for the module purpose.
  */
 function workshop_supports($feature) {
-    switch($feature) {
-        case FEATURE_GRADE_HAS_GRADE:   return true;
-        case FEATURE_GROUPS:            return true;
-        case FEATURE_GROUPINGS:         return true;
-        case FEATURE_MOD_INTRO:         return true;
-        case FEATURE_BACKUP_MOODLE2:    return true;
-        case FEATURE_COMPLETION_TRACKS_VIEWS:
-            return true;
-        case FEATURE_SHOW_DESCRIPTION:  return true;
-        case FEATURE_PLAGIARISM:        return true;
-        case FEATURE_MOD_PURPOSE:       return MOD_PURPOSE_ASSESSMENT;
-        default:                        return null;
-    }
+    return match ($feature) {
+        FEATURE_GRADE_HAS_GRADE => true,
+        FEATURE_GROUPS => true,
+        FEATURE_GROUPINGS => true,
+        FEATURE_MOD_INTRO => true,
+        FEATURE_BACKUP_MOODLE2 => true,
+        FEATURE_COMPLETION_TRACKS_VIEWS => true,
+        FEATURE_SHOW_DESCRIPTION => true,
+        FEATURE_PLAGIARISM => true,
+        FEATURE_MOD_PURPOSE => MOD_PURPOSE_ASSESSMENT,
+        FEATURE_MOD_OTHERPURPOSE => MOD_PURPOSE_COLLABORATION,
+        default => null,
+    };
 }
 
 /**
@@ -1057,14 +1057,6 @@ function workshop_print_recent_mod_activity($activity, $courseid, $detail, $modn
     }
 
     echo html_writer::empty_tag('br', array('style'=>'clear:both'));
-}
-
-/**
- * @deprecated since Moodle 3.8
- */
-function workshop_scale_used() {
-    throw new coding_exception('workshop_scale_used() can not be used anymore. Plugins can implement ' .
-        '<modname>_scale_used_anywhere, all implementations of <modname>_scale_used are now ignored');
 }
 
 /**

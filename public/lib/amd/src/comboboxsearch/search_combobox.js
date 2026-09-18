@@ -14,6 +14,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 import $ from 'jquery';
+import Dropdown from 'theme_boost/bootstrap/dropdown';
 import {debounce} from 'core/utils';
 import Pending from 'core/pending';
 import {get_string as getString} from 'core/str';
@@ -31,7 +32,7 @@ export default class {
     // Define our standard lookups.
     selectors = {
         component: this.componentSelector(),
-        toggle: '[data-toggle="dropdown"]',
+        toggle: '[data-bs-toggle="dropdown"]',
         instance: '[data-region="instance"]',
         input: '[data-action="search"]',
         clearSearch: '[data-action="clearsearch"]',
@@ -262,9 +263,9 @@ export default class {
      */
     toggleDropdown(on = false) {
         if (on) {
-            $(this.toggle).dropdown('show');
+            Dropdown.getOrCreateInstance(this.toggle).show();
         } else {
-            $(this.toggle).dropdown('hide');
+            Dropdown.getOrCreateInstance(this.toggle).hide();
         }
     }
 

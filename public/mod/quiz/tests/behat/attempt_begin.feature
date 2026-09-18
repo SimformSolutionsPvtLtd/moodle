@@ -11,12 +11,15 @@ Feature: The various checks that may happen when an attept is started
     And the following "courses" exist:
       | fullname | shortname | category |
       | Course 1 | C1        | 0        |
+    And the following "activities" exist:
+      | activity | name    | intro              | course | idnumber |
+      | qbank    | Qbank 1 | Question bank 1    | C1     | qbank1   |
     And the following "course enrolments" exist:
       | user     | course | role    |
       | student  | C1     | student |
     And the following "question categories" exist:
-      | contextlevel | reference | name           |
-      | Course       | C1        | Test questions |
+      | contextlevel    | reference | name           |
+      | Activity module | qbank1    | Test questions |
     And the following "questions" exist:
       | questioncategory | qtype       | name  | questiontext               |
       | Test questions   | truefalse   | TF1   | Text of the first question |
@@ -121,3 +124,20 @@ Feature: The various checks that may happen when an attept is started
     And I press the "back" button in the browser
     Then a new page should have loaded since I started watching
     And I should see "Continue your attempt"
+
+  @javascript
+  Scenario: Start a quiz with pre-created attempts
+    Given the following config values are set as admin:
+      | precreateperiod | 1 | quiz |
+    Given the following "activities" exist:
+      | activity   | name   | intro              | course | idnumber | timeopen  | timelimit | quizpassword | attempts |
+      | quiz       | Quiz 1 | Quiz 1 description | C1     | quiz1    | ## now ## | 3600      | Frog         | 1        |
+    And quiz "Quiz 1" contains the following questions:
+      | question | page |
+      | TF1      | 1    |
+    And quiz "Quiz 1" has pre-created attempts
+    When I am on the "Quiz 1" "mod_quiz > View" page logged in as "student"
+    And I press "Attempt quiz"
+    And I set the field "Quiz password" to "Frog"
+    And I press "Start attempt"
+    Then I should see "Text of the first question"

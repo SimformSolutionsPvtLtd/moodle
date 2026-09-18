@@ -23,29 +23,9 @@
  */
 
 /**
- * @deprecated since Moodle 3.8
- */
-function book_scale_used() {
-    throw new coding_exception('book_scale_used() can not be used anymore. Plugins can implement ' .
-        '<modname>_scale_used_anywhere, all implementations of <modname>_scale_used are now ignored');
-}
-
-/**
- * @deprecated since Moodle 4.0
- */
-function book_get_nav_types() {
-    throw new coding_exception(__FUNCTION__ . '() has been removed.');
-}
-
-/**
- * Returns list of available navigation link CSS classes.
- *
  * @deprecated since Moodle 4.4.
- * @todo MDL-81328 Final deprecation in Moodle 4.8.
- * @return array
  */
+#[\core\attribute\deprecated('book_get_nav_classes', since: '4.4', final: true)]
 function book_get_nav_classes() {
-    debugging(__FUNCTION__ . '() is deprecated. There is no replacement.');
-
-    return ['navtoc', 'navimages', 'navtext'];
+    \core\deprecation::emit_deprecation(__FUNCTION__);
 }

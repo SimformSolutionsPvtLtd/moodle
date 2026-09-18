@@ -14,12 +14,12 @@ Feature: Edit quiz page - remove multiple questions
     And the following "course enrolments" exist:
       | user     | course | role           |
       | teacher1 | C1     | editingteacher |
-    And the following "question categories" exist:
-      | contextlevel | reference | name           |
-      | Course       | C1        | Test questions |
     And the following "activities" exist:
-      | activity   | name   | course | idnumber |
-      | quiz       | Quiz 1 | C1     | quiz1    |
+      | activity   | name    | course | idnumber |
+      | quiz       | Quiz 1  | C1     | quiz1    |
+    And the following "question categories" exist:
+      | contextlevel    | reference | name           |
+      | Activity module | quiz1     | Test questions |
     And I log in as "teacher1"
 
   @javascript
@@ -254,6 +254,7 @@ Feature: Edit quiz page - remove multiple questions
 
     When I open the "last" add to quiz menu
     And I follow "a random question"
+    And I apply question bank filter "Category" with value "Test questions"
     And I set the field "Number of random questions" to "3"
     And I press "Add random question"
     And I click on "Select multiple items" "button"

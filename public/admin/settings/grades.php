@@ -2,6 +2,13 @@
 
 // This file defines settingpages and externalpages under the "grades" section
 
+use core\plugininfo\gradepenalty;
+
+$ADMIN->add('grades', new admin_category('gradereports', new lang_string('reportsettings', 'grades')));
+$ADMIN->add('grades', new admin_category('gradeimports', new lang_string('importsettings', 'grades')));
+$ADMIN->add('grades', new admin_category('gradeexports', new lang_string('exportsettings', 'grades')));
+$ADMIN->add('grades', new admin_category('gradepenalty', new lang_string('gradepenalty', 'grades')));
+
 if (has_capability('moodle/grade:manage', $systemcontext)
  or has_capability('moodle/grade:manageletters', $systemcontext)) { // speedup for non-admins, add all caps used on this page
 
@@ -91,7 +98,7 @@ if (has_capability('moodle/grade:manage', $systemcontext)
         $temp->add(new admin_setting_my_grades_report());
 
         $temp->add(new admin_setting_configtext('gradereport_mygradeurl', new lang_string('externalurl', 'grades'),
-                new lang_string('externalurl_desc', 'grades'), ''));
+            new lang_string('externalurl_desc', 'grades'), ''));
     }
     $ADMIN->add('grades', $temp);
 
@@ -181,7 +188,6 @@ if (has_capability('moodle/grade:manage', $systemcontext)
     // The plugins must implement a settings.php file that adds their admin settings to the $settings object
 
     // Reports
-    $ADMIN->add('grades', new admin_category('gradereports', new lang_string('reportsettings', 'grades')));
     foreach (core_component::get_plugin_list('gradereport') as $plugin => $plugindir) {
      // Include all the settings commands for this plugin if there are any
         if (file_exists($plugindir.'/settings.php')) {
@@ -194,7 +200,6 @@ if (has_capability('moodle/grade:manage', $systemcontext)
     }
 
     // Imports
-    $ADMIN->add('grades', new admin_category('gradeimports', new lang_string('importsettings', 'grades')));
     foreach (core_component::get_plugin_list('gradeimport') as $plugin => $plugindir) {
 
      // Include all the settings commands for this plugin if there are any
@@ -209,7 +214,6 @@ if (has_capability('moodle/grade:manage', $systemcontext)
 
 
     // Exports
-    $ADMIN->add('grades', new admin_category('gradeexports', new lang_string('exportsettings', 'grades')));
     foreach (core_component::get_plugin_list('gradeexport') as $plugin => $plugindir) {
      // Include all the settings commands for this plugin if there are any
         if (file_exists($plugindir.'/settings.php')) {
@@ -221,5 +225,42 @@ if (has_capability('moodle/grade:manage', $systemcontext)
         }
     }
 
-} // end of speedup
+    // Penalty.
 
+    // Supported modules.
+    $modules = core_grades\penalty_manager::get_supported_modules();
+    if (!empty($modules)) {
+        $temp = new admin_settingpage('supportedplugins', new lang_string('gradepenalty_supportedplugins', 'grades'),
+            'moodle/grade:manage');
+
+        $options = [];
+        foreach ($modules as $module) {
+            $options[$module] = new lang_string('modulename', $module);
+        }
+        $temp->add(new admin_setting_configmultiselect('gradepenalty_enabledmodules',
+            new lang_string('gradepenalty_enabledmodules', 'grades'),
+            new lang_string('gradepenalty_enabledmodules_help', 'grades'), [], $options));
+
+        $ADMIN->add('gradepenalty', $temp);
+    }
+
+    // External page to manage the penalty plugins.
+    $temp = new admin_externalpage(
+        'managepenaltyplugins',
+        get_string('managepenaltyplugins', 'grades'),
+        new moodle_url('/grade/penalty/manage_penalty_plugins.php'),
+        'moodle/grade:manage'
+    );
+    $ADMIN->add('gradepenalty', $temp);
+
+    // Settings from each penalty plugin.
+    foreach (core_component::get_plugin_list('gradepenalty') as $plugin => $plugindir) {
+        // Check if the plugin is enabled.
+        if (gradepenalty::is_plugin_enabled($plugin)) {
+            // Include all the settings commands for this plugin if there are any.
+            if (file_exists($plugindir . '/settings.php')) {
+                include($plugindir . '/settings.php');
+            }
+        }
+    }
+} // end of speedup

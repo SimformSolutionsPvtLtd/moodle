@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Strings for component 'role', language 'en', branch 'MOODLE_20_STABLE'
+ * Strings for component 'core_role', language 'en', branch 'MOODLE_20_STABLE'
  *
  * @package   core_role
  * @copyright 1999 onwards Martin Dougiamas  {@link http://moodle.com}
@@ -25,6 +25,8 @@
 $string['ai:acceptpolicy'] = 'Accept AI policy';
 $string['ai:fetchanyuserpolicystatus'] = 'Get a users AI policy acceptance';
 $string['ai:fetchpolicy'] = 'Get a users AI policy acceptance';
+$string['ai:viewaipolicyacceptancereport'] = 'View AI policy acceptance report';
+$string['ai:viewaiusagereport'] = 'View AI usage report';
 $string['addinganewrole'] = 'Adding a new role';
 $string['addrole'] = 'Add a new role';
 $string['advancedoverride'] = 'Advanced role override';
@@ -155,7 +157,7 @@ $string['confirmunassigntitle'] = 'Confirm role change';
 $string['confirmunassignyes'] = 'Remove';
 $string['confirmunassignno'] = 'Cancel';
 $string['contentbank:access'] = 'Access the content bank';
-$string['contentbank:changelockedcustomfields'] = 'Change content bank locked custom fields';
+$string['contentbank:changelockedcustomfields'] = 'Change locked content bank custom fields';
 $string['contentbank:configurecustomfields'] = 'Configure content bank custom fields';
 $string['contentbank:copyanycontent'] = 'Copy any content in the content bank';
 $string['contentbank:copycontent'] = 'Copy content in the content bank';
@@ -179,7 +181,7 @@ $string['course:viewsuspendedusers'] = 'View suspended users';
 $string['course:changecategory'] = 'Change course category';
 $string['course:changefullname'] = 'Change course full name';
 $string['course:changeidnumber'] = 'Change course ID number';
-$string['course:changelockedcustomfields'] = 'Change locked custom fields';
+$string['course:changelockedcustomfields'] = 'Change locked course custom fields';
 $string['course:changeshortname'] = 'Change course short name';
 $string['course:changesummary'] = 'Change course summary';
 $string['course:configurecustomfields'] = 'Configure course custom fields';
@@ -217,6 +219,7 @@ $string['course:viewhiddencourses'] = 'View hidden courses';
 $string['course:viewhiddengroups'] = 'View hidden groups';
 $string['course:viewhiddensections'] = 'View hidden sections';
 $string['course:viewhiddenuserfields'] = 'View hidden user fields';
+$string['course:viewoverview'] = 'View activities overview';
 $string['course:viewparticipants'] = 'View participants';
 $string['course:viewscales'] = 'View scales';
 $string['course:visibility'] = 'Hide/show courses';
@@ -299,6 +302,7 @@ $string['checkpermissionsin'] = 'Check permissions in {$a}';
 $string['checksystempermissionsfor'] = 'Check system permissions for {$a->fullname}';
 $string['checkuserspermissionshere'] = 'Check permissions for {$a->fullname} has in this {$a->contextlevel}';
 $string['chooseroletoassign'] = 'Please choose a role to assign';
+$string['customfield:configureshared'] = 'Configure shared custom fields';
 $string['inactiveformorethan'] = 'inactive for more than {$a->timeperiod}';
 $string['ingroup'] = 'in the group "{$a->group}"';
 $string['inherit'] = 'Inherit';
@@ -389,6 +393,7 @@ $string['rating:rate'] = 'Add ratings to items';
 $string['rating:view'] = 'View the total rating you received';
 $string['rating:viewany'] = 'View total ratings that anyone received';
 $string['rating:viewall'] = 'View all raw ratings given by individuals';
+$string['reportbuilder:configurecustomfields'] = 'Configure custom report fields';
 $string['reportbuilder:edit'] = 'Edit your own custom reports';
 $string['reportbuilder:editall'] = 'Edit all custom reports';
 $string['reportbuilder:scheduleviewas'] = 'Schedule reports to be viewed as other users';
@@ -540,7 +545,3 @@ $string['privacy:metadata:role_capabilities:tableexplanation'] = 'The capabiliti
 $string['privacy:metadata:role_capabilities:timemodified'] = 'The date when the capability was created or modified.';
 $string['privacy:metadata:role_cohortroles'] = 'Roles to cohort';
 $string['course:togglecompletion'] = 'Manually mark activities as complete';
-
-// Deprecated since Moodle 4.2.
-$string['confirmaddadmin'] = 'Do you really want to add user <strong>{$a}</strong> as new site administrator?';
-$string['confirmdeladmin'] = 'Do you really want to remove user <strong>{$a}</strong> from the list of site administrators?';

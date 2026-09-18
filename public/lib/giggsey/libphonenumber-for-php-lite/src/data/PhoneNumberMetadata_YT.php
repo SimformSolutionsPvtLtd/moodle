@@ -1,4 +1,5 @@
 <?php
+
 /**
  * libphonenumber-for-php-lite data file
  * This file has been @generated from libphonenumber data
@@ -6,93 +7,48 @@
  * @internal
  */
 
-return  [
-  'generalDesc' =>
-   [
-    'NationalNumberPattern' => '(?:80|9\\d)\\d{7}|(?:26|63)9\\d{6}',
-    'PossibleLength' =>
-     [
-      0 => 9,
-    ],
-  ],
-  'fixedLine' =>
-   [
-    'NationalNumberPattern' => '269(?:0[0-467]|15|5[0-4]|6\\d|[78]0)\\d{4}',
-    'ExampleNumber' => '269601234',
-  ],
-  'mobile' =>
-   [
-    'NationalNumberPattern' => '639(?:0[0-79]|1[019]|[267]\\d|3[09]|40|5[05-9]|9[04-79])\\d{4}',
-    'ExampleNumber' => '639012345',
-  ],
-  'tollFree' =>
-   [
-    'NationalNumberPattern' => '80\\d{7}',
-    'ExampleNumber' => '801234567',
-  ],
-  'premiumRate' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'sharedCost' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'personalNumber' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'voip' =>
-   [
-    'NationalNumberPattern' => '9(?:(?:39|47)8[01]|769\\d)\\d{4}',
-    'ExampleNumber' => '939801234',
-  ],
-  'pager' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'uan' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'voicemail' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'noInternationalDialling' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'id' => 'YT',
-  'countryCode' => 262,
-  'internationalPrefix' => '00',
-  'nationalPrefix' => '0',
-  'nationalPrefixForParsing' => '0',
-  'sameMobileAndFixedLinePattern' => false,
-  'numberFormat' =>
-   [
-  ],
-  'mainCountryForCode' => false,
-  'mobileNumberPortableRegion' => false,
-];
+declare(strict_types=1);
+
+namespace libphonenumber\data;
+
+use libphonenumber\PhoneMetadata;
+use libphonenumber\PhoneNumberDesc;
+
+/**
+ * @internal
+ */
+class PhoneNumberMetadata_YT extends PhoneMetadata
+{
+    protected const ID = 'YT';
+    protected const COUNTRY_CODE = 262;
+    protected const NATIONAL_PREFIX = '0';
+
+    protected ?string $nationalPrefixForParsing = '0';
+    protected ?string $internationalPrefix = '00';
+
+    public function __construct()
+    {
+        $this->generalDesc = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('7093\d{5}|(?:80|9\d)\d{7}|(?:26|63)9\d{6}')
+            ->setPossibleLength([9]);
+        $this->mobile = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('(?:639(?:0[0-79]|1[019]|[267]\d|3[09]|40|5[05-9]|9[04-79])|7093[5-7])\d{4}')
+            ->setExampleNumber('639012345');
+        $this->premiumRate = PhoneNumberDesc::empty();
+        $this->fixedLine = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('269(?:0[0-467]|15|5[0-4]|6\d|[78]0)\d{4}')
+            ->setExampleNumber('269601234');
+        $this->tollFree = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('80\d{7}')
+            ->setExampleNumber('801234567');
+        $this->sharedCost = PhoneNumberDesc::empty();
+        $this->personalNumber = PhoneNumberDesc::empty();
+        $this->voip = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('9(?:(?:39|47)8[01]|769\d)\d{4}')
+            ->setExampleNumber('939801234');
+        $this->pager = PhoneNumberDesc::empty();
+        $this->uan = PhoneNumberDesc::empty();
+        $this->voicemail = PhoneNumberDesc::empty();
+        $this->noInternationalDialling = PhoneNumberDesc::empty();
+    }
+}

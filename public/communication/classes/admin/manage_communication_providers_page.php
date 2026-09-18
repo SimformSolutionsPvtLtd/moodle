@@ -23,6 +23,7 @@ use html_table;
 use html_table_row;
 use html_writer;
 use moodle_url;
+use core_admin\admin_search;
 
 /**
  * Communication providers manager. Allow enable/disable communication providers and jump to settings.
@@ -68,7 +69,7 @@ class manage_communication_providers_page extends admin_setting {
             get_string('uninstallplugin', 'core_admin'),
         ];
         $table->align = ['left', 'center', 'center', 'center'];
-        $table->attributes['class'] = 'managecommunicationtable generaltable admintable';
+        $table->attributes['class'] = 'managecommunicationtable table generaltable admintable table-hover';
         $table->data = [];
 
         foreach ($plugins as $plugin) {
@@ -127,10 +128,12 @@ class manage_communication_providers_page extends admin_setting {
         }
         $types = core_plugin_manager::instance()->get_plugins_of_type('communication');
         foreach ($types as $type) {
-            if (
-                strpos($type->component, $query) !== false ||
-                strpos(core_text::strtolower($type->displayname), $query) !== false
-            ) {
+            if (strpos($type->component, $query) !== false) {
+                $this->searchmatchtype = admin_search::SEARCH_MATCH_SETTING_SHORT_NAME;
+                return true;
+            }
+            if (strpos(core_text::strtolower($type->displayname), $query) !== false) {
+                $this->searchmatchtype = admin_search::SEARCH_MATCH_SETTING_DISPLAY_NAME;
                 return true;
             }
         }

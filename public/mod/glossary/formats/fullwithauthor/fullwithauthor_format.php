@@ -31,7 +31,7 @@ function glossary_show_entry_fullwithauthor(
     if ($entry) {
         $user = $DB->get_record('user', ['id' => $entry->userid]);
 
-        echo '<table class="glossarypost fullwithauthor" cellspacing="0" role="presentation">';
+        echo '<table class="glossarypost fullwithauthor table-reboot" cellspacing="0" role="presentation">';
         echo '<tr valign="top">';
 
         echo '<td class="picture">';

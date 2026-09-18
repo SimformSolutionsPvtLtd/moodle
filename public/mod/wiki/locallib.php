@@ -34,6 +34,8 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+use core\url;
+
 require_once($CFG->dirroot . '/mod/wiki/lib.php');
 require_once($CFG->dirroot . '/mod/wiki/parser/parser.php');
 require_once($CFG->libdir . '/filelib.php');
@@ -1286,9 +1288,6 @@ function wiki_get_comments($contextid, $pageid) {
  * @param string editor. Version of editor we are using.
  **/
 function wiki_add_comment($context, $pageid, $content, $editor) {
-    global $CFG;
-    require_once($CFG->dirroot . '/comment/lib.php');
-
     list($context, $course, $cm) = get_context_info_array($context->id);
     $cmt = new stdclass();
     $cmt->context = $context;
@@ -1297,7 +1296,7 @@ function wiki_add_comment($context, $pageid, $content, $editor) {
     $cmt->course = $course;
     $cmt->component = 'mod_wiki';
 
-    $manager = new comment($cmt);
+    $manager = new \core_comment\manager($cmt);
 
     if ($editor == 'creole') {
         $manager->add($content, FORMAT_CREOLE);
@@ -1318,7 +1317,6 @@ function wiki_add_comment($context, $pageid, $content, $editor) {
  **/
 function wiki_delete_comment($idcomment, $context, $pageid) {
     global $CFG;
-    require_once($CFG->dirroot . '/comment/lib.php');
 
     list($context, $course, $cm) = get_context_info_array($context->id);
     $cmt = new stdClass();
@@ -1328,7 +1326,7 @@ function wiki_delete_comment($idcomment, $context, $pageid) {
     $cmt->course = $course;
     $cmt->component = 'mod_wiki';
 
-    $manager = new comment($cmt);
+    $manager = new \core_comment\manager($cmt);
     $manager->delete($idcomment);
 
 }
@@ -1487,7 +1485,15 @@ function wiki_print_upload_table($context, $filearea, $fileitemid, $deleteupload
 
             $checkbox .= " />";
 
-            $htmltable->data[] = array($checkbox, '<a href="' . file_encode_url($CFG->wwwroot . '/pluginfile.php', '/' . $context->id . '/wiki_upload/' . $fileitemid . '/' . $file->get_filename()) . '">' . $file->get_filename() . '</a>', "");
+            $url = url::make_pluginfile_url(
+                contextid: $context->id,
+                component: 'wiki_upload',
+                area: '',
+                itemid: $fileitemid,
+                pathname: '/',
+                filename: $file->get_filename()
+            );
+            $htmltable->data[] = [$checkbox, '<a href="' . $url->out() . '">' . $file->get_filename() . '</a>', ""];
         }
     }
 

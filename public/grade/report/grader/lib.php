@@ -25,6 +25,8 @@
 require_once($CFG->dirroot . '/grade/report/lib.php');
 require_once($CFG->libdir.'/tablelib.php');
 
+use core_grades\penalty_manager;
+
 /**
  * Class providing an API for the grader report building and displaying.
  * @uses grade_report
@@ -177,7 +179,6 @@ class grade_report_grader extends grade_report {
         $this->setup_groups();
         $this->setup_users();
         $this->setup_sortitemid($sort);
-        $this->setup_cohorts();
 
         $this->overridecat = (bool)get_config('moodle', 'grade_overridecat');
     }
@@ -434,7 +435,7 @@ class grade_report_grader extends grade_report {
         // If the user has clicked one of the sort asc/desc arrows.
         if (is_numeric($this->sortitemid)) {
             $params = array_merge(array('gitemid' => $this->sortitemid), $gradebookrolesparams, $this->userwheresql_params,
-                    $this->groupwheresql_params, $this->cohortwheresql_params, $enrolledparams, $relatedctxparams);
+                    $this->groupwheresql_params, $enrolledparams, $relatedctxparams);
 
             $sortjoin = "LEFT JOIN {grade_grades} g ON g.userid = u.id AND g.itemid = $this->sortitemid";
 
@@ -459,7 +460,7 @@ class grade_report_grader extends grade_report {
                 $sort = "{$usersortfield} {$this->sortorder}, " . implode(', ', $defaultsortfields);
             }
 
-            $params = array_merge($gradebookrolesparams, $this->userwheresql_params, $this->groupwheresql_params, $this->cohortwheresql_params, $enrolledparams, $relatedctxparams);
+            $params = array_merge($gradebookrolesparams, $this->userwheresql_params, $this->groupwheresql_params, $enrolledparams, $relatedctxparams);
         }
         $params = array_merge($userfieldssql->params, $params);
         $sql = "SELECT {$userfieldssql->selects}
@@ -467,7 +468,6 @@ class grade_report_grader extends grade_report {
                         {$userfieldssql->joins}
                   JOIN ($enrolledsql) je ON je.id = u.id
                        $this->groupsql
-                       $this->cohortsql
                        $sortjoin
                   JOIN (
                            SELECT DISTINCT ra.userid
@@ -478,7 +478,6 @@ class grade_report_grader extends grade_report {
                    AND u.deleted = 0
                    $this->userwheresql
                    $this->groupwheresql
-                   $this->cohortwheresql
               ORDER BY $sort";
         // We never work with unlimited result. Limit the number of records by $this->get_max_students_per_page() if no other limit
         // is specified.
@@ -632,23 +631,6 @@ class grade_report_grader extends grade_report {
                 }
             }
         }
-    }
-
-    /**
-     * Gets html toggle
-     * @deprecated since Moodle 2.4 as it appears not to be used any more.
-     */
-    public function get_toggles_html() {
-        throw new coding_exception('get_toggles_html() can not be used any more');
-    }
-
-    /**
-     * Prints html toggle
-     * @deprecated since 2.4 as it appears not to be used any more.
-     * @param unknown $type
-     */
-    public function print_toggle($type) {
-        throw new coding_exception('print_toggle() can not be used any more');
     }
 
     /**
@@ -1210,6 +1192,7 @@ class grade_report_grader extends grade_report {
                         $context->extraclasses = 'gradevalue ' . $hidden . $gradepass;
                         $context->text = grade_format_gradevalue($gradeval, $item, true,
                             $gradedisplaytype, null);
+                        $context->text .= penalty_manager::show_penalty_indicator($grade);
                     }
                 }
 
@@ -1314,7 +1297,7 @@ class grade_report_grader extends grade_report {
         $html = '';
 
         $fulltable = new html_table();
-        $fulltable->attributes['class'] = 'gradereport-grader-table d-none';
+        $fulltable->attributes['class'] = 'table gradereport-grader-table d-none';
         $fulltable->id = 'user-grades';
         $fulltable->caption = get_string('summarygrader', 'gradereport_grader');
         $fulltable->captionhide = true;
@@ -1338,33 +1321,11 @@ class grade_report_grader extends grade_report {
     }
 
     /**
-     * Builds and return the row of icons for the left side of the report.
-     * It only has one cell that says "Controls"
-     * @param array $rows The Array of rows for the left part of the report
-     * @param int $colspan The number of columns this cell has to span
-     * @return array Array of rows for the left part of the report
-     * @deprecated since Moodle 4.2 - The row is not shown anymore - we have actions menu.
-     * @todo MDL-77307 This will be deleted in Moodle 4.6.
+     * @deprecated since Moodle 4.2 - The row is not shown anymore - we have {@see core\output\action_menu}.
      */
+    #[\core\attribute\deprecated('core\output\action_menu', since: '4.2', mdl: 'MDL-76147', final: true)]
     public function get_left_icons_row($rows=array(), $colspan=1) {
-        global $USER;
-
-        debugging('The function get_left_icons_row() is deprecated, please do not use it anymore.',
-            DEBUG_DEVELOPER);
-
-        if (!empty($USER->editing)) {
-            $controlsrow = new html_table_row();
-            $controlsrow->attributes['class'] = 'controls';
-            $controlscell = new html_table_cell();
-            $controlscell->attributes['class'] = 'header controls';
-            $controlscell->header = true;
-            $controlscell->colspan = $colspan;
-            $controlscell->text = get_string('controls', 'grades');
-            $controlsrow->cells[] = $controlscell;
-
-            $rows[] = $controlsrow;
-        }
-        return $rows;
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
     }
 
     /**
@@ -1444,35 +1405,11 @@ class grade_report_grader extends grade_report {
     }
 
     /**
-     * Builds and return the row of icons when editing is on, for the right part of the grader report.
-     * @param array $rows The Array of rows for the right part of the report
-     * @return array Array of rows for the right part of the report
-     * @deprecated since Moodle 4.2 - The row is not shown anymore - we have actions menu.
-     * @todo MDL-77307 This will be deleted in Moodle 4.6.
+     * @deprecated since Moodle 4.2 - The row is not shown anymore - we have {@see core\output\action_menu}.
      */
+    #[\core\attribute\deprecated('core\output\action_menu', since: '4.2', mdl: 'MDL-76147', final: true)]
     public function get_right_icons_row($rows=array()) {
-        global $USER;
-        debugging('The function get_right_icons_row() is deprecated, please do not use it anymore.',
-            DEBUG_DEVELOPER);
-
-        if (!empty($USER->editing)) {
-            $iconsrow = new html_table_row();
-            $iconsrow->attributes['class'] = 'controls';
-
-            foreach ($this->gtree->items as $itemid => $unused) {
-                // emulate grade element
-                $item = $this->gtree->get_item($itemid);
-
-                $eid = $this->gtree->get_item_eid($item);
-                $element = $this->gtree->locate_element($eid);
-                $itemcell = new html_table_cell();
-                $itemcell->attributes['class'] = 'controls icons i'.$itemid;
-                $itemcell->text = $this->get_icons($element);
-                $iconsrow->cells[] = $itemcell;
-            }
-            $rows[] = $iconsrow;
-        }
-        return $rows;
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
     }
 
     /**
@@ -1513,184 +1450,10 @@ class grade_report_grader extends grade_report {
 
     /**
      * @deprecated since Moodle 4.4 - Call calculate_average instead.
-     * Builds and return the row of averages for the right part of the grader report.
-     * @param array $rows Whether to return only group averages or all averages.
-     * @param bool $grouponly Whether to return only group averages or all averages.
-     * @return array Array of rows for the right part of the report
      */
-    public function get_right_avg_row($rows=array(), $grouponly=false) {
-        global $USER, $DB, $OUTPUT, $CFG;
-
-        debugging('grader_report_grader::get_right_avg_row() is deprecated.
-            Call grade_report::calculate_average() instead.', DEBUG_DEVELOPER);
-
-        if (!$this->canviewhidden) {
-            // Totals might be affected by hiding, if user can not see hidden grades the aggregations might be altered
-            // better not show them at all if user can not see all hidden grades.
-            return $rows;
-        }
-
-        $averagesdisplaytype   = $this->get_pref('averagesdisplaytype');
-        $averagesdecimalpoints = $this->get_pref('averagesdecimalpoints');
-        $meanselection         = $this->get_pref('meanselection');
-        $shownumberofgrades    = $this->get_pref('shownumberofgrades');
-
-        if ($grouponly) {
-            $showaverages = $this->currentgroup && $this->get_pref('showaverages');
-            $groupsql = $this->groupsql;
-            $groupwheresql = $this->groupwheresql;
-            $groupwheresqlparams = $this->groupwheresql_params;
-        } else {
-            $showaverages = $this->get_pref('showaverages');
-            $groupsql = "";
-            $groupwheresql = "";
-            $groupwheresqlparams = array();
-        }
-
-        if ($showaverages) {
-            $totalcount = $this->get_numusers($grouponly);
-
-            // Limit to users with a gradeable role.
-            list($gradebookrolessql, $gradebookrolesparams) = $DB->get_in_or_equal(explode(',', $this->gradebookroles), SQL_PARAMS_NAMED, 'grbr0');
-
-            // Limit to users with an active enrollment.
-            $coursecontext = $this->context->get_course_context(true);
-            $defaultgradeshowactiveenrol = !empty($CFG->grade_report_showonlyactiveenrol);
-            $showonlyactiveenrol = get_user_preferences('grade_report_showonlyactiveenrol', $defaultgradeshowactiveenrol);
-            $showonlyactiveenrol = $showonlyactiveenrol || !has_capability('moodle/course:viewsuspendedusers', $coursecontext);
-            list($enrolledsql, $enrolledparams) = get_enrolled_sql($this->context, '', 0, $showonlyactiveenrol);
-
-            // We want to query both the current context and parent contexts.
-            list($relatedctxsql, $relatedctxparams) = $DB->get_in_or_equal($this->context->get_parent_context_ids(true), SQL_PARAMS_NAMED, 'relatedctx');
-
-            $params = array_merge(array('courseid' => $this->courseid), $gradebookrolesparams, $enrolledparams, $groupwheresqlparams, $this->cohortwheresql_params, $relatedctxparams);
-
-            // Find sums of all grade items in course.
-            $sql = "SELECT g.itemid, SUM(g.finalgrade) AS sum
-                      FROM {grade_items} gi
-                      JOIN {grade_grades} g ON g.itemid = gi.id
-                      JOIN {user} u ON u.id = g.userid
-                      JOIN ($enrolledsql) je ON je.id = u.id
-                      JOIN (
-                               SELECT DISTINCT ra.userid
-                                 FROM {role_assignments} ra
-                                WHERE ra.roleid $gradebookrolessql
-                                  AND ra.contextid $relatedctxsql
-                           ) rainner ON rainner.userid = u.id
-                      $groupsql
-                      $this->cohortsql
-                     WHERE gi.courseid = :courseid
-                       AND u.deleted = 0
-                       AND g.finalgrade IS NOT NULL
-                       $groupwheresql
-                       $this->cohortwheresql
-                     GROUP BY g.itemid";
-            $sumarray = array();
-            if ($sums = $DB->get_records_sql($sql, $params)) {
-                foreach ($sums as $itemid => $csum) {
-                    $sumarray[$itemid] = $csum->sum;
-                }
-            }
-
-            // MDL-10875 Empty grades must be evaluated as grademin, NOT always 0
-            // This query returns a count of ungraded grades (NULL finalgrade OR no matching record in grade_grades table)
-            $sql = "SELECT gi.id, COUNT(DISTINCT u.id) AS count
-                      FROM {grade_items} gi
-                      CROSS JOIN ($enrolledsql) u
-                      JOIN {role_assignments} ra
-                           ON ra.userid = u.id
-                      LEFT OUTER JOIN {grade_grades} g
-                           ON (g.itemid = gi.id AND g.userid = u.id AND g.finalgrade IS NOT NULL)
-                      $groupsql
-                      $this->cohortsql
-                     WHERE gi.courseid = :courseid
-                           AND ra.roleid $gradebookrolessql
-                           AND ra.contextid $relatedctxsql
-                           AND g.id IS NULL
-                           $groupwheresql
-                           $this->cohortwheresql
-                  GROUP BY gi.id";
-
-            $ungradedcounts = $DB->get_records_sql($sql, $params);
-
-            $avgrow = new html_table_row();
-            $avgrow->attributes['class'] = 'avg';
-
-            foreach ($this->gtree->items as $itemid => $unused) {
-                $item =& $this->gtree->items[$itemid];
-
-                if ($item->needsupdate) {
-                    $avgcell = new html_table_cell();
-                    $avgcell->attributes['class'] = 'i'. $itemid;
-                    $avgcell->text = $OUTPUT->container(get_string('error'), 'gradingerror');
-                    $avgrow->cells[] = $avgcell;
-                    continue;
-                }
-
-                if (!isset($sumarray[$item->id])) {
-                    $sumarray[$item->id] = 0;
-                }
-
-                if (empty($ungradedcounts[$itemid])) {
-                    $ungradedcount = 0;
-                } else {
-                    $ungradedcount = $ungradedcounts[$itemid]->count;
-                }
-
-                if ($meanselection == GRADE_REPORT_MEAN_GRADED) {
-                    $meancount = $totalcount - $ungradedcount;
-                } else { // Bump up the sum by the number of ungraded items * grademin
-                    $sumarray[$item->id] += $ungradedcount * $item->grademin;
-                    $meancount = $totalcount;
-                }
-
-                // Determine which display type to use for this average
-                if (!empty($USER->editing)) {
-                    $displaytype = GRADE_DISPLAY_TYPE_REAL;
-
-                } else if ($averagesdisplaytype == GRADE_REPORT_PREFERENCE_INHERIT) { // no ==0 here, please resave the report and user preferences
-                    $displaytype = $item->get_displaytype();
-
-                } else {
-                    $displaytype = $averagesdisplaytype;
-                }
-
-                // Override grade_item setting if a display preference (not inherit) was set for the averages
-                if ($averagesdecimalpoints == GRADE_REPORT_PREFERENCE_INHERIT) {
-                    $decimalpoints = $item->get_decimals();
-
-                } else {
-                    $decimalpoints = $averagesdecimalpoints;
-                }
-
-                $gradetypeclass = $this->get_cell_display_class($item);
-
-                if (!isset($sumarray[$item->id]) || $meancount == 0) {
-                    $avgcell = new html_table_cell();
-                    $avgcell->attributes['class'] = $gradetypeclass . ' i'. $itemid;
-                    $avgcell->attributes['data-itemid'] = $itemid;
-                    $avgcell->text = html_writer::div('-', '', ['data-collapse' => 'avgrowcell']);
-                    $avgrow->cells[] = $avgcell;
-                } else {
-                    $sum = $sumarray[$item->id];
-                    $avgradeval = $sum/$meancount;
-                    $gradehtml = grade_format_gradevalue($avgradeval, $item, true, $displaytype, $decimalpoints);
-
-                    $numberofgrades = '';
-                    if ($shownumberofgrades) {
-                        $numberofgrades = " ($meancount)";
-                    }
-
-                    $avgcell = new html_table_cell();
-                    $avgcell->attributes['class'] = $gradetypeclass . ' i'. $itemid;
-                    $avgcell->attributes['data-itemid'] = $itemid;
-                    $avgcell->text = html_writer::div($gradehtml.$numberofgrades, '', ['data-collapse' => 'avgrowcell']);
-                    $avgrow->cells[] = $avgcell;
-                }
-            }
-            $rows[] = $avgrow;
-        }
-        return $rows;
+    #[\core\attribute\deprecated('grade_report::calculate_average()', since: '4.4', final: true)]
+    public function get_right_avg_row() {
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
     }
 
     /**
@@ -1717,7 +1480,7 @@ class grade_report_grader extends grade_report {
             'class' => 'gradeitemheader',
             'aria-describedby' => $describedbyid
         ]);
-        $courseheader .= html_writer::div($showing, 'sr-only', [
+        $courseheader .= html_writer::div($showing, 'visually-hidden', [
             'id' => $describedbyid
         ]);
 
@@ -1725,67 +1488,11 @@ class grade_report_grader extends grade_report {
     }
 
     /**
-     * Given a grade_category, grade_item or grade_grade, this function
-     * figures out the state of the object and builds then returns a div
-     * with the icons needed for the grader report.
-     *
-     * @param array $element
-     * @return string HTML
      * @deprecated since Moodle 4.2 - The row is not shown anymore - we have actions menu.
-     * @todo MDL-77307 This will be deleted in Moodle 4.6.
      */
+    #[\core\attribute\deprecated('core\output\action_menu', since: '4.2', mdl: 'MDL-76147', final: true)]
     protected function get_icons($element) {
-        global $CFG, $USER, $OUTPUT;
-        debugging('The function get_icons() is deprecated, please do not use it anymore.',
-            DEBUG_DEVELOPER);
-
-        if (empty($USER->editing)) {
-            return '<div class="grade_icons" />';
-        }
-
-        // Init all icons
-        $editicon = '';
-
-        $editable = true;
-
-        if ($element['type'] == 'grade') {
-            $item = $element['object']->grade_item;
-            if ($item->is_course_item() or $item->is_category_item()) {
-                $editable = $this->overridecat;
-            }
-        }
-
-        if ($element['type'] != 'categoryitem' && $element['type'] != 'courseitem' && $editable) {
-            $editicon = $this->gtree->get_edit_icon($element, $this->gpr);
-        }
-
-        $editcalculationicon = '';
-        $showhideicon        = '';
-        $lockunlockicon      = '';
-
-        if (has_capability('moodle/grade:manage', $this->context)) {
-            $editcalculationicon = $this->gtree->get_calculation_icon($element, $this->gpr);
-
-            $showhideicon = $this->gtree->get_hiding_icon($element, $this->gpr);
-
-            $lockunlockicon = $this->gtree->get_locking_icon($element, $this->gpr);
-        }
-
-        $gradeanalysisicon = '';
-        if ($element['type'] == 'grade') {
-            $gradeanalysisicon .= $this->gtree->get_grade_analysis_icon($element['object']);
-        }
-
-        return $OUTPUT->container($editicon.$editcalculationicon.$showhideicon.$lockunlockicon.$gradeanalysisicon, 'grade_icons');
-    }
-
-    /**
-     * Given a category element returns collapsing +/- icon if available
-     *
-     * @deprecated since Moodle 2.9 MDL-46662 - please do not use this function any more.
-     */
-    protected function get_collapsing_icon($element) {
-        throw new coding_exception('get_collapsing_icon() can not be used any more, please use get_course_header() instead.');
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
     }
 
     /**

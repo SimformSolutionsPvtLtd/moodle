@@ -125,11 +125,12 @@ Feature: Settings form fields disabled if not required
   @javascript
   Scenario: If there are quiz attempts, there is not option to repaginate.
     Given the following "activities" exist:
-      | activity   | name   | intro              | course | idnumber |
-      | quiz       | Quiz 1 | Quiz 1 description | C1     | quiz1    |
+      | activity   | name    | intro              | course | idnumber |
+      | quiz       | Quiz 1  | Quiz 1 description | C1     | quiz1    |
+      | qbank      | Qbank 1 | Qbank for testing  | C1     | qbank1   |
     And the following "question categories" exist:
-      | contextlevel | reference | name           |
-      | Course       | C1        | Test questions |
+      | contextlevel    | reference | name           |
+      | Activity module | qbank1    | Test questions |
     And the following "questions" exist:
       | questioncategory | qtype       | name  | questiontext    |
       | Test questions   | truefalse   | TF1   | First question  |
@@ -146,3 +147,24 @@ Feature: Settings form fields disabled if not required
     And I am on the "Quiz 1" "quiz activity editing" page
     And I expand all fieldsets
     And I should not see "Repaginate now"
+
+  @javascript
+  Scenario Outline: Pre-create attempts setting is only shown if precreateperiod is set and timeopen is enabled.
+    Given the following config values are set as admin:
+      | precreateattempts        | 1        | quiz |
+      | precreateattempts_locked | 0        | quiz |
+      | precreateperiod          | <period> | quiz |
+    And I log in as "admin"
+    When I add a "quiz" activity to course "Course 1" section 1
+    And I click on "Timing" "link"
+    And I set the field "timeopen[enabled]" to "<timeopen>"
+    And I expand all fieldsets
+    Then I <exists> see "Pre-create attempts"
+    And "Pre-create attempts" "select" <exists> be visible
+    And I <exists> see "Yes, 1 hours before quiz open time"
+
+    Examples:
+      | period | timeopen | exists     |
+      | 3600   | 1        | should     |
+      | 3600   | 0        | should not |
+      | 0      | 1        | should not |

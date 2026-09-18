@@ -21,7 +21,7 @@
  * needed during the very first steps of installation. This file was
  * generated automatically by export-installer.php (which is part of AMOS
  * {@link https://moodledev.io/general/projects/api/amos}) using the
- * list of strings defined in install/stringnames.txt file.
+ * list of strings defined in public/install/stringnames.txt file.
  *
  * @package   installer
  * @license   https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -50,17 +50,6 @@ $string['environmentsub2'] = 'Свако издање Moodlea има миним�
 $string['errorsinenvironment'] = 'Провера окружења није прошла!';
 $string['installation'] = 'Инсталација';
 $string['langdownloaderror'] = 'Нажалост, језик "{$a}" се не може преузети. Процес инсталације биће настављен на енглеском језику.';
-$string['memorylimithelp'] = '<p>PHP ограничење меморије за ваш сервер је тренутно подешено на {$a}.</p>
-
-<p>Ово подешавање може касније да проузрокује да Moodle има проблема са меморијом, посебно ако имате много активираних модула и/или много корисника.</p>
-
-<p>Препоручујемо да конфигуришете PHP са вишим ограничењем ако је могуће, рецимо 40М. Постоји неколико начина на које то може да се то уради:</p><ol>
-<li>Ако можете, рекомпајлирајте PHP са <i>--enable-memory-limit</i>. Ово ће омогућити Moodle систему да сам постави меморијско ограничење.</li>
-<li>Ако имате приступ својој php.ini датотеци, можете променити вредност за <b>memory_limit</b> на, рецимо, 40М. Ако немате приступ тој датотеци можете питати свог администратора да то уради уместо вас.</li>
-<li>На неким PHP серверима можете да креирате .htaccess датотеку у Moodle директоријуму која садржи ред:
-<blockquote><div>php_value memory_limit 40M</div></blockquote>
-<p>Међутим, на неким серверима то ће спречити приказивање <b>свих</b> PHP страница (видећете поруку о грешци када будете гледали странице), па ћете са тих сервера морати да уклоните .htaccess датотеку.</p></li>
-</ol>';
 $string['paths'] = 'Путање';
 $string['pathserrcreatedataroot'] = 'Инсталациона процедура не може да креира директоријум базе података ({$a->dataroot}).';
 $string['pathshead'] = 'Потврди путање';
@@ -80,9 +69,8 @@ $string['pathsunsecuredataroot'] = 'Локација директоријума 
 $string['pathswrongadmindir'] = 'Админ директоријум не постоји';
 $string['phpextension'] = '{$a} PHP екстензија';
 $string['phpversion'] = 'PHP верзија';
-$string['phpversionhelp'] = '<p>Moodle захтева PHP верзију барем 5.6.5 или 7.1 (7.0.x има нека ограничења).</p>
-<p>Тренутно користите верзију {$a}</p>
-<p>Морате да надоградите PHP или да преместити Moodle на веб сервер са новијом верзијом PHP-a.</p>';
+$string['webserverconfigproblemdescription'] = 'Ваш веб сервер није конфигурисан да спречи приступ датотекама ван директоријума /public. За детаљније информације о томе како да конфигуришете свој веб сервер погледајте документацију <a href="https://docs.moodle.org/en/Upgrading#Code_directories_restructure">Надоградња - Реструктурирање директоријума</a>. Једном када промените конфигурацију веб сервера <a href="{$a}">поново погледајте његов коренски директоријум</a>.';
+$string['webservernotconfigured'] = 'Веб сервер није конфигурисан';
 $string['welcomep10'] = '{$a->installername} ({$a->installerversion})';
 $string['welcomep20'] = 'Ову страницу видите зато што сте успешно инсталирали и покренули <strong>{$a->packname} {$a->packversion}</strong> пакет на свом серверу. Честитамо!';
 $string['welcomep30'] = 'Ово издање <strong>{$a->installername}</strong> укључује апликације за креирање окружења у којем ће <strong>Moodle</strong> успешно функционисати, конкретно:';

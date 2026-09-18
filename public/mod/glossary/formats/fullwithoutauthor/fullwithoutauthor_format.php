@@ -30,7 +30,7 @@ function glossary_show_entry_fullwithoutauthor(
 
 
     if ($entry) {
-        echo '<table class="glossarypost fullwithoutauthor" cellspacing="0" role="presentation">';
+        echo '<table class="glossarypost fullwithoutauthor table-reboot" cellspacing="0" role="presentation">';
         echo '<tr valign="top">';
 
         echo '<th class="entryheader">';

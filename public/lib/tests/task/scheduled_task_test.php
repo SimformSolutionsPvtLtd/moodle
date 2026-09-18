@@ -872,7 +872,7 @@ final class scheduled_task_test extends \advanced_testcase {
     public static function provider_schedule_overrides(): array {
         return array(
             array(
-                'scheduled_tasks' => array(
+                'overrides' => array(
                     '\core\task\scheduled_test_task' => array(
                         'schedule' => '10 13 1 2 4',
                         'disabled' => 0,
@@ -882,7 +882,7 @@ final class scheduled_task_test extends \advanced_testcase {
                         'disabled' => 1,
                     ),
                 ),
-                'task_full_classnames' => array(
+                'tasks' => array(
                     '\core\task\scheduled_test_task',
                     '\core\task\scheduled_test2_task',
                 ),
@@ -906,13 +906,13 @@ final class scheduled_task_test extends \advanced_testcase {
                 )
             ),
             array(
-                'scheduled_tasks' => array(
+                'overrides' => array(
                     '\core\task\*' => array(
                         'schedule' => '1 2 3 4 5',
                         'disabled' => 0,
                     )
                 ),
-                'task_full_classnames' => array(
+                'tasks' => array(
                     '\core\task\scheduled_test_task',
                     '\core\task\scheduled_test2_task',
                 ),
@@ -1109,7 +1109,7 @@ final class scheduled_task_test extends \advanced_testcase {
      */
     public static function is_component_enabled_provider(): array {
         return [
-            'Enabled component' => ['auth_cas', true],
+            'Enabled component' => ['auth_email', true],
             'Disabled component' => ['auth_ldap', false],
             'Invalid component' => ['auth_invalid', false],
         ];
@@ -1127,7 +1127,7 @@ final class scheduled_task_test extends \advanced_testcase {
         $this->resetAfterTest();
 
         // Set cas as the only enabled auth component.
-        set_config('auth', 'cas');
+        set_config('auth', 'email');
 
         $task = new scheduled_test_task();
         $task->set_component($component);

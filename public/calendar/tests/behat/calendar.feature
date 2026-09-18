@@ -15,11 +15,11 @@ Feature: Perform basic calendar functionality
       | name     | category | idnumber |
       | CatA     | 0        | cata     |
     And the following "courses" exist:
-      | fullname | shortname | format | category |
-      | Course 1 | C1        | topics | cata     |
-      | Course 2 | C2        | topics | cata     |
-      | Course 3 | C3        | topics | cata     |
-      | Course 4 | C4        | topics | cata     |
+      | fullname | shortname | format | category | startdate |
+      | Course 1 | C1        | topics | cata     | ##first day of last month## |
+      | Course 2 | C2        | topics | cata     | ##first day of last month## |
+      | Course 3 | C3        | topics | cata     | ##first day of last month## |
+      | Course 4 | C4        | topics | cata     | ##first day of last month## |
     And the following "course enrolments" exist:
       | user | course | role |
       | student1 | C1 | student |
@@ -58,20 +58,24 @@ Feature: Perform basic calendar functionality
   Scenario: Create a course event
     Given I log in as "teacher1"
     And I create a calendar event with form data:
-      | Type of event | course |
-      | Course        | Course 1 |
-      | Event title | Really awesome event! |
-      | Description | Come join this awesome event, sucka! |
+      | Type of event  | course                            |
+      | Course         | Course 1                          |
+      | timestart[day] | 1                                 |
+      | Event title    | Really awesome event!  & < > " ' |
+      | Description    | Come join this awesome event, sucka! |
     And I log out
     When I am on the "Course 1" course page logged in as student1
     And I follow "Course calendar"
-    And I click on "Really awesome event!" "link"
-    And "Course 1" "link" should exist in the "Really awesome event!" "dialogue"
-    And I click on "Close" "button" in the "Really awesome event!" "dialogue"
+    And I hover over day "1" of this month in the full calendar page
+    And I should see "Really awesome event!  & < > \" '"
+    And I click on "Really awesome event!  & < > \" '" "link"
+    And I should see "Really awesome event!  & < > \" '" in the ".modal-title" "css_element"
+    And I should see "Course 1" in the ".modal-body" "css_element"
+    And I click on "Close" "button" in the ".modal-content" "css_element"
     And I log out
     And I log in as "student2"
     And I follow "Full calendar"
-    Then I should not see "Really awesome event!"
+    Then I should not see "Really awesome event!  & < > \" '"
 
   @javascript
   Scenario: Create a group event
@@ -463,3 +467,14 @@ Feature: Perform basic calendar functionality
     And I press "Save"
     And I click on "type change test event" "link"
     And I should see "Category event"
+
+  @javascript
+  Scenario: Selecting a course in the calendar keeps the course when opening import or export calendars
+    Given I log in as "teacher1"
+    And I am viewing site calendar
+    When I set the field "List of courses" to "Course 1"
+    # Wait for the course change to be applied to the page before continuing.
+    And I should see "Calendar: Course 1" in the ".page-header-headings" "css_element"
+    And I click on "Import or export calendars" "link"
+    # Without the course being retained, the heading would be the site calendar ("Calendar").
+    Then I should see "Calendar: C1" in the ".page-header-headings" "css_element"

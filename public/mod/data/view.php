@@ -68,8 +68,7 @@ $context = $manager->get_context();
 
 require_login($course, true, $cm);
 
-require_once($CFG->dirroot . '/comment/lib.php');
-comment::init();
+\core_comment\manager::init();
 
 require_capability('mod/data:viewentry', $context);
 
@@ -94,6 +93,11 @@ if (!is_null(optional_param('resetadv', null, PARAM_RAW))) {
 }
 
 $advanced = optional_param('advanced', -1, PARAM_INT);
+if (optional_param('reset', 0, PARAM_BOOL)) {
+    unset($SESSION->dataprefs[$data->id]);
+    // We need the redirect to cleanup the form state properly.
+    redirect("view.php?id=$cm->id&amp;mode=$mode&amp;search=&amp;advanced=$advanced");
+}
 if ($advanced == -1) {
     $advanced = $SESSION->dataprefs[$data->id]['advanced'];
 } else {
@@ -194,7 +198,7 @@ $courseshortname = format_string($course->shortname, true, array('context' => co
 /// RSS and CSS and JS meta
 $meta = '';
 if (!empty($CFG->enablerssfeeds) && !empty($CFG->data_enablerssfeeds) && $data->rssarticles > 0) {
-    $rsstitle = $courseshortname . ': ' . format_string($data->name);
+    $rsstitle = $courseshortname . \moodle_page::TITLE_SEPARATOR . format_string($data->name);
     rss_add_http_header($context, 'mod_data', $data, $rsstitle);
 }
 if ($data->csstemplate) {
@@ -225,7 +229,7 @@ if ($mode == 'asearch') {
     $PAGE->navbar->add(get_string('search'));
 }
 
-$PAGE->add_body_class('mediumwidth');
+$PAGE->add_body_class('limitedwidth');
 $titleparts = [
     format_string($data->name),
     format_string($course->fullname),
@@ -455,7 +459,7 @@ if ($showactivity) {
                 $a = new stdClass();
                 $a->num = $totalcount;
                 $a->max = $maxcount;
-                $a->reseturl = "view.php?id=$cm->id&amp;mode=$mode&amp;search=&amp;advanced=0";
+                $a->reseturl = "view.php?id=$cm->id&amp;mode=$mode&amp;search=&amp;reset=1&amp;advanced=$advanced";
                 echo $OUTPUT->box_start();
                 echo get_string('foundrecords', 'data', $a);
                 echo $OUTPUT->box_end();

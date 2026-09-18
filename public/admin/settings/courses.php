@@ -28,13 +28,22 @@ require_once($CFG->libdir . '/pdflib.php');
 
 use core_admin\local\settings\filesize;
 
-$capabilities = array(
+$ADMIN->add('courses', new admin_category('coursedefaultsettings', new lang_string('defaultsettingscategory', 'course')));
+$ADMIN->add('courses', new admin_category('groups', new lang_string('groups')));
+$ADMIN->add('courses', new admin_category('activitychooser', new lang_string('activitychoosercategory', 'course')));
+$ADMIN->add('courses', new admin_category('backups', new lang_string('backups', 'admin')));
+
+$capabilities = [
     'moodle/backup:backupcourse',
     'moodle/category:manage',
     'moodle/course:create',
     'moodle/site:approvecourse',
-    'moodle/restore:restorecourse'
-);
+    'moodle/restore:restorecourse',
+    'moodle/course:manageactivities',
+    'moodle/course:configurecustomfields',
+    'moodle/group:configurecustomfields',
+    'moodle/course:recommendactivity',
+];
 if ($hassiteconfig or has_any_capability($capabilities, $systemcontext)) {
     // Speedup for non-admins, add all caps used on this page.
     $ADMIN->add('courses',
@@ -104,7 +113,6 @@ if ($hassiteconfig or has_any_capability($capabilities, $systemcontext)) {
     }
 
     // Add a category for the course Default settings.
-    $ADMIN->add('courses', new admin_category('coursedefaultsettings', new lang_string('defaultsettingscategory', 'course')));
     // Course Default Settings Page.
     // NOTE: these settings must be applied after all other settings because they depend on them.
 
@@ -149,15 +157,21 @@ if ($hassiteconfig or has_any_capability($capabilities, $systemcontext)) {
     $temp->add(new admin_setting_configselect('moodlecourse/format', new lang_string('format'), new lang_string('coursehelpformat'),
         'topics', $formcourseformats));
 
+    // TODO: remove this setting in Moodle 6.0 (MDL-85272).
     $temp->add(new admin_setting_configtext('moodlecourse/maxsections', new lang_string('maxnumberweeks'),
         new lang_string('maxnumberweeks_desc'), 52));
 
-    $temp->add(new admin_settings_num_course_sections('moodlecourse/numsections', new lang_string('numberweeks'),
-        new lang_string('coursehelpnumberweeks'), 4));
+    $temp->add(new admin_setting_configtext(
+        name: 'moodlecourse/numsections',
+        visiblename: new lang_string('numberweeks'),
+        description: new lang_string('coursehelpnumberweeks'),
+        defaultsetting: 4,
+        paramtype: PARAM_INT,
+    ));
 
     $choices = array();
-    $choices['0'] = new lang_string('hiddensectionscollapsed');
     $choices['1'] = new lang_string('hiddensectionsinvisible');
+    $choices['0'] = new lang_string('hiddensectionscollapsed');
     $temp->add(new admin_setting_configselect('moodlecourse/hiddensections', new lang_string('hiddensections'),
         new lang_string('coursehelphiddensections'), 1, $choices));
 
@@ -280,26 +294,8 @@ if ($hassiteconfig or has_any_capability($capabilities, $systemcontext)) {
     );
 
     $temp = new admin_settingpage('activitychoosersettings', new lang_string('activitychoosersettings', 'course'));
-    // Tab mode for the activity chooser.
-    $temp->add(
-        new admin_setting_configselect(
-            'activitychoosertabmode',
-            new lang_string('activitychoosertabmode', 'course'),
-            new lang_string('activitychoosertabmode_desc', 'course'),
-            3,
-            [
-                3 => new lang_string('activitychoosertabmodefour', 'course'),
-                4 => new lang_string('activitychoosertabmodefive', 'course'),
-                5 => new lang_string('activitychoosertabmodesix', 'course'),
-                0 => new lang_string('activitychoosertabmodeone', 'course'),
-                1 => new lang_string('activitychoosertabmodetwo', 'course'),
-                2 => new lang_string('activitychoosertabmodethree', 'course'),
-            ]
-        )
-    );
 
-    // Add a category for the Groups.
-    $ADMIN->add('courses', new admin_category('groups', new lang_string('groups')));
+    // Add to the 'Groups' category.
     $ADMIN->add(
         'groups',
         new admin_externalpage(
@@ -319,26 +315,8 @@ if ($hassiteconfig or has_any_capability($capabilities, $systemcontext)) {
         )
     );
 
-    // Add a category for the Activity Chooser.
-    $ADMIN->add('courses', new admin_category('activitychooser', new lang_string('activitychoosercategory', 'course')));
+    // Add to the 'Activity Chooser' category.
     $temp = new admin_settingpage('activitychoosersettings', new lang_string('activitychoosersettings', 'course'));
-    // Tab mode for the activity chooser.
-    $temp->add(
-        new admin_setting_configselect(
-            'activitychoosertabmode',
-            new lang_string('activitychoosertabmode', 'course'),
-            new lang_string('activitychoosertabmode_desc', 'course'),
-            3,
-            [
-                3 => new lang_string('activitychoosertabmodefour', 'course'),
-                4 => new lang_string('activitychoosertabmodefive', 'course'),
-                5 => new lang_string('activitychoosertabmodesix', 'course'),
-                0 => new lang_string('activitychoosertabmodeone', 'course'),
-                1 => new lang_string('activitychoosertabmodetwo', 'course'),
-                2 => new lang_string('activitychoosertabmodethree', 'course'),
-            ]
-        )
-    );
 
     // Build a list of plugins that use the footer callback.
     $pluginswithfunction = get_plugins_with_function('custom_chooser_footer', 'lib.php');
@@ -372,8 +350,7 @@ if ($hassiteconfig or has_any_capability($capabilities, $systemcontext)) {
         )
     );
 
-    // Add a category for backups.
-    $ADMIN->add('courses', new admin_category('backups', new lang_string('backups','admin')));
+    // Add to the 'Backups' category.
 
     // Create a page for general backups configuration and defaults.
     $temp = new admin_settingpage('backupgeneralsettings', new lang_string('generalbackdefaults', 'backup'), 'moodle/backup:backupcourse');
@@ -415,7 +392,6 @@ if ($hassiteconfig or has_any_capability($capabilities, $systemcontext)) {
     $temp->add(new admin_setting_configcheckbox_with_lock('backup/backup_general_userscompletion', new lang_string('generaluserscompletion','backup'), new lang_string('configgeneraluserscompletion','backup'), array('value'=>1, 'locked'=>0)));
     $temp->add(new admin_setting_configcheckbox_with_lock('backup/backup_general_logs', new lang_string('generallogs','backup'), new lang_string('configgenerallogs','backup'), array('value'=>0, 'locked'=>0)));
     $temp->add(new admin_setting_configcheckbox_with_lock('backup/backup_general_histories', new lang_string('generalhistories','backup'), new lang_string('configgeneralhistories','backup'), array('value'=>0, 'locked'=>0)));
-    $temp->add(new admin_setting_configcheckbox_with_lock('backup/backup_general_questionbank', new lang_string('generalquestionbank','backup'), new lang_string('configgeneralquestionbank','backup'), array('value'=>1, 'locked'=>0)));
     $temp->add(new admin_setting_configcheckbox_with_lock('backup/backup_general_groups',
             new lang_string('generalgroups', 'backup'), new lang_string('configgeneralgroups', 'backup'),
             array('value' => 1, 'locked' => 0)));
@@ -466,7 +442,6 @@ if ($hassiteconfig or has_any_capability($capabilities, $systemcontext)) {
         ['value' => 0, 'locked' => 0],
     ));
     $temp->add(new admin_setting_configcheckbox_with_lock('backup/backup_import_calendarevents', new lang_string('generalcalendarevents','backup'), new lang_string('configgeneralcalendarevents','backup'), array('value'=>1, 'locked'=>0)));
-    $temp->add(new admin_setting_configcheckbox_with_lock('backup/backup_import_questionbank', new lang_string('generalquestionbank','backup'), new lang_string('configgeneralquestionbank','backup'), array('value'=>1, 'locked'=>0)));
     $temp->add(new admin_setting_configcheckbox_with_lock('backup/backup_import_groups',
             new lang_string('generalgroups', 'backup'), new lang_string('configgeneralgroups', 'backup'),
             array('value' => 1, 'locked' => 0)));
@@ -602,7 +577,6 @@ if ($hassiteconfig or has_any_capability($capabilities, $systemcontext)) {
     $temp->add(new admin_setting_configcheckbox('backup/backup_auto_userscompletion', new lang_string('generaluserscompletion','backup'), new lang_string('configgeneraluserscompletion','backup'), 1));
     $temp->add(new admin_setting_configcheckbox('backup/backup_auto_logs', new lang_string('generallogs', 'backup'), new lang_string('configgenerallogs', 'backup'), 0));
     $temp->add(new admin_setting_configcheckbox('backup/backup_auto_histories', new lang_string('generalhistories','backup'), new lang_string('configgeneralhistories','backup'), 0));
-    $temp->add(new admin_setting_configcheckbox('backup/backup_auto_questionbank', new lang_string('generalquestionbank','backup'), new lang_string('configgeneralquestionbank','backup'), 1));
     $temp->add(new admin_setting_configcheckbox('backup/backup_auto_groups', new lang_string('generalgroups', 'backup'),
             new lang_string('configgeneralgroups', 'backup'), 1));
     $temp->add(new admin_setting_configcheckbox('backup/backup_auto_competencies', new lang_string('generalcompetencies','backup'), new lang_string('configgeneralcompetencies','backup'), 1));

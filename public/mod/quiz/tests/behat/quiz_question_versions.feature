@@ -14,12 +14,12 @@ Feature: Quiz question versioning
     And the following "course enrolments" exist:
       | user    | course | role           |
       | teacher | C1     | editingteacher |
-    And the following "question categories" exist:
-      | contextlevel | reference | name           |
-      | Course       | C1        | Test questions |
     And the following "activities" exist:
-      | activity   | name   | course | idnumber |
-      | quiz       | Quiz 1 | C1     | quiz1    |
+      | activity | name    | course | idnumber |
+      | quiz     | Quiz 1  | C1     | quiz1    |
+    And the following "question categories" exist:
+      | contextlevel    | reference | name           |
+      | Activity module | quiz1     | Test questions |
     And the following "questions" exist:
       | questioncategory | qtype     | name           | questiontext              |
       | Test questions   | truefalse | First question | Answer the first question |
@@ -107,6 +107,7 @@ Feature: Quiz question versioning
     When I am on the "Quiz 1" "mod_quiz > Edit" page logged in as "teacher"
     And I open the "Page 1" add to quiz menu
     And I follow "from question bank"
+    And I apply question bank filter "Category" with value "Test questions"
     And I click on "Select" "checkbox" in the "Other question" "table_row"
     And I press "Add selected questions to the quiz"
     Then I should see "Other question" on quiz page "1"
@@ -118,6 +119,7 @@ Feature: Quiz question versioning
       | question       | page |
       | First question | 1    |
     And I am on the "Quiz 1" "mod_quiz > Question bank" page logged in as teacher
+    And I apply question bank filter "Category" with value "Test questions"
     And I set the field "question_status_dropdown" in the "First question" "table_row" to "Draft"
     When I am on the "Quiz 1" "mod_quiz > Edit" page
     Then I should see "This question is in draft status. To use it in the quiz, go to the question bank and change the status to ready."

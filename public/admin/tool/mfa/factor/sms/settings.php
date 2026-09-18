@@ -50,6 +50,7 @@ if ($ADMIN->fulltree) {
             ),
         ),
     );
+    $settings->add(new admin_setting_heading('factor_sms/settings', new lang_string('settings', 'moodle'), ''));
 
     // Get available gateways, or link to gateway creation.
     $gateways = [0 => new lang_string('none')];

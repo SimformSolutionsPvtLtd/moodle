@@ -18,8 +18,9 @@ namespace core\router;
 
 use core\router\middleware\moodle_route_attribute_middleware;
 use core\tests\router\route_testcase;
+use core\url;
+use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Psr7\ServerRequest;
-use Slim\Middleware\RoutingMiddleware;
 
 /**
  * Tests for the route utility class.
@@ -27,9 +28,56 @@ use Slim\Middleware\RoutingMiddleware;
  * @package    core
  * @copyright  Andrew Lyons <andrew@nicols.co.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @covers     \core\router\util
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(util::class)]
 final class util_test extends route_testcase {
+    /**
+     * Ensure that redirecting works as expected.
+     *
+     * @dataProvider redirect_provider
+     * @param string|url $url The URL to redirect to, as a string or a \core\url instance.
+     * @param string|null $expectedurl The expected URL in the Location header of the response.
+     */
+    public function test_redirect(
+        string|url $url,
+        ?string $expectedurl = null,
+    ): void {
+        $expectedurl = $expectedurl ?? $url;
+        $response = new Response(200, ['Content-Type' => 'application/json']);
+        $redirecturl = util::redirect($response, $url);
+        $this->assertInstanceOf(Response::class, $redirecturl);
+        $this->assertStringEndsWith($expectedurl, $redirecturl->getHeaderLine('Location'));
+    }
+
+    /**
+     * Data provider for test_redirect.
+     *
+     * @return \Generator
+     */
+    public static function redirect_provider(): \Generator {
+        yield 'String URL without parameters' => [
+            'url' => '/path',
+        ];
+        yield 'String URL with one parameter' => [
+            'url' => '/path?param1=value1',
+        ];
+        yield 'String URL with more than one parameter' => [
+            'url' => '/path?param1=value1&param2=value2',
+        ];
+        yield 'Object URL without parameters' => [
+            'url' => new url('/path'),
+            'expectedurl' => '/path',
+        ];
+        yield 'Object URL with one parameter' => [
+            'url' => new url('/path', ['param1' => 'value1']),
+            'expectedurl' => '/path?param1=value1',
+        ];
+        yield 'Object URL with more than one parameters' => [
+            'url' => new url('/path', ['param1' => 'value1', 'param2' => 'value2']),
+            'expectedurl' => '/path?param1=value1&param2=value2',
+        ];
+    }
+
     /**
      * Ensure that no error is thrown when getting a route instance for a callable.
      */
@@ -38,9 +86,32 @@ final class util_test extends route_testcase {
     }
 
     /**
+     * Ensure that the act of getting the route name does not instantiate the class.
+     */
+    public function test_get_route_name_for_method_does_not_instantiate(): void {
+        self::load_fixture('core', 'router/uninstantiable_class.php');
+
+        $classname = \core\fixtures\uninstantiable_class::class;
+
+        \core\router\util::get_route_name_for_callable([$classname, 'method_with_route']);
+        \core\router\util::get_route_name_for_callable("{$classname}::method_with_route");
+
+        $this->assertTrue(true, 'No error was thrown when getting the route name for a non-instantiable class.');
+
+        // And ensure that no-one has broken the fixture by making it instantiable.
+        $this->expectException(\Error::class);
+        new \core\fixtures\uninstantiable_class();
+    }
+
+    /**
      * Test getting the path for a callable.
      */
     public function test_get_path_for_callable(): void {
+        global $CFG;
+
+        $this->resetAfterTest();
+
+        $CFG->routerconfigured = true;
         self::load_fixture('core', 'router/route_on_class.php');
 
         $this->add_route_to_route_loader(

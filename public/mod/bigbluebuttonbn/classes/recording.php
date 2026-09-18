@@ -69,6 +69,9 @@ class recording extends persistent {
     /** @var bool Whether metadata been changed so the remote information needs to be updated ? */
     protected $metadatachanged = false;
 
+    /** @var bool When true, skip remote BBB deletion in before_delete(). */
+    protected $skipremotedeletion = false;
+
     /** @var int A refresh period for recordings, defaults to 300s (5mins) */
     public const RECORDING_REFRESH_DEFAULT_PERIOD = 300;
 
@@ -111,6 +114,8 @@ class recording extends persistent {
      * @param instance $instance
      * @param bool $includeimported
      * @param bool $onlyimported
+     * @param bool $filterbygroups if true it will filter by groups according to the instance groups, if false will ignore groups
+     * and groupings from the current instance and return all recordings linked to the instance.
      *
      * @return recording[] containing the recordings indexed by recordID, each recording is also a
      * non sequential associative array itself that corresponds to the actual recording in BBB
@@ -118,14 +123,15 @@ class recording extends persistent {
     public static function get_recordings_for_instance(
         instance $instance,
         bool $includeimported = false,
-        bool $onlyimported = false
+        bool $onlyimported = false,
+        bool $filterbygroups = true
     ): array {
         [$selects, $params] = self::get_basic_select_from_parameters(false, $includeimported, $onlyimported);
         $selects[] = "bigbluebuttonbnid = :bbbid";
         $params['bbbid'] = $instance->get_instance_id();
         $groupmode = groups_get_activity_groupmode($instance->get_cm());
         $context = $instance->get_context();
-        if ($groupmode) {
+        if ($groupmode && $filterbygroups) {
             [$groupselects, $groupparams] = self::get_select_for_group(
                 $groupmode,
                 $context,
@@ -433,6 +439,10 @@ class recording extends persistent {
      * @return void
      */
     protected function before_delete() {
+        if ($this->skipremotedeletion) {
+            return;
+        }
+
         $recordid = $this->get('recordingid');
         if ($recordid && !$this->get('imported')) {
             recording_proxy::delete_recording($recordid);
@@ -440,6 +450,18 @@ class recording extends persistent {
             $cachedrecordings = cache::make('mod_bigbluebuttonbn', 'recordings');
             $cachedrecordings->delete($recordid);
         }
+    }
+
+    /**
+     * Mark this recording so that delete() only removes the local DB row
+     * and does NOT delete the recording from the BigBlueButton server.
+     *
+     * @param bool $skipremote
+     * @return $this
+     */
+    public function set_skip_remote_deletion(bool $skipremote = true): self {
+        $this->skipremotedeletion = $skipremote;
+        return $this;
     }
 
     /**

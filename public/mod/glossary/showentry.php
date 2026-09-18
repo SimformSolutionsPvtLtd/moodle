@@ -28,6 +28,7 @@ if ($eid) {
     $entry->glossaryname = $glossary->name;
     $entry->cmid = $cm->id;
     $entry->courseid = $cm->course;
+    $entry->concept = format_string($entry->concept, true, ["escape" => false]);
     $entries = array($entry);
 
     $PAGE->set_title(implode(\moodle_page::TITLE_SEPARATOR, [

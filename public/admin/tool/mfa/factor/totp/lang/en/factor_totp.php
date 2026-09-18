@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Language strings.
+ * Strings for component 'factor_totp', language 'en'.
  *
  * @package     factor_totp
  * @subpackage  tool_mfa
@@ -51,6 +51,8 @@ $string['privacy:metadata'] = 'The Authenticator app factor plugin does not stor
 $string['replacefactor'] = 'Replace authenticator app';
 $string['replacefactorconfirmation'] = 'Replace \'{$a}\' authenticator app?';
 $string['revokefactorconfirmation'] = 'Remove \'{$a}\' authenticator app?';
+$string['settings:description'] = 'Users will need an authenticator app installed on their mobile devices to generate a code, which they must enter during login.';
+$string['settings:shortdescription'] = 'Require users to enter a code from an authenticator app on their devices during login.';
 $string['settings:totplink'] = 'Show mobile app setup link';
 $string['settings:totplink_help'] = 'If enabled the user will see a 3rd setup option with a direct otpauth:// link';
 $string['settings:window'] = 'TOTP verification window';
@@ -81,7 +83,3 @@ $string['summarycondition'] = 'using a TOTP app';
 $string['systimeformat'] = '%l:%M:%S %P %Z';
 $string['verificationcode'] = 'Enter your 6 digit verification code';
 $string['verificationcode_help'] = 'Open your authenticator app such as Google Authenticator and look for the 6 digit code which matches this site and username';
-
-// Deprecated since Moodle 4.4.
-$string['setupfactor:scanfail'] = 'Can\'t scan?';
-$string['setupfactor:scan'] = 'Scan QR code';

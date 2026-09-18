@@ -203,7 +203,7 @@ class mod_choice_renderer extends plugin_renderer_base {
                 $togglegroup = 'responses response-option-' . $optionid;
                 $selectalltext = get_string('selectalloption', 'choice', $headertitle);
                 $deselectalltext = get_string('deselectalloption', 'choice', $headertitle);
-                $mastercheckbox = new \core\output\checkbox_toggleall($togglegroup, true, [
+                $togglercheckbox = new \core\output\checkbox_toggleall($togglegroup, true, [
                     'id' => $selectallid,
                     'name' => $selectallid,
                     'value' => 1,
@@ -213,7 +213,7 @@ class mod_choice_renderer extends plugin_renderer_base {
                     'labelclasses' => 'accesshide',
                 ]);
 
-                $celltext .= html_writer::div($this->output->render($mastercheckbox));
+                $celltext .= html_writer::div($this->output->render($togglercheckbox));
             }
             $numberofuser = 0;
             if (!empty($options->user) && count($options->user) > 0) {
@@ -270,7 +270,7 @@ class mod_choice_renderer extends plugin_renderer_base {
                             }
 
                             $togglegroup = 'responses response-option-' . $optionid;
-                            $slavecheckbox = new \core\output\checkbox_toggleall($togglegroup, false, [
+                            $targetcheckbox = new \core\output\checkbox_toggleall($togglegroup, false, [
                                 'id' => $checkboxid,
                                 'name' => $checkboxname,
                                 'classes' => 'me-1',
@@ -278,7 +278,7 @@ class mod_choice_renderer extends plugin_renderer_base {
                                 'label' => $userfullname . ' ' . $options->text,
                                 'labelclasses' => 'accesshide',
                             ]);
-                            $checkbox = $this->output->render($slavecheckbox);
+                            $checkbox = $this->output->render($targetcheckbox);
                         }
                         $userimage = $this->output->user_picture($user, array('courseid' => $choices->courseid, 'link' => false));
                         $profileurl = new moodle_url('/user/view.php', array('id' => $user->id, 'course' => $choices->courseid));
@@ -296,7 +296,7 @@ class mod_choice_renderer extends plugin_renderer_base {
         $row = new html_table_row($columns);
         $table->data[] = $row;
 
-        $html .= html_writer::tag('div', html_writer::table($table), array('class'=>'response'));
+        $html .= html_writer::tag('div', html_writer::table($table), ['class' => 'response mb-3']);
 
         $actiondata = '';
         if ($choices->viewresponsecapability && $choices->deleterepsonsecapability) {

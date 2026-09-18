@@ -34,10 +34,10 @@ define('DEBUG_NONE', 0);
 define('DEBUG_MINIMAL', E_ERROR | E_PARSE);
 /** Errors, warnings and notices */
 define('DEBUG_NORMAL', E_ERROR | E_PARSE | E_WARNING | E_NOTICE);
-/** All problems except strict PHP warnings */
-define('DEBUG_ALL', E_ALL & ~E_STRICT);
-/** DEBUG_ALL with all debug messages and strict warnings */
-define('DEBUG_DEVELOPER', E_ALL | E_STRICT);
+/** All problems. Formerly, all problems, except the erstwhile strict PHP warnings before E_STRICT got deprecated. */
+define('DEBUG_ALL', E_ALL);
+/** Same as DEBUG_ALL since E_STRICT was deprecated. */
+define('DEBUG_DEVELOPER', E_ALL);
 
 /** Remove any memory limits */
 define('MEMORY_UNLIMITED', -1);
@@ -79,7 +79,7 @@ function get_whoops(): ?\Whoops\Run {
         return null;
     }
 
-    $composerautoload = "{$CFG->dirroot}/vendor/autoload.php";
+    $composerautoload = "{$CFG->dirroot}/../vendor/autoload.php";
     if (file_exists($composerautoload)) {
         require_once($composerautoload);
     }
@@ -390,15 +390,6 @@ function get_exception_info($ex): stdClass {
 }
 
 /**
- * @deprecated since Moodle 3.8 MDL-61038 - please do not use this function any more.
- * @see \core\uuid::generate()
- */
-function generate_uuid() {
-    throw new coding_exception('generate_uuid() cannot be used anymore. Please use ' .
-        '\core\uuid::generate() instead.');
-}
-
-/**
  * Returns the Moodle Docs URL in the users language for a given 'More help' link.
  *
  * There are three cases:
@@ -480,8 +471,8 @@ function get_docs_url($path = null) {
  * @return string formatted backtrace, ready for output.
  */
 function format_backtrace($callers, $plaintext = false) {
-    // do not use $CFG->dirroot because it might not be available in destructors
-    $dirroot = dirname(__DIR__);
+    // Do not use $CFG->dirroot because it might not be available in destructors.
+    $dirroot = dirname(__DIR__, 2);
 
     if (empty($callers)) {
         return '';
@@ -490,21 +481,25 @@ function format_backtrace($callers, $plaintext = false) {
     $from = $plaintext ? '' : '<ul style="text-align: left" data-rel="backtrace">';
     foreach ($callers as $caller) {
         if (!isset($caller['line'])) {
-            $caller['line'] = '?'; // probably call_user_func()
+            $caller['line'] = '?'; // Probably call_user_func().
         }
         if (!isset($caller['file'])) {
-            $caller['file'] = 'unknownfile'; // probably call_user_func()
+            $caller['file'] = 'unknownfile'; // Probably call_user_func().
         }
         $line = $plaintext ? '* ' : '<li>';
-        $line .= 'line ' . $caller['line'] . ' of ' . str_replace($dirroot, '', $caller['file']);
+        $line .= sprintf(
+            'line %d of %s',
+            $caller['line'],
+            str_replace($dirroot, '', $caller['file']),
+        );
         if (isset($caller['function'])) {
             $line .= ': call to ';
             if (isset($caller['class'])) {
                 $line .= $caller['class'] . $caller['type'];
             }
-            $line .= $caller['function'] . '()';
+            $line .= "{$caller['function']}()";
         } else if (isset($caller['exception'])) {
-            $line .= ': '.$caller['exception'].' thrown';
+            $line .= ": {$caller['exception']} thrown";
         }
 
         // Remove any non printable chars.
@@ -594,7 +589,11 @@ function initialise_local_config_cache() {
         copy($bootstrapsharedfile, $bootstraplocalfile);
     }
 
-    if (!empty($CFG->siteidentifier) && !file_exists($bootstrapsharedfile) && defined('SYSCONTEXTID')) {
+    if (
+        !empty($CFG->siteidentifier) &&
+        defined('SYSCONTEXTID') &&
+        !file_exists($bootstraplocalfile)
+    ) {
         $contents = "<?php
 // ********** This file is generated DO NOT EDIT **********
 \$CFG->siteidentifier = " . var_export($CFG->siteidentifier, true) . ";
@@ -605,15 +604,20 @@ if (\$CFG->bootstraphash === hash_local_config_cache() && !defined('SYSCONTEXTID
 }
 ";
 
-        // Create the central bootstrap first.
+        // Create the local cache first, in case the shared cache is not
+        // working then each local cache still works independently.
+        make_localcache_directory('', true);
+        $temp = $bootstraplocalfile . '.tmp' . uniqid();
+        file_put_contents($temp, $contents);
+        @chmod($temp, $CFG->filepermissions);
+        rename($temp, $bootstraplocalfile);
+
+        // Create the central bootstrap backup file.
         $temp = $bootstrapsharedfile . '.tmp' . uniqid();
         file_put_contents($temp, $contents);
         @chmod($temp, $CFG->filepermissions);
         rename($temp, $bootstrapsharedfile);
 
-        // Then prewarm the local cache as well.
-        make_localcache_directory('', true);
-        copy($bootstrapsharedfile, $bootstraplocalfile);
     }
 }
 
@@ -643,10 +647,10 @@ function hash_local_config_cache() {
 function initialise_fullme() {
     global $CFG, $FULLME, $ME, $SCRIPT, $FULLSCRIPT;
 
-    // Detect common config error.
-    if (substr($CFG->wwwroot, -1) == '/') {
-        throw new \moodle_exception('wwwrootslash', 'error');
-    }
+    $setuphelper = \core\di::get(\core\setup::class);
+
+    // Detect common config errors in the wwwroot.
+    $setuphelper->validate_wwwroot();
 
     if (CLI_SCRIPT) {
         initialise_fullme_cli();
@@ -769,14 +773,24 @@ function initialise_fullme_cli() {
     $topfile = realpath($topfile['file']);
     $dirroot = realpath($CFG->dirroot);
 
-    if (strpos($topfile, $dirroot) !== 0) {
-        // Probably some weird external script
-        $SCRIPT = $FULLSCRIPT = $FULLME = $ME = null;
-    } else {
+    if (strpos($topfile, $dirroot) === 0) {
+        // Normal case: Script is under dirroot (e.g., public/course/view.php).
         $relativefile = substr($topfile, strlen($dirroot));
-        $relativefile = str_replace('\\', '/', $relativefile); // Win fix
+        $relativefile = str_replace('\\', '/', $relativefile); // Win fix.
         $SCRIPT = $FULLSCRIPT = $relativefile;
         $FULLME = $ME = null;
+    } else {
+        // Moodle 5.1+ structure: Admin CLI scripts are in parent directory of dirroot.
+        $root = dirname($dirroot);
+        if (strpos($topfile, $root) === 0) {
+            $relativefile = substr($topfile, strlen($root));
+            $relativefile = str_replace('\\', '/', $relativefile); // Win fix.
+            $SCRIPT = $FULLSCRIPT = $relativefile;
+            $FULLME = $ME = null;
+        } else {
+            // Probably some weird external script.
+            $SCRIPT = $FULLSCRIPT = $FULLME = $ME = null;
+        }
     }
 }
 
@@ -846,41 +860,14 @@ function setup_get_remote_url() {
         }
         $_SERVER['REQUEST_URI'] = $rurl['fullpath']; // extra IIS compatibility
 
-/* NOTE: following servers are not fully tested! */
-
-    } else if (stripos($_SERVER['SERVER_SOFTWARE'], 'lighttpd') !== false) {
-        //lighttpd - not officially supported
-        $rurl['fullpath'] = $_SERVER['REQUEST_URI']; // TODO: verify this is always properly encoded
-
     } else if (stripos($_SERVER['SERVER_SOFTWARE'], 'nginx') !== false) {
-        //nginx - not officially supported
         if (!isset($_SERVER['SCRIPT_NAME'])) {
             die('Invalid server configuration detected, please try to add "fastcgi_param SCRIPT_NAME $fastcgi_script_name;" to the nginx server configuration.');
         }
-        $rurl['fullpath'] = $_SERVER['REQUEST_URI']; // TODO: verify this is always properly encoded
-
-     } else if (stripos($_SERVER['SERVER_SOFTWARE'], 'cherokee') !== false) {
-         //cherokee - not officially supported
-         $rurl['fullpath'] = $_SERVER['REQUEST_URI']; // TODO: verify this is always properly encoded
-
-     } else if (stripos($_SERVER['SERVER_SOFTWARE'], 'zeus') !== false) {
-         //zeus - not officially supported
-         $rurl['fullpath'] = $_SERVER['REQUEST_URI']; // TODO: verify this is always properly encoded
-
-    } else if (stripos($_SERVER['SERVER_SOFTWARE'], 'LiteSpeed') !== false) {
-        //LiteSpeed - not officially supported
-        $rurl['fullpath'] = $_SERVER['REQUEST_URI']; // TODO: verify this is always properly encoded
-
-    } else if ($_SERVER['SERVER_SOFTWARE'] === 'HTTPD') {
-        //obscure name found on some servers - this is definitely not supported
-        $rurl['fullpath'] = $_SERVER['REQUEST_URI']; // TODO: verify this is always properly encoded
-
-    } else if (strpos($_SERVER['SERVER_SOFTWARE'], 'PHP') === 0) {
-        // built-in PHP Development Server
         $rurl['fullpath'] = $_SERVER['REQUEST_URI'];
-
     } else {
-        throw new moodle_exception('unsupportedwebserver', 'error', '', $_SERVER['SERVER_SOFTWARE']);
+        // Any other servers we can assume will pass the request_uri normally.
+        $rurl['fullpath'] = $_SERVER['REQUEST_URI'];
     }
 
     // sanitize the url a bit more, the encoding style may be different in vars above

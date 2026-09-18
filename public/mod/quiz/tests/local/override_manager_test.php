@@ -225,7 +225,7 @@ final class override_manager_test extends \advanced_testcase {
                     'password' => 'test',
                 ],
                 'expectedrecordscreated' => 1,
-                'expectedevent' => user_override_created::class,
+                'expectedeventclass' => user_override_created::class,
             ],
             'create user override - no calendar events should be created' => [
                 'existingdata' => [],
@@ -239,7 +239,7 @@ final class override_manager_test extends \advanced_testcase {
                     'password' => 'test',
                 ],
                 'expectedrecordscreated' => 1,
-                'expectedevent' => user_override_created::class,
+                'expectedeventclass' => user_override_created::class,
             ],
             'create user override - only timeopen' => [
                 'existingdata' => [],
@@ -253,7 +253,53 @@ final class override_manager_test extends \advanced_testcase {
                     'password' => 'test',
                 ],
                 'expectedrecordscreated' => 1,
-                'expectedevent' => user_override_created::class,
+                'expectedeventclass' => user_override_created::class,
+            ],
+            'update user override - unlimited timelimit' => [
+                'existingdata' => [
+                    'userid' => ':userid',
+                    'groupid' => null,
+                    'timeopen' => null,
+                    'timeclose' => null,
+                    'timelimit' => 2,
+                    'attempts' => null,
+                    'password' => null,
+                ],
+                'formdata' => [
+                    'id' => ':existingid',
+                    'userid' => ':userid',
+                    'groupid' => null,
+                    'timeopen' => null,
+                    'timeclose' => null,
+                    'timelimit' => 0,
+                    'attempts' => null,
+                    'password' => null,
+                ],
+                'expectedrecordscreated' => 0,
+                'expectedeventclass' => user_override_updated::class,
+            ],
+            'update user override - disabled open and close dates' => [
+                'existingdata' => [
+                    'userid' => ':userid',
+                    'groupid' => null,
+                    'timeopen' => 50,
+                    'timeclose' => 51,
+                    'timelimit' => null,
+                    'attempts' => null,
+                    'password' => null,
+                ],
+                'formdata' => [
+                    'id' => ':existingid',
+                    'userid' => ':userid',
+                    'groupid' => null,
+                    'timeopen' => 0,
+                    'timeclose' => 0,
+                    'timelimit' => null,
+                    'attempts' => null,
+                    'password' => null,
+                ],
+                'expectedrecordscreated' => 0,
+                'expectedeventclass' => user_override_updated::class,
             ],
             'create group override - no existing data' => [
                 'existingdata' => [],
@@ -267,7 +313,7 @@ final class override_manager_test extends \advanced_testcase {
                     'password' => 'test',
                 ],
                 'expectedrecordscreated' => 1,
-                'expectedevent' => group_override_created::class,
+                'expectedeventclass' => group_override_created::class,
             ],
             'create group override - no calendar events should be created' => [
                 'existingdata' => [],
@@ -281,7 +327,7 @@ final class override_manager_test extends \advanced_testcase {
                     'password' => 'test',
                 ],
                 'expectedrecordscreated' => 1,
-                'expectedevent' => group_override_created::class,
+                'expectedeventclass' => group_override_created::class,
             ],
             'create group override - only timeopen' => [
                 'existingdata' => [],
@@ -295,7 +341,53 @@ final class override_manager_test extends \advanced_testcase {
                     'password' => null,
                 ],
                 'expectedrecordscreated' => 1,
-                'expectedevent' => group_override_created::class,
+                'expectedeventclass' => group_override_created::class,
+            ],
+            'update group override - unlimited timelimit' => [
+                'existingdata' => [
+                    'userid' => null,
+                    'groupid' => ':groupid',
+                    'timeopen' => null,
+                    'timeclose' => null,
+                    'timelimit' => 2,
+                    'attempts' => null,
+                    'password' => null,
+                ],
+                'formdata' => [
+                    'id' => ':existingid',
+                    'userid' => null,
+                    'groupid' => ':groupid',
+                    'timeopen' => null,
+                    'timeclose' => null,
+                    'timelimit' => 0,
+                    'attempts' => null,
+                    'password' => null,
+                ],
+                'expectedrecordscreated' => 0,
+                'expectedeventclass' => group_override_updated::class,
+            ],
+            'update group override - disabled open and close dates' => [
+                'existingdata' => [
+                    'userid' => null,
+                    'groupid' => ':groupid',
+                    'timeopen' => 50,
+                    'timeclose' => 51,
+                    'timelimit' => null,
+                    'attempts' => null,
+                    'password' => null,
+                ],
+                'formdata' => [
+                    'id' => ':existingid',
+                    'userid' => null,
+                    'groupid' => ':groupid',
+                    'timeopen' => 0,
+                    'timeclose' => 0,
+                    'timelimit' => null,
+                    'attempts' => null,
+                    'password' => null,
+                ],
+                'expectedrecordscreated' => 0,
+                'expectedeventclass' => group_override_updated::class,
             ],
             'update user override - updating existing data' => [
                 'existingdata' => [
@@ -318,7 +410,7 @@ final class override_manager_test extends \advanced_testcase {
                     'password' => 'test',
                 ],
                 'expectedrecordscreated' => 0,
-                'expectedevent' => user_override_updated::class,
+                'expectedeventclass' => user_override_updated::class,
             ],
             'update group override - updating existing data' => [
                 'existingdata' => [
@@ -341,7 +433,7 @@ final class override_manager_test extends \advanced_testcase {
                     'password' => 'test',
                 ],
                 'expectedrecordscreated' => 0,
-                'expectedevent' => group_override_updated::class,
+                'expectedeventclass' => group_override_updated::class,
             ],
             'attempts is set to unlimited (i.e. 0)' => [
                 'existingdata' => [],
@@ -356,7 +448,7 @@ final class override_manager_test extends \advanced_testcase {
                     'password' => null,
                 ],
                 'expectedrecordscreated' => 1,
-                'expectedevent' => user_override_created::class,
+                'expectedeventclass' => user_override_created::class,
             ],
             'some settings submitted are the same as what is in the quiz (valid)' => [
                 'existingdata' => [],
@@ -372,7 +464,7 @@ final class override_manager_test extends \advanced_testcase {
                     'password' => null,
                 ],
                 'expectedrecordscreated' => 1,
-                'expectedevent' => user_override_created::class,
+                'expectedeventclass' => user_override_created::class,
             ],
         ];
     }
@@ -641,6 +733,22 @@ final class override_manager_test extends \advanced_testcase {
                     'general' => get_string('nooverridedata', 'quiz'),
                 ],
             ],
+            'empty password results in no override' => [
+                'existingdata' => [],
+                'formdata' => [
+                    'userid' => ':userid',
+                    'groupid' => null,
+                    'timeopen' => null,
+                    'timeclose' => null,
+                    'timelimit' => null,
+                    'attempts' => null,
+                    // Empty string is normalised to null.
+                    'password' => '',
+                ],
+                'expectedreturn' => [
+                    'general' => get_string('nooverridedata', 'quiz'),
+                ],
+            ],
             'all submitted data was the same as the existing quiz' => [
                 'existingdata' => [],
                 'formdata' => [
@@ -900,31 +1008,31 @@ final class override_manager_test extends \advanced_testcase {
     public static function delete_override_provider(): array {
         return [
             'delete by id (no events logged)' => [
-                'function' => fn($manager, $override) => $manager->delete_overrides_by_id([$override->id], false, false),
+                'deletefunction' => fn($manager, $override) => $manager->delete_overrides_by_id([$override->id], false, false),
                 'checkeventslogged' => false,
             ],
             'delete single (no events logged)' => [
-                'function' => fn($manager, $override) => $manager->delete_overrides([$override], false, false),
+                'deletefunction' => fn($manager, $override) => $manager->delete_overrides([$override], false, false),
                 'checkeventslogged' => false,
             ],
             'delete all (no events logged)' => [
-                'function' => fn($manager, $override) => $manager->delete_all_overrides(false, false),
+                'deletefunction' => fn($manager, $override) => $manager->delete_all_overrides(false, false),
                 'checkeventslogged' => false,
             ],
             'delete by id (events logged)' => [
-                'function' => fn($manager, $override) => $manager->delete_overrides_by_id([$override->id], true, false),
+                'deletefunction' => fn($manager, $override) => $manager->delete_overrides_by_id([$override->id], true, false),
                 'checkeventslogged' => true,
             ],
             'delete single (events logged)' => [
-                'function' => fn($manager, $override) => $manager->delete_overrides([$override], true, false),
+                'deletefunction' => fn($manager, $override) => $manager->delete_overrides([$override], true, false),
                 'checkeventslogged' => true,
             ],
             'delete all (events logged)' => [
-                'function' => fn($manager, $override) => $manager->delete_all_overrides(true, false),
+                'deletefunction' => fn($manager, $override) => $manager->delete_all_overrides(true, false),
                 'checkeventslogged' => true,
             ],
             'delete all in database (events logged)' => [
-                'function' => fn($manager, $override) => $manager->delete_all_overrides(true, false),
+                'deletefunction' => fn($manager, $override) => $manager->delete_all_overrides(true, false),
                 'checkeventslogged' => true,
             ],
         ];

@@ -16,7 +16,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Strings for component 'glossary', language 'en', branch 'MOODLE_20_STABLE'
+ * Strings for component 'mod_glossary', language 'en', branch 'MOODLE_20_STABLE'
  *
  * @package mod_glossary
  * @copyright 1999 onwards Martin Dougiamas  {@link http://moodle.com}
@@ -240,6 +240,7 @@ $string['linkcategory_help'] = 'If glossary auto-linking has been enabled and th
 $string['linking'] = 'Auto-linking';
 $string['mainglossary'] = 'Main glossary';
 $string['maxtimehaspassed'] = 'Sorry, but the maximum time for editing this comment ({$a}) has passed!';
+$string['myentries'] = 'My entries';
 $string['modulename'] = 'Glossary';
 $string['modulename_help'] = 'The glossary activity module enables participants to create and maintain a list of definitions, like a dictionary, or to collect and organise resources or information.
 
@@ -274,6 +275,7 @@ $string['notcategorised'] = 'Not categorised';
 $string['notapproved'] = 'glossary entry is not approved yet.';
 $string['entrynotapproved'] = 'Entry not approved';
 $string['numberofentries'] = 'Number of entries';
+$string['numberofentriesneedapprove'] = 'Needs approving';
 $string['onebyline'] = '(one per line)';
 $string['page-mod-glossary-x'] = 'Any glossary module page';
 $string['page-mod-glossary-edit'] = 'Glossary add/edit entry page';
@@ -314,6 +316,7 @@ $string['search:activity'] = 'Glossary - activity information';
 $string['search:entry'] = 'Glossary - entries';
 $string['searchindefinition'] = 'Search full text';
 $string['secondaryglossary'] = 'Secondary glossary';
+$string['seeallentries'] = 'See all entries';
 $string['showall'] = 'Show \'ALL\' link';
 $string['showall_help'] = 'If enabled, participants can browse all entries at once.';
 $string['showalphabet'] = 'Show alphabet links';
@@ -337,9 +340,6 @@ $string['withauthor'] = 'Concepts with author';
 $string['withoutauthor'] = 'Concepts without author';
 $string['writtenby'] = 'by';
 $string['youarenottheauthor'] = 'You are not the author of this comment, so you are not allowed to edit it.';
-
-// Deprecated since 4.3.
-$string['completionentriesgroup'] = 'Require entries';
 
 // Deprecated since 4.5.
 $string['tagsdeleted'] = 'Glossary tags have been deleted';

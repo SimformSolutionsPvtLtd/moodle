@@ -35,6 +35,8 @@ $group       = optional_param('group', 0, PARAM_INT); // Group to display.
 $user        = optional_param('user', 0, PARAM_INT); // User to display.
 $date        = optional_param('date', 0, PARAM_INT); // Date to display.
 $modid       = optional_param('modid', 0, PARAM_ALPHANUMEXT); // Module id or 'site_errors'.
+$isactivitypage = optional_param('isactivitypage', false, PARAM_BOOL); // Is this a course module page?
+$iscoursepage = optional_param('iscoursepage', false, PARAM_BOOL); // Is this a course report page?
 $modaction   = optional_param('modaction', '', PARAM_ALPHAEXT); // An action as recorded in the logs.
 $page        = optional_param('page', '0', PARAM_INT);     // Which page to show.
 $perpage     = optional_param('perpage', '100', PARAM_INT); // How many per page.
@@ -99,6 +101,18 @@ $url = new moodle_url("/report/log/index.php", $params);
 $PAGE->set_url('/report/log/index.php', array('id' => $id));
 $PAGE->set_pagelayout('report');
 
+$cminfo = null;
+if (!is_number($modid)) {
+    $isactivitypage = false;
+}
+if ($isactivitypage) {
+    $modinfo = get_fast_modinfo($id);
+    $cminfo = $modinfo->cms[intval($modid)] ?? null;
+    if ($cminfo === null) {
+        throw new moodle_exception('invalidmoduleid', '', '', $modid);
+    }
+}
+
 // Get course details.
 $sitecoursefilter = 0;
 if ($id != $SITE->id) {
@@ -106,6 +120,10 @@ if ($id != $SITE->id) {
     if ($course) {
         require_login($course);
         $context = context_course::instance($course->id);
+        if ($cminfo !== null) {
+            $context = $cminfo->context;
+            $PAGE->set_cm($cminfo);
+        }
     } else {
         // Missing courses may have be deleted, so display them in site context.
         $sitecoursefilter = $id;
@@ -149,7 +167,11 @@ if ($course->id == $SITE->id) {
     $PAGE->set_title($strlogs);
     $PAGE->set_primary_active_tab('siteadminnode');
 } else {
-    $PAGE->set_title($course->shortname .': '. $strlogs);
+    $contexttitle = $course->shortname . ': ';
+    if ($cminfo !== null) {
+        $contexttitle .= $cminfo->name . ' - ';
+    }
+    $PAGE->set_title($contexttitle . $strlogs);
     $PAGE->set_heading($course->fullname);
 }
 
@@ -161,8 +183,29 @@ if (!report_helper::has_valid_group($context)) {
     exit();
 }
 
-$reportlog = new report_log_renderable($logreader, $course, $user, $modid, $modaction, $group, $edulevel, $showcourses, $showusers,
-        $chooselog, true, $url, $date, $logformat, $page, $perpage, 'timecreated DESC', $origin, $sitecoursefilter);
+$reportlog = new report_log_renderable(
+    logreader: $logreader,
+    course: $course,
+    userid: $user,
+    modid: $modid,
+    action: $modaction,
+    groupid: $group,
+    edulevel: $edulevel,
+    showcourses: $showcourses,
+    showusers: $showusers,
+    showreport: $chooselog,
+    showselectorform: true,
+    url: $url,
+    date: $date,
+    logformat: $logformat,
+    page: $page,
+    perpage: $perpage,
+    order: 'timecreated DESC',
+    origin: $origin,
+    isactivitypage: $isactivitypage,
+    iscoursepage: ($iscoursepage || $isactivitypage),
+    sitecoursefilter: $sitecoursefilter,
+);
 
 $readers = $reportlog->get_readers();
 if (empty($readers)) {
@@ -177,7 +220,9 @@ if (empty($readers)) {
             echo $output->header();
             // Print selector dropdown.
             $pluginname = get_string('pluginname', 'report_log');
-            report_helper::print_report_selector($pluginname);
+            if (!$isactivitypage) {
+                report_helper::print_report_selector($pluginname);
+            }
             $userinfo = get_string('allparticipants');
             $dateinfo = get_string('alldays');
 
@@ -201,7 +246,9 @@ if (empty($readers)) {
         echo $output->header();
         // Print selector dropdown.
         $pluginname = get_string('pluginname', 'report_log');
-        report_helper::print_report_selector($pluginname);
+        if (!$isactivitypage) {
+            report_helper::print_report_selector($pluginname);
+        }
         echo $output->heading(get_string('chooselogs') .':', 3);
         echo $output->render($reportlog);
     }

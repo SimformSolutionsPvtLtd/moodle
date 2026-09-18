@@ -98,7 +98,7 @@ class activity_navigation implements renderable, templatable {
         // Render the activity list dropdown menu if available.
         if (!empty($activitylist)) {
             $select = new url_select($activitylist, '', ['' => get_string('activitynavigation:jumptoactivity', 'course')]);
-            $select->set_label(get_string('activitynavigation:jumptoactivity', 'course'), ['class' => 'sr-only']);
+            $select->set_label(get_string('activitynavigation:jumptoactivity', 'course'), ['class' => 'visually-hidden']);
             $select->attributes = ['id' => 'jump-to-activity'];
             $this->activitylist = $select;
         }

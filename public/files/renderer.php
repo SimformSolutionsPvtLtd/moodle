@@ -114,10 +114,15 @@ class core_files_renderer extends plugin_renderer_base {
                 array('unknownoriginal', 'repository'), array('confirmdeletefolder', 'repository'),
                 array('confirmdeletefilewithhref', 'repository'), array('confirmrenamefolder', 'repository'),
                 array('confirmrenamefile', 'repository'), array('newfolder', 'repository'), array('edit', 'moodle'),
-                array('originalextensionchange', 'repository'), array('originalextensionremove', 'repository'),
+                ['edita', 'moodle'],
+                ['originalextensionremove', 'repository'],
                 array('aliaseschange', 'repository'), ['nofilesselected', 'repository'],
                 ['confirmdeleteselectedfile', 'repository'], ['selectall', 'moodle'], ['deselectall', 'moodle'],
                 ['selectallornone', 'form'],
+                ['updateinvalidfiletype', 'repository'],
+                ['updatefileextensiontitle', 'repository'],
+                ['originalextensionchange', 'repository'],
+                ['invalidfiletypetitle', 'repository'],
             )
         );
         if ($this->page->requires->should_create_one_time_item_now('core_file_managertemplate')) {
@@ -176,7 +181,7 @@ class core_files_renderer extends plugin_renderer_base {
         <div class="fp-filename text-truncate"></div>
     </div>
     </a>
-    <a class="fp-contextmenu btn btn-icon btn-light border icon-no-margin icon-size-3" href="#">
+    <a class="fp-contextmenu btn btn-icon btn-light border" href="#">
         <span>'.$this->pix_icon('i/menu', '▶').'</span></a>
 </div>';
         return $rv;

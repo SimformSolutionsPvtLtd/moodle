@@ -53,19 +53,9 @@ class validation_middleware implements MiddlewareInterface {
 
     #[\Override]
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface {
-        try {
-            $request = $this->requestvalidator->validate_request($request);
-        } catch (\Exception $e) {
-            return $this->responsehandler->get_response_from_exception($request, $e);
-        }
-
+        $request = $this->requestvalidator->validate_request($request);
         $response = $handler->handle($request);
-
-        try {
-            $this->responsevalidator->validate_response($request, $response);
-        } catch (\Exception $e) {
-            return $this->responsehandler->get_response_from_exception($request, $e);
-        }
+        $this->responsevalidator->validate_response($request, $response);
 
         return $response;
     }

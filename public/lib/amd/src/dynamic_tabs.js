@@ -21,74 +21,81 @@
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import $ from 'jquery';
-import Templates from 'core/templates';
+import {processCollectedJavascript} from 'core/fragment';
 import {addIconToContainer} from 'core/loadingicon';
 import Notification from 'core/notification';
 import {prependPageTitle} from 'core/page_title';
 import Pending from 'core/pending';
-import {getStrings} from 'core/str';
+import {getString} from 'core/str';
+import Templates from 'core/templates';
 import {getContent} from 'core/local/repository/dynamic_tabs';
 import {isAnyWatchedFormDirty, resetAllFormDirtyStates} from 'core_form/changechecker';
 
 const SELECTORS = {
     dynamicTabs: '.dynamictabs',
     activeTab: '.dynamictabs .nav-link.active',
-    allActiveTabs: '.dynamictabs .nav-link[data-toggle="tab"]:not(.disabled)',
+    allActiveTabs: '.dynamictabs .nav-link[data-bs-toggle="tab"]:not(.disabled)',
     tabContent: '.dynamictabs .tab-pane [data-tab-content]',
-    tabToggle: 'a[data-toggle="tab"]',
+    tabToggle: 'a[data-bs-toggle="tab"]',
     tabPane: '.dynamictabs .tab-pane',
 };
 
 SELECTORS.forTabName = tabName => `.dynamictabs [data-tab-content="${tabName}"]`;
-SELECTORS.forTabId = tabName => `.dynamictabs [data-toggle="tab"][href="#${tabName}"]`;
+SELECTORS.forTabId = tabName => `.dynamictabs [data-bs-toggle="tab"][href="#${tabName}"]`;
+
+let watchedFormDirtyNotification = false;
 
 /**
  * Initialises the tabs view on the page (only one tabs view per page is supported)
  */
 export const init = () => {
-    const tabToggle = $(SELECTORS.tabToggle);
+    const tabToggles = document.querySelectorAll(SELECTORS.tabToggle);
+    tabToggles.forEach(tabToggle => {
+        // Listen to click, warn user if they are navigating away with unsaved form changes.
+        tabToggle.addEventListener('show.bs.tab', (event) => {
+            if (isAnyWatchedFormDirty()) {
+                event.preventDefault();
+                event.stopPropagation();
 
-    // Listen to click, warn user if they are navigating away with unsaved form changes.
-    tabToggle.on('click', (event) => {
-        if (!isAnyWatchedFormDirty()) {
-            return;
-        }
+                // Prevent double execution of event listener.
+                if (!watchedFormDirtyNotification) {
+                    watchedFormDirtyNotification = true;
 
-        event.preventDefault();
-        event.stopPropagation();
+                    Notification.saveCancelPromise(
+                        getString('changesmade'),
+                        getString('changesmadereallygoaway'),
+                        getString('confirm'),
+                        {triggerElement: tabToggle}
+                    ).then(() => {
+                        // Reset form dirty state on confirmation, re-trigger the event.
+                        resetAllFormDirtyStates();
+                        tabToggle.dispatchEvent(new Event('click', {bubbles: true}));
+                        return;
+                    }).catch(() => {
+                        // User cancelled the dialogue.
+                    }).finally(() => {
+                        watchedFormDirtyNotification = false;
+                    });
+                }
 
-        getStrings([
-            {key: 'changesmade', component: 'moodle'},
-            {key: 'changesmadereallygoaway', component: 'moodle'},
-            {key: 'confirm', component: 'moodle'},
-        ]).then(([strChangesMade, strChangesMadeReally, strConfirm]) =>
-            // Reset form dirty state on confirmation, re-trigger the event.
-            Notification.confirm(strChangesMade, strChangesMadeReally, strConfirm, null, () => {
-                resetAllFormDirtyStates();
-                $(event.target).trigger(event.type);
-            })
-        ).catch(Notification.exception);
-    });
+                return;
+            }
 
-    // This code listens to Bootstrap events 'show.bs.tab' and 'shown.bs.tab' which is triggered using JQuery and
-    // can not be converted yet to native events.
-    tabToggle
-        .on('show.bs.tab', function() {
             // Clean content from previous tab.
             const previousTabName = getActiveTabName();
             if (previousTabName) {
                 const previousTab = document.querySelector(SELECTORS.forTabName(previousTabName));
                 previousTab.textContent = '';
             }
-        })
-        .on('shown.bs.tab', function() {
-            const tab = $($(this).attr('href'));
-            if (tab.length !== 1) {
-                return;
-            }
-            loadTab(tab.attr('id'));
         });
+
+        tabToggle.addEventListener('shown.bs.tab', () => {
+            const tabPane = document.getElementById(tabToggle.getAttribute('href').replace(/^#/, ''));
+            if (tabPane) {
+                loadTab(tabPane.id);
+            }
+        });
+    });
 
     if (!openTabFromHash()) {
         const tabs = document.querySelector(SELECTORS.allActiveTabs);
@@ -151,7 +158,7 @@ const loadTab = (tabName) => {
         return getContent(tab.dataset.tabClass, JSON.stringify(tabArgs));
     })
     .then(response => Promise.all([
-        $.parseHTML(response.javascript, null, true).map(node => node.innerHTML).join("\n"),
+        processCollectedJavascript(response.javascript),
         Templates.renderForPromise(response.template, JSON.parse(response.content)),
     ]))
     .then(([responseJs, {html, js}]) => Templates.replaceNodeContents(tab, html, js + responseJs))

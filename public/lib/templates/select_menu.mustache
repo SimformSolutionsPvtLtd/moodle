@@ -27,6 +27,7 @@
     * labelattributes - Label attributes.
     * selectedoption - Text of the selected option
     * options - Array of options for the select with value, name, selected, isgroup and id properites.
+    * disableactive - A flag indicating whether the active state should be disabled in the dropdown.
 
     Example context (json):
     {
@@ -34,10 +35,11 @@
         "value": "opt2",
         "baseid": "select-menu56789",
         "label": "Select one option",
+        "headinglevel": "2",
         "labelattributes": [
             {
                 "name": "class",
-                "value": "font-weight-bold"
+                "value": "fw-bold"
             }
         ],
         "selectedoption": "Second option",
@@ -81,7 +83,8 @@
                 "id": "select-menu-option5",
                 "selected": false
             }
-        ]
+        ],
+        "disableactive": false
     }
 }}
 <div class="dropdown select-menu" id="{{baseid}}">
@@ -89,9 +92,9 @@
         <span id="{{baseid}}-label"{{#labelattributes}} {{name}}="{{value}}"{{/labelattributes}}>{{label}}</span>
     {{/inlinelabel}}{{/label}}
     <div
-        class="btn dropdown-toggle{{#inlinelabel}} d-flex text-left align-items-center p-0{{/inlinelabel}}"
+        class="btn dropdown-toggle{{#inlinelabel}} d-flex text-start align-items-center p-0{{/inlinelabel}}"
         role="combobox"
-        data-toggle="dropdown"
+        data-bs-toggle="dropdown"
         {{#label}}aria-labelledby="{{baseid}}-label"{{/label}}
         aria-haspopup="listbox"
         aria-expanded="false"
@@ -100,17 +103,33 @@
         tabindex="0"
     >
         {{#inlinelabel}}
-            <div class="pr-3 text-truncate">
+            <div
+                class="pe-3 text-truncate"
+                {{#headinglevel}}
+                role="heading"
+                aria-level="{{headinglevel}}"
+                {{/headinglevel}}
+            >
                 {{#label}}
                     <span class="d-block m-0 small" id="{{baseid}}-label"{{#labelattributes}} {{name}}="{{value}}"{{/labelattributes}}>{{label}}</span>
                 {{/label}}
-                <span class="font-weight-bold" data-selected-option>
+                <span class="fw-bold" data-selected-option>
                     {{selectedoption}}
                 </span>
             </div>
         {{/inlinelabel}}
         {{^inlinelabel}}
-            {{selectedoption}}
+            {{#headinglevel}}
+                <span
+                    role="heading"
+                    aria-level="{{headinglevel}}"
+                >
+                    {{selectedoption}}
+                </span>
+            {{/headinglevel}}
+            {{^headinglevel}}
+                {{selectedoption}}
+            {{/headinglevel}}
         {{/inlinelabel}}
     </div>
     <ul class="dropdown-menu" role="listbox" id="{{baseid}}-listbox" {{#label}}aria-labelledby="{{baseid}}-label"{{/label}}>
@@ -124,7 +143,9 @@
                                 <li role="separator" class="dropdown-divider"></li>
                             {{/isdivider}}
                             {{^isdivider}}
-                                <li class="dropdown-item" role="option" id="{{id}}" data-value="{{value}}" {{#selected}}aria-selected="true"{{/selected}}>
+                                <li class="dropdown-item" role="option" id="{{id}}" data-value="{{value}}"
+                                {{#disableactive}}data-disableactive="true"{{/disableactive}}
+                                {{#selected}}aria-selected="true"{{/selected}}>
                                     {{name}}
                                 </li>
                             {{/isdivider}}
@@ -137,7 +158,9 @@
                     <li role="separator" class="dropdown-divider"></li>
                 {{/isdivider}}
                 {{^isdivider}}
-                    <li class="dropdown-item" role="option" id="{{id}}" data-value="{{value}}" {{#selected}}aria-selected="true"{{/selected}}>
+                    <li class="dropdown-item" role="option" id="{{id}}" data-value="{{value}}"
+                    {{#disableactive}}data-disableactive="true"{{/disableactive}}
+                    {{#selected}}aria-selected="true"{{/selected}}>
                         {{name}}
                     </li>
                 {{/isdivider}}

@@ -67,7 +67,7 @@ class report_log_table_log extends table_sql {
     public function __construct($uniqueid, $filterparams = null) {
         parent::__construct($uniqueid);
 
-        $this->set_attribute('class', 'reportlog generaltable generalbox table-sm');
+        $this->set_attribute('class', 'reportlog generaltable table table-sm');
         $this->filterparams = $filterparams;
         // Add course column if logs are displayed for site.
         $cols = array();
@@ -94,15 +94,6 @@ class report_log_table_log extends table_sql {
         $this->collapsible(false);
         $this->sortable(false);
         $this->pageable(true);
-    }
-
-    /**
-     * Generate the course column.
-     *
-     * @deprecated since Moodle 2.9 MDL-48595 - please do not use this function any more.
-     */
-    public function col_course($event) {
-        throw new coding_exception('col_course() can not be used any more, there is no such column.');
     }
 
     /**
@@ -534,17 +525,5 @@ class report_log_table_log extends table_sql {
         if ($useinitialsbar && !$this->is_downloading()) {
             $this->initialbars($total > $pagesize);
         }
-    }
-
-    /**
-     * Helper function to create list of course shortname and user fullname shown in log report.
-     *
-     * This will update $this->userfullnames and $this->courseshortnames array with userfullname and courseshortname (with link),
-     * which will be used to render logs in table.
-     *
-     * @deprecated since Moodle 2.9 MDL-48595 - please do not use this function any more.
-     */
-    public function update_users_and_courses_used() {
-        throw new coding_exception('update_users_and_courses_used() can not be used any more.');
     }
 }

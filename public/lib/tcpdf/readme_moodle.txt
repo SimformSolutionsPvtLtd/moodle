@@ -1,8 +1,7 @@
 Description of TCPDF library import
 ===================================
 * download library from https://github.com/tecnickcom/TCPDF/tags
-* delete examples/, tools/ VERSION and tcpdf_import.php
-* remove tcpdf_import.php from composer.json
+* delete tools/ and VERSION
 * remove all fonts that were not already present
 * visit http://127.0.0.1/lib/tests/other/pdflibtestpage.php and view the pdf
 * modify getTCPDFProducer lib/tcpdf/include/tcpdf_static.php to remove the version number
@@ -14,6 +13,11 @@ Important
 ---------
 A new version of the libray is being developed @ https://github.com/tecnickcom/tc-lib-pdf . Check periodically when it's ready
 and if it's a drop-in replacement for the legacy tcpdf one.
+
+2025/02/04
+----------
+Upgrade to tcpdf TCPDF 6.8.2 (MDL-84354)
+by Stevani Andolo <stevani@hotmail.com.au>
 
 2024/06/16
 ----------

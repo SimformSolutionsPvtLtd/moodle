@@ -37,8 +37,8 @@
         { "label": "Another item label with <strong>tags</strong>", "value": "4" }
     ], "noSelectionString": "No selection" }
 }}
-<span class="sr-only" id="{{selectionId}}-label">{{#str}}selecteditems, form{{/str}}</span>
-<div id="{{selectionId}}-announcer" aria-live="polite" role="status" class="sr-only"></div>
+<span class="visually-hidden" id="{{selectionId}}-label">{{#str}}selecteditems, form{{/str}}</span>
+<div id="{{selectionId}}-announcer" aria-live="polite" role="status" class="visually-hidden"></div>
 <div{{!
     }} class="form-autocomplete-selection w-100 {{#multiple}}form-autocomplete-multiple{{/multiple}}"{{!
     }} id="{{selectionId}}"{{!

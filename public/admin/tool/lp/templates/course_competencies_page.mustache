@@ -83,7 +83,7 @@
 {{> tool_lp/course_competency_statistics }}
 {{/statistics}}
 <div data-region="coursecompetencies">
-<table class="generaltable fullwidth managecompetencies">
+<table class="table generaltable fullwidth managecompetencies">
 <tbody class="drag-parentnode">
 {{#competencies}}
     <tr class="drag-samenode" data-id="{{competency.id}}">
@@ -117,7 +117,7 @@
         <div data-region="coursecompetency-ruleoutcome">
             <label>
                 {{#str}}uponcoursecompletion, tool_lp{{/str}}
-                <select data-field="ruleoutcome" data-id="{{coursecompetency.id}}" class="custom-select">
+                <select data-field="ruleoutcome" data-id="{{coursecompetency.id}}" class="form-select">
                   {{#ruleoutcomeoptions}}
                      <option value="{{value}}" {{#selected}}selected{{/selected}}>{{text}}</option>
                   {{/ruleoutcomeoptions}}

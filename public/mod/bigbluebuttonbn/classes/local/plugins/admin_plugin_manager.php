@@ -22,6 +22,7 @@ use core_plugin_manager;
 use flexible_table;
 use html_writer;
 use mod_bigbluebuttonbn\extension;
+use mod_bigbluebuttonbn\plugininfo\bbbext;
 use moodle_url;
 use pix_icon;
 
@@ -107,11 +108,12 @@ class admin_plugin_manager {
             get_string('uninstallplugin', 'core_admin')
         ]);
         $table->set_attribute('id', extension::BBB_EXTENSION_PLUGIN_NAME . 'plugins');
-        $table->set_attribute('class', 'admintable generaltable');
+        $table->set_attribute('class', 'admintable table generaltable');
         $table->setup();
 
         $plugins = $this->get_sorted_plugins_list();
         $instances = core_plugin_manager::instance()->get_plugins_of_type(extension::BBB_EXTENSION_PLUGIN_NAME);
+        $enabledplugins = bbbext::get_enabled_plugins();
 
         foreach ($plugins as $idx => $plugin) {
             $componentname = extension::BBB_EXTENSION_PLUGIN_NAME . '_' . $plugin;
@@ -124,7 +126,7 @@ class admin_plugin_manager {
             $pluginversion = get_config($componentname, 'version');
             $row[] = get_string('pluginname', $componentname);
             $row[] = $pluginversion;
-            $visible = !get_config($componentname, 'disabled');
+            $visible = isset($enabledplugins[$plugin]);
 
             if ($visible) {
                 $row[] = $this->format_icon_link('hide', $plugin, 't/hide', get_string('disable'));
@@ -191,22 +193,7 @@ class admin_plugin_manager {
      */
     public function get_sorted_plugins_list(): array {
         $names = core_component::get_plugin_list(extension::BBB_EXTENSION_PLUGIN_NAME);
-
-        $result = [];
-
-        foreach ($names as $name => $path) {
-            $idx = get_config(extension::BBB_EXTENSION_PLUGIN_NAME . '_' . $name, 'sortorder');
-            if (!$idx) {
-                $idx = 0;
-            }
-            while (array_key_exists($idx, $result)) {
-                $idx += 1;
-            }
-            $result[$idx] = $name;
-        }
-        ksort($result);
-
-        return $result;
+        return extension::get_sorted_plugins_list($names);
     }
 
     /**

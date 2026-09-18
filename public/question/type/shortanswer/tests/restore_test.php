@@ -39,7 +39,8 @@ final class restore_test extends \advanced_testcase {
         // Create a course and a user with editing teacher capabilities.
         $generator = $this->getDataGenerator();
         $course1 = $generator->create_course();
-        $context = \context_course::instance($course1->id);
+        $qbank = $generator->get_plugin_generator('mod_qbank')->create_instance(['course' => $course1->id]);
+        $context = \context_module::instance($qbank->cmid);
         $questiongenerator = $this->getDataGenerator()->get_plugin_generator('core_question');
         $initialcount = $DB->count_records('question');
 
@@ -71,9 +72,8 @@ final class restore_test extends \advanced_testcase {
         $rc->execute_plan();
         $rc->destroy();
 
-        $this->assertDebuggingCalled(
-            "Failed to load question options from the table qtype_shortanswer_options for questionid {$question->id}",
-        );
+        $debugging = "Failed to load question options from the table qtype_shortanswer_options for questionid {$question->id}";
+        $this->assertdebuggingcalledcount(2, [$debugging, $debugging]);
 
         // Both quizzes should refer to the same original question.
         $quizzes = get_fast_modinfo($course1->id)->get_instances_of('quiz');

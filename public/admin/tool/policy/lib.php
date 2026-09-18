@@ -158,7 +158,6 @@ function tool_policy_get_fontawesome_icon_map() {
     return [
         'tool_policy:agreed' => 'fa-check text-success',
         'tool_policy:declined' => 'fa-xmark text-danger',
-        'tool_policy:level' => 'fa-turn-up fa-rotate-90 text-muted',
         'tool_policy:partial' => 'fa-triangle-exclamation text-warning',
         'tool_policy:pending' => 'fa-regular fa-clock text-warning',
     ];
@@ -187,4 +186,17 @@ function tool_policy_output_fragment_accept_on_behalf($args) {
     }
 
     return $mform->render();
+}
+
+/**
+ * Get the list of deprecated icons.
+ *
+ * @return array with the deprecated key icons.
+ * @todo Final deprecation on Moodle 6.0 MDL-83465.
+ */
+function tool_policy_get_deprecated_icons(): array {
+    return [
+        // Deprecated since Moodle 5.1.
+        'tool_policy/level',
+    ];
 }

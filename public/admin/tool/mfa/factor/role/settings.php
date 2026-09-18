@@ -26,6 +26,10 @@
 defined('MOODLE_INTERNAL') || die();
 
 if ($ADMIN->fulltree) {
+    $settings->add(new admin_setting_heading('factor_role/description', '',
+        new lang_string('settings:description', 'factor_role')));
+    $settings->add(new admin_setting_heading('factor_role/settings', new lang_string('settings', 'moodle'), ''));
+
     $enabled = new admin_setting_configcheckbox('factor_role/enabled',
         new lang_string('settings:enablefactor', 'tool_mfa'),
         new lang_string('settings:enablefactor_help', 'tool_mfa'), 0);

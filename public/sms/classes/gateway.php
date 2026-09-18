@@ -34,6 +34,9 @@ use stdClass;
 abstract class gateway {
     use Cloneable;
 
+    /** @var int The maximum length of a message. */
+    protected const MESSAGE_LENGTH_LIMIT = 160 * 3;
+
     /** @var stdClass The configuration for this instance */
     public readonly stdClass $config;
 
@@ -127,5 +130,28 @@ abstract class gateway {
      */
     public function update_message_statuses(array $messages): array {
         return array_map([$this, 'update_message_status'], $messages);
+    }
+
+    /**
+     * Truncates the given message to fit the constraints.
+     *
+     * @param string $message The message to be truncated.
+     * @return string The truncated message.
+     */
+    public function truncate_message(string $message): string {
+        if (strlen($message) > static::MESSAGE_LENGTH_LIMIT) {
+            $message = self::remove_urls_from_message($message);
+        }
+        return \core_text::substr($message, 0, static::MESSAGE_LENGTH_LIMIT);
+    }
+
+    /**
+     * Remove URLs from the message.
+     *
+     * @param string $message The message to check.
+     * @return string The updated message.
+     */
+    public static function remove_urls_from_message(string $message): string {
+        return trim(preg_replace('/https?:\/\/\S+/', '', $message));
     }
 }

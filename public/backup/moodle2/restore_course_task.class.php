@@ -66,9 +66,20 @@ class restore_course_task extends restore_task {
         // Define the task contextid (the course one)
         $this->contextid = context_course::instance($this->get_courseid())->id;
 
-        // Executed conditionally if restoring to new course or if overwrite_conf setting is enabled
-        if ($this->get_target() == backup::TARGET_NEW_COURSE || $this->get_setting_value('overwrite_conf') == true) {
-            $this->add_step(new restore_course_structure_step('course_info', 'course.xml'));
+        // Fields that should be excluded when restoring the template.
+        $skiptemplatefields = $this->get_skiptemplatefields();
+
+        if (
+            $this->get_target() == backup::TARGET_NEW_COURSE ||
+            $this->get_setting_value('overwrite_conf') == true ||
+            !is_null($skiptemplatefields)
+        ) {
+            $this->add_step(new restore_course_structure_step(
+                'course_info',
+                'course.xml',
+                null,
+                $skiptemplatefields
+            ));
 
             // Search reindexing (if enabled).
             if (\core_search\manager::is_indexing_enabled()) {
@@ -84,8 +95,8 @@ class restore_course_task extends restore_task {
         if ($this->plan->get_mode() == backup::MODE_IMPORT) {
             // No need to do anything with enrolments.
 
-        } else if (!$this->get_setting_value('users') or $this->plan->get_mode() == backup::MODE_HUB) {
-            if ($this->get_setting_value('enrolments') == backup::ENROL_ALWAYS && $this->plan->get_mode() != backup::MODE_HUB) {
+        } else if (!$this->get_setting_value('users')) {
+            if ($this->get_setting_value('enrolments') == backup::ENROL_ALWAYS) {
                 // Restore enrolment methods.
                 $this->add_step(new restore_enrolments_structure_step('course_enrolments', 'enrolments.xml'));
             } else if ($this->get_target() == backup::TARGET_CURRENT_ADDING or $this->get_target() == backup::TARGET_EXISTING_ADDING) {

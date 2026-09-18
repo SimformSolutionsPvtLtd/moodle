@@ -72,7 +72,8 @@ class admin_setting_tiny_premium_plugins extends \admin_setting {
         $return = '';
 
         // Warn users about an empty API key when displaying enabled plugins.
-        if (empty(get_config('tiny_premium', 'apikey')) && !empty(manager::get_enabled_plugins())) {
+        if (get_config('tiny_premium', 'plugin_source') == manager::PACKAGE_CLOUD && empty(get_config('tiny_premium', 'apikey')) &&
+                !empty(manager::get_enabled_plugins())) {
             $return .= \core\notification::warning(get_string('emptyapikeywarning', 'tiny_premium'));
         }
 
@@ -97,10 +98,11 @@ class admin_setting_tiny_premium_plugins extends \admin_setting {
         // Set up table.
         $table = new \html_table();
         $table->id = 'managetinypremiumpluginstable';
-        $table->attributes['class'] = 'admintable generaltable';
+        $table->attributes['class'] = 'admintable table generaltable table-hover';
         $table->head  = [
             get_string('name'),
             get_string('enable'),
+            get_string('settings'),
         ];
         $table->colclasses = [
             'leftalign',
@@ -112,6 +114,7 @@ class admin_setting_tiny_premium_plugins extends \admin_setting {
         $plugins = manager::get_plugins();
         $enabledplugins = manager::get_enabled_plugins();
         $disabledplugins = array_diff($plugins, $enabledplugins);
+        $serversideplugins = manager::get_server_side_plugins();
         $plugins = array_merge($enabledplugins, $disabledplugins);
 
         foreach ($plugins as $plugin) {
@@ -137,10 +140,19 @@ class admin_setting_tiny_premium_plugins extends \admin_setting {
             ]);
             $hideshowlink = \html_writer::link($hideshowurl, $icon);
 
+            $settinglink = '';
+            // Setting link for server-side plugins.
+            if (array_key_exists($plugin, $serversideplugins)) {
+                $settinglink = \html_writer::link(new \moodle_url('/lib/editor/tiny/plugins/premium/extrasettings.php', [
+                    'plugin' => $plugin,
+                ]), get_string('settings'));
+            }
+
             // Populate table row.
             $row = new \html_table_row([
                 $pluginname,
                 $hideshowlink,
+                $settinglink,
             ]);
             $row->attributes['class'] = $class;
             $table->data[] = $row;

@@ -109,7 +109,7 @@ class report extends \mod_scorm\report {
             $headers = array();
             if (!$download && $candelete) {
                 $columns[] = 'checkbox';
-                $headers[] = $this->generate_master_checkbox();
+                $headers[] = $this->generate_toggler_checkbox();
             }
             if (!$download && $CFG->grade_report_showuserimage) {
                 $columns[] = 'picture';
@@ -180,7 +180,7 @@ class report extends \mod_scorm\report {
 
                 $table->set_attribute('cellspacing', '0');
                 $table->set_attribute('id', 'attempts');
-                $table->set_attribute('class', 'generaltable generalbox');
+                $table->set_attribute('class', 'table generaltable');
 
                 // Start working -- this is necessary as soon as the niceties are over.
                 $table->setup();
@@ -481,7 +481,7 @@ class report extends \mod_scorm\report {
                 if (!$download) {
                     $table->finish_output();
                     if ($candelete) {
-                        echo \html_writer::start_tag('table', array('id' => 'commands'));
+                        echo \html_writer::start_tag('table', ['id' => 'commands', 'class' => 'table-reboot']);
                         echo \html_writer::start_tag('tr').\html_writer::start_tag('td');
                         echo $this->generate_delete_selected_button();
                         echo \html_writer::end_tag('td').\html_writer::end_tag('tr').\html_writer::end_tag('table');

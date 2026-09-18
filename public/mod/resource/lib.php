@@ -23,26 +23,27 @@
 
 defined('MOODLE_INTERNAL') || die;
 
+use core\url;
+
 /**
  * List of features supported in Resource module
  * @param string $feature FEATURE_xx constant for requested feature
  * @return mixed True if module supports feature, false if not, null if doesn't know or string for the module purpose.
  */
 function resource_supports($feature) {
-    switch($feature) {
-        case FEATURE_MOD_ARCHETYPE:           return MOD_ARCHETYPE_RESOURCE;
-        case FEATURE_GROUPS:                  return false;
-        case FEATURE_GROUPINGS:               return false;
-        case FEATURE_MOD_INTRO:               return true;
-        case FEATURE_COMPLETION_TRACKS_VIEWS: return true;
-        case FEATURE_GRADE_HAS_GRADE:         return false;
-        case FEATURE_GRADE_OUTCOMES:          return false;
-        case FEATURE_BACKUP_MOODLE2:          return true;
-        case FEATURE_SHOW_DESCRIPTION:        return true;
-        case FEATURE_MOD_PURPOSE:             return MOD_PURPOSE_CONTENT;
-
-        default: return null;
-    }
+    return match ($feature) {
+        FEATURE_MOD_ARCHETYPE => MOD_ARCHETYPE_RESOURCE,
+        FEATURE_GROUPS => false,
+        FEATURE_GROUPINGS => false,
+        FEATURE_MOD_INTRO => true,
+        FEATURE_COMPLETION_TRACKS_VIEWS => true,
+        FEATURE_GRADE_HAS_GRADE => false,
+        FEATURE_GRADE_OUTCOMES => false,
+        FEATURE_BACKUP_MOODLE2 => true,
+        FEATURE_SHOW_DESCRIPTION => true,
+        FEATURE_MOD_PURPOSE => MOD_PURPOSE_CONTENT,
+        default => null,
+    };
 }
 
 /**
@@ -94,8 +95,9 @@ function resource_get_post_actions() {
  */
 function resource_add_instance($data, $mform) {
     global $CFG, $DB;
-    require_once("$CFG->libdir/resourcelib.php");
+
     require_once("$CFG->dirroot/mod/resource/locallib.php");
+
     $cmid = $data->coursemodule;
     $data->timemodified = time();
 
@@ -121,7 +123,9 @@ function resource_add_instance($data, $mform) {
  */
 function resource_update_instance($data, $mform) {
     global $CFG, $DB;
-    require_once("$CFG->libdir/resourcelib.php");
+
+    require_once("$CFG->dirroot/mod/resource/locallib.php");
+
     $data->timemodified = time();
     $data->id           = $data->instance;
     $data->revision++;
@@ -447,12 +451,20 @@ function resource_export_contents($cm, $baseurl) {
     $files = $fs->get_area_files($context->id, 'mod_resource', 'content', 0, 'sortorder DESC, id ASC', false);
 
     foreach ($files as $fileinfo) {
-        $file = array();
+        $file = [];
         $file['type'] = 'file';
         $file['filename']     = $fileinfo->get_filename();
         $file['filepath']     = $fileinfo->get_filepath();
         $file['filesize']     = $fileinfo->get_filesize();
-        $file['fileurl']      = file_encode_url("$CFG->wwwroot/" . $baseurl, '/'.$context->id.'/mod_resource/content/'.$resource->revision.$fileinfo->get_filepath().$fileinfo->get_filename(), true);
+        $file['fileurl']      = url::make_webservice_pluginfile_url(
+            contextid: $context->id,
+            component: 'mod_resource',
+            area: 'content',
+            itemid: $resource->revision,
+            pathname: $fileinfo->get_filepath(),
+            filename: $fileinfo->get_filename(),
+            forcedownload: true
+        )->out();
         $file['timecreated']  = $fileinfo->get_timecreated();
         $file['timemodified'] = $fileinfo->get_timemodified();
         $file['sortorder']    = $fileinfo->get_sortorder();

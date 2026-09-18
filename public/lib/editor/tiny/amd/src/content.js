@@ -14,17 +14,17 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * TODO describe module content
+ * Module to assist with creation and management of content.
  *
  * @module     editor_tiny/content
- * @copyright  2025 Andrew Lyons <andrew@nicols.co.uk>
+ * @copyright  Andrew Lyons <andrew@nicols.co.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 /**
  * Add MathML support to the editor.
  *
- * @param { } editor
+ * @param {TinyMCE} editor
  */
 export const addMathMLSupport = (editor) => {
     const getNodeType = (node) => {
@@ -99,6 +99,21 @@ export const addSVGSupport = (editor) => {
             // Any invalid markup will be accepted.
             svg: {
                 'extends': "div",
+                'attributes': [
+                    "id",
+                    "tabindex",
+                    "lang",
+                    "xml:space",
+                    "class",
+                    "style",
+                    "x",
+                    "y",
+                    "width",
+                    "height",
+                    "viewBox",
+                    "preserveAspectRatio",
+                    "transform",
+                ],
             },
             'tiny-svg-block': {
                 'extends': "div",

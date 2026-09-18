@@ -57,8 +57,8 @@ class secondary extends view {
         $nodes = [];
         $nodes['settings'] = [
             self::TYPE_CONTAINER => [
-                'coursereports' => 3,
-                'questionbank' => 4,
+                'coursereports' => 4,
+                'questionbank' => 5,
             ],
             self::TYPE_SETTING => [
                 'editsettings' => 0,
@@ -71,28 +71,29 @@ class secondary extends view {
                 'otherusers' => 1.7,
                 'gradebooksetup' => 2.1,
                 'outcomes' => 2.2,
-                'coursecompletion' => 6,
-                'coursebadges' => 7.1,
-                'newbadge' => 7.2,
-                'filtermanagement' => 9,
-                'unenrolself' => 10,
-                'coursetags' => 11,
-                'download' => 12,
-                'contextlocking' => 13,
+                'coursecompletion' => 7,
+                'coursebadges' => 8.1,
+                'newbadge' => 8.2,
+                'filtermanagement' => 10,
+                'unenrolself' => 11,
+                'coursetags' => 12,
+                'download' => 13,
+                'contextlocking' => 14,
             ],
         ];
         $nodes['navigation'] = [
             self::TYPE_CONTAINER => [
                 'participants' => 1,
+                'courseoverview' => 3,
             ],
             self::TYPE_SETTING => [
                 'grades' => 2,
-                'badgesview' => 7,
-                'competencies' => 8,
-                'communication' => 14,
+                'badgesview' => 8,
+                'competencies' => 9,
+                'communication' => 15,
             ],
             self::TYPE_CUSTOM => [
-                'contentbank' => 5,
+                'contentbank' => 6,
                 'participants' => 1, // In site home, 'participants' is classified differently.
             ],
         ];
@@ -637,7 +638,7 @@ class secondary extends view {
             }
 
             $menuselect = new url_select($menuarray, $selectedoverflownodeurl ?? $this->page->url, null);
-            $menuselect->set_label(get_string('browsecourseadminindex', 'course'), ['class' => 'sr-only']);
+            $menuselect->set_label(get_string('browsecourseadminindex', 'course'), ['class' => 'visually-hidden']);
             return $menuselect;
         } else {
             return $this->get_other_overflow_menu_data($activenode);
@@ -690,7 +691,7 @@ class secondary extends view {
         }
         $selectdata = static::create_menu_element([$menunode], false);
         $urlselect = new url_select($selectdata, $matchednode->action->out(false), null);
-        $urlselect->set_label(get_string('browsesettingindex', 'course'), ['class' => 'sr-only']);
+        $urlselect->set_label(get_string('browsesettingindex', 'course'), ['class' => 'visually-hidden']);
         return $urlselect;
     }
 
@@ -1107,10 +1108,16 @@ class secondary extends view {
         // the course in order to obtain the required module settings navigation.
         if ($page->context instanceof \context_course) {
             $this->page->set_secondary_active_tab($coursesecondarynode->key);
-            // Get the currently used module in the single activity course.
-            $module = current(array_filter(get_course_mods($course->id), function ($module) {
-                return $module->visible == 1;
-            }));
+            // Get the currently used module in course.
+            $format = course_get_format($course);
+            if ($format instanceof \core_courseformat\main_activity_interface) {
+                $module = $format->get_main_activity();
+            } else {
+                $module = current(array_filter(get_course_mods($course->id), function ($module) {
+                    return $module->visible == 1;
+                }));
+            }
+
             // If the default module for the single course format has not been set yet, skip displaying the module
             // related navigation in the secondary navigation.
             if (!$module) {

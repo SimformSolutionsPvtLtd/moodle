@@ -16,6 +16,11 @@
 
 namespace aiplacement_courseassist;
 
+use core_ai\ai_test_trait;
+
+defined('MOODLE_INTERNAL') || die();
+require_once(__DIR__ . '/../../../tests/ai_test_trait.php');
+
 /**
  * AI Placement course assist utils test.
  *
@@ -25,55 +30,113 @@ namespace aiplacement_courseassist;
  * @covers     \aiplacement_courseassist\utils
  */
 final class utils_test extends \advanced_testcase {
+    use ai_test_trait;
+
+    /** @var array List of users. */
+    private array $users;
+    /** @var \stdClass Course object. */
+    private \stdClass $course;
+    /** @var \context_course Course context. */
+    private \context_course $context;
+    /** @var \stdClass Teacher role. */
+    private \stdClass $teacherrole;
+
+    public function setUp(): void {
+        global $DB;
+        parent::setUp();
+
+        $this->resetAfterTest();
+        $this->users[1] = $this->getDataGenerator()->create_user();
+        $this->users[2] = $this->getDataGenerator()->create_user();
+        $this->course = $this->getDataGenerator()->create_course();
+        $this->context = \context_course::instance($this->course->id);
+        $this->teacherrole = $DB->get_record('role', ['shortname' => 'editingteacher']);
+        $this->getDataGenerator()->enrol_user($this->users[1]->id, $this->course->id, 'manager');
+        $this->getDataGenerator()->enrol_user($this->users[2]->id, $this->course->id, 'editingteacher');
+    }
+
+    /**
+     * Data provider for supported placement tests.
+     *
+     * @return array
+     */
+    public static function course_assist_actions_available_provider(): array {
+        return [
+            'Two actions' => [
+                'actionstouse' => [
+                    'summarise_text',
+                    'explain_text',
+                ],
+                'expectedcount' => 2,
+            ],
+            'Summarise only' => [
+                'actionstouse' => [
+                    'summarise_text',
+                ],
+                'expectedcount' => 1,
+            ],
+            'Explain only' => [
+                'actionstouse' => [
+                    'explain_text',
+                ],
+                'expectedcount' => 1,
+            ],
+            'No actions' => [
+                'actionstouse' => [],
+                'expectedcount' => 0,
+            ],
+        ];
+    }
 
     /**
      * Test is_course_assist_available method.
      */
     public function test_is_course_assist_available(): void {
-        global $DB;
-        $this->resetAfterTest();
-        $user1 = $this->getDataGenerator()->create_user();
-        $user2 = $this->getDataGenerator()->create_user();
-        $course = $this->getDataGenerator()->create_course();
-        $context = \context_course::instance($course->id);
-        $teacherrole = $DB->get_record('role', ['shortname' => 'editingteacher']);
-        $this->getDataGenerator()->enrol_user($user1->id, $course->id, 'manager');
-        $this->getDataGenerator()->enrol_user($user2->id, $course->id, 'editingteacher');
-
-        // Provider is not enabled.
-        $this->setUser($user1);
-        set_config('enabled', 0, 'aiprovider_openai');
-        $this->assertFalse(utils::is_course_assist_available($context));
-
-        set_config('enabled', 1, 'aiprovider_openai');
-        set_config('apikey', '123', 'aiprovider_openai');
-
-        // Plugin is not enabled.
-        $this->setUser($user1);
-        set_config('enabled', 0, 'aiplacement_courseassist');
-        $this->assertFalse(utils::is_course_assist_available($context));
-
-        // Plugin is enabled but user does not have capability.
-        assign_capability('aiplacement/courseassist:summarise_text', CAP_PROHIBIT, $teacherrole->id, $context);
-        $this->setUser($user2);
         set_config('enabled', 1, 'aiplacement_courseassist');
-        $this->assertFalse(utils::is_course_assist_available($context));
+        $this->assertTrue(utils::is_course_assist_available());
 
-        // Plugin is enabled, user has capability and placement action is not available.
-        $this->setUser($user1);
-        set_config('summarise_text', 0, 'aiplacement_courseassist');
-        $this->assertFalse(utils::is_course_assist_available($context));
+        set_config('enabled', 0, 'aiplacement_courseassist');
+        $this->assertFalse(utils::is_course_assist_available());
+    }
 
-        // Plugin is enabled, user has capability and provider action is not available.
-        $this->setUser($user1);
-        set_config('summarise_text', 0, 'aiprovider_openai');
-        set_config('summarise_text', 1, 'aiplacement_courseassist');
-        $this->assertFalse(utils::is_course_assist_available($context));
+    /**
+     * Test the contexts where the placement is available.
+     *
+     * @covers \aiplacement_courseassist\placement::is_available_in_context
+     */
+    public function test_is_available_in_context(): void {
+        $this->assertTrue(placement::is_available_in_context($this->context));
+        $this->assertFalse(placement::is_available_in_context(\context_system::instance()));
+    }
 
-        // Plugin is enabled, user has capability, placement action is available and provider action is available.
-        $this->setUser($user1);
-        set_config('summarise_text', 1, 'aiprovider_openai');
-        set_config('summarise_text', 1, 'aiplacement_courseassist');
-        $this->assertTrue(utils::is_course_assist_available($context));
+    /**
+     * Test get_actions_available method.
+     *
+     * @param array $actionstouse The actions to use.
+     * @param int $expectedcount Expected count of actions.
+     * @dataProvider course_assist_actions_available_provider
+     */
+    public function test_get_actions_available(
+        array $actionstouse,
+        int $expectedcount,
+    ): void {
+        $this->setUser($this->users[2]);
+        // Set up the provider with the required action config.
+        $this->create_ai_provider($actionstouse, \aiprovider_openai\provider::class);
+        set_config('enabled', 1, 'aiplacement_courseassist');
+
+        // Enable the actions and check the count.
+        foreach ($actionstouse as $action) {
+            set_config($action, 1, 'aiplacement_courseassist');
+        }
+        $actions = utils::get_actions_available($this->context, true);
+        $this->assertCount($expectedcount, $actions);
+
+        // Prohibit the user and check again.
+        foreach ($actionstouse as $action) {
+            assign_capability("aiplacement/courseassist:{$action}", CAP_PROHIBIT, $this->teacherrole->id, $this->context);
+        }
+        $actions = utils::get_actions_available($this->context, true);
+        $this->assertCount(0, $actions);
     }
 }

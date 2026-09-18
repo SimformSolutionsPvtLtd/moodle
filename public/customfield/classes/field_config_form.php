@@ -51,16 +51,24 @@ class field_config_form extends \core_form\dynamic_form {
 
         $mform->addElement('header', '_commonsettings', get_string('commonsettings', 'core_customfield'));
 
-        $mform->addElement('text', 'name', get_string('fieldname', 'core_customfield'), 'size="50"');
+        $mform->addElement('text', 'name', get_string('fieldname', 'core_customfield'), [
+            'size' => 50,
+            'maxlength' => 1333,
+        ]);
         $mform->addRule('name', null, 'required', null, 'client');
+        $mform->addRule('name', get_string('maximumchars', '', 1333), 'maxlength', 1333, 'client');
         $mform->setType('name', PARAM_TEXT);
 
         // Accepted values for 'shortname' would follow [a-z0-9_] pattern,
         // but we are accepting any PARAM_TEXT value here,
         // and checking [a-zA-Z0-9_] pattern in validation() function to throw an error when needed.
-        $mform->addElement('text', 'shortname', get_string('fieldshortname', 'core_customfield'), 'size=20');
+        $mform->addElement('text', 'shortname', get_string('fieldshortname', 'core_customfield'), [
+            'size' => 20,
+            'maxlength' => 100,
+        ]);
         $mform->addHelpButton('shortname', 'shortname', 'core_customfield');
         $mform->addRule('shortname', null, 'required', null, 'client');
+        $mform->addRule('shortname', get_string('maximumchars', '', 100), 'maxlength', 100, 'client');
         $mform->setType('shortname', PARAM_TEXT);
 
         $desceditoroptions = $handler->get_description_text_options();
@@ -110,15 +118,11 @@ class field_config_form extends \core_form\dynamic_form {
         $field = $this->get_field();
         $handler = $field->get_handler();
 
-        // Check the shortname is specified and is unique for this component-area-itemid combination.
+        // Check the shortname is specified and is unique for this component-area-itemid combination and shared fields.
         if (!preg_match('/^[a-z0-9_]+$/', $data['shortname'])) {
             // Check allowed pattern (numbers, letters and underscore).
             $errors['shortname'] = get_string('invalidshortnameerror', 'core_customfield');
-        } else if ($DB->record_exists_sql('SELECT 1 FROM {customfield_field} f ' .
-            'JOIN {customfield_category} c ON c.id = f.categoryid ' .
-            'WHERE f.shortname = ? AND f.id <> ? AND c.component = ? AND c.area = ? AND c.itemid = ?',
-            [$data['shortname'], $data['id'],
-                $handler->get_component(), $handler->get_area(), $handler->get_itemid()])) {
+        } else if (!\core_customfield\api::is_shortname_unique($handler, $data['shortname'], $field->get('id'))) {
             $errors['shortname'] = get_string('formfieldcheckshortname', 'core_customfield');
         }
 

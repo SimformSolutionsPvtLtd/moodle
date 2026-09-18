@@ -92,7 +92,7 @@ require_capability('mod/data:managetemplates', $context);
 
 $actionbar = new \mod_data\output\action_bar($data->id, $PAGE->url);
 
-$PAGE->add_body_class('mediumwidth');
+$PAGE->add_body_class('limitedwidth');
 $PAGE->set_heading($course->fullname);
 $PAGE->activityheader->disable();
 
@@ -425,12 +425,12 @@ if (($mode == 'new') && (!empty($newtype))) { // Adding a new field.
 
     echo '<div class="sortdefault">';
     echo '<form id="sortdefault" action="'.$CFG->wwwroot.'/mod/data/field.php" method="get">';
-    echo '<div>';
+    echo '<div class="d-flex flex-column flex-md-row flex-wrap align-items-md-center gap-2">';
     echo '<input type="hidden" name="d" value="'.$data->id.'" />';
     echo '<input type="hidden" name="mode" value="sort" />';
     echo '<input type="hidden" name="sesskey" value="'.sesskey().'" />';
     echo '<label for="defaultsort">'.get_string('defaultsortfield','data').'</label>';
-    echo '<select id="defaultsort" name="defaultsort" class="custom-select">';
+    echo '<select id="defaultsort" name="defaultsort" class="form-select">';
     if ($fields = $DB->get_records('data_fields', array('dataid'=>$data->id))) {
         echo '<optgroup label="'.get_string('fields', 'data').'">';
         foreach ($fields as $field) {
@@ -465,8 +465,8 @@ if (($mode == 'new') && (!empty($newtype))) { // Adding a new field.
     $options = array(0 => get_string('ascending', 'data'),
                      1 => get_string('descending', 'data'));
     echo html_writer::label(get_string('sortby'), 'menudefaultsortdir', false, array('class' => 'accesshide'));
-    echo html_writer::select($options, 'defaultsortdir', $data->defaultsortdir, false, array('class' => 'custom-select'));
-    echo '<input type="submit" class="btn btn-secondary ms-1" value="'.get_string('save', 'data').'" />';
+    echo html_writer::select($options, 'defaultsortdir', $data->defaultsortdir, false, ['class' => 'form-select']);
+    echo '<input type="submit" class="btn btn-secondary" value="'.get_string('save', 'data').'" />';
     echo '</div>';
     echo '</form>';
 

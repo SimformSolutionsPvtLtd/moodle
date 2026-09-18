@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+use core_comment\comment_exception;
+
 /**
  * Helper functions and callbacks.
  *
@@ -22,10 +24,6 @@
  * @author     Safat Shahin <safatshahin@catalyst-au.net>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
-defined('MOODLE_INTERNAL') || die();
-
-require_once($CFG->dirroot. '/comment/lib.php');
 
 /**
  * Validate comment parameter before perform other comments actions.
@@ -82,7 +80,7 @@ function qbank_comment_preview_display($question, $courseid): string {
     global $CFG, $PAGE;
     if (question_has_capability_on($question, 'comment') && $CFG->usecomments
             && core\plugininfo\qbank::is_plugin_enabled('qbank_comment')) {
-        \comment::init($PAGE);
+        \core_comment\manager::init($PAGE);
         $args = new \stdClass;
         $args->contextid = context_system::instance()->id; // Static data to bypass comment sql as context is not needed.
         $args->courseid  = $courseid;
@@ -93,7 +91,7 @@ function qbank_comment_preview_display($question, $courseid): string {
         $args->autostart = true;
         $args->displaycancel = false;
         $args->linktext = get_string('commentheader', 'qbank_comment');
-        $comment = new \comment($args);
+        $comment = new \core_comment\manager($args);
         $comment->set_view_permission(true);
         $comment->set_fullwidth();
         return $comment->output();
@@ -109,24 +107,12 @@ function qbank_comment_preview_display($question, $courseid): string {
  * @return string rendered output
  */
 function qbank_comment_output_fragment_question_comment($args): string {
-    global $USER, $PAGE, $CFG, $DB;
+    global $PAGE, $CFG;
     $displaydata = [];
     require_once($CFG->dirroot . '/question/engine/bank.php');
     $question = question_bank::load_question($args['questionid']);
-    $quba = question_engine::make_questions_usage_by_activity(
-            'core_question_preview', context_user::instance($USER->id));
+    $displaydata['question'] = question_bank::render_preview_of_question($question);
 
-    // Just in case of any regression, it should not break the modal, just show the comments.
-    if (class_exists('\\qbank_previewquestion\\question_preview_options')) {
-        $options = new \qbank_previewquestion\question_preview_options($question);
-        $quba->set_preferred_behaviour($options->behaviour);
-        $slot = $quba->add_question($question, $options->maxmark);
-        $quba->start_question($slot, $options->variant);
-        $transaction = $DB->start_delegated_transaction();
-        question_engine::save_questions_usage_by_activity($quba);
-        $transaction->allow_commit();
-        $displaydata['question'] = $quba->render_question($slot, $options, '1');
-    }
     $displaydata['comment'] = qbank_comment_preview_display($question, $args['courseid']);
     $displaydata['commenstdisabled'] = false;
     if (empty($displaydata['comment']) && !$CFG->usecomments) {

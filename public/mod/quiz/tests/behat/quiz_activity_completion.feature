@@ -16,12 +16,6 @@ Feature: View activity completion in the quiz activity
       | user     | course | role           |
       | teacher1 | C1     | editingteacher |
       | student1 | C1     | student        |
-    And the following "question categories" exist:
-      | contextlevel | reference | name           |
-      | Course       | C1        | Test questions |
-    And the following "questions" exist:
-      | questioncategory | qtype     | name           | questiontext              |
-      | Test questions   | truefalse | First question | Answer the first question |
     And the following "activity" exists:
       | activity                     | quiz           |
       | course                       | C1             |
@@ -37,6 +31,12 @@ Feature: View activity completion in the quiz activity
       | completionattemptsexhausted  | 1              |
       | completionminattemptsenabled | 1              |
       | completionminattempts        | 1              |
+    And the following "question categories" exist:
+      | contextlevel    | reference | name           |
+      | Activity module | quiz1     | Test questions |
+    And the following "questions" exist:
+      | questioncategory | qtype     | name           | questiontext              |
+      | Test questions   | truefalse | First question | Answer the first question |
     And quiz "Test quiz name" contains the following questions:
       | question       | page |
       | First question | 1    |
@@ -50,9 +50,10 @@ Feature: View activity completion in the quiz activity
     And the "Receive a grade" completion condition of "Test quiz name" is displayed as "todo"
     And the "Receive a passing grade" completion condition of "Test quiz name" is displayed as "todo"
     And the "Receive a pass grade or complete all available attempts" completion condition of "Test quiz name" is displayed as "todo"
-    And user "student1" has attempted "Test quiz name" with responses:
-      | slot | response |
-      |   1  | False    |
+    And I press "Attempt quiz"
+    And I set the field "False" to "1"
+    And I press "Finish attempt ..."
+    And I press "Submit all and finish"
     And I am on "Course 1" course homepage
     And I follow "Test quiz name"
     And the "View" completion condition of "Test quiz name" is displayed as "done"
@@ -60,6 +61,10 @@ Feature: View activity completion in the quiz activity
     And the "Receive a grade" completion condition of "Test quiz name" is displayed as "done"
     And the "Receive a passing grade" completion condition of "Test quiz name" is displayed as "failed"
     And the "Receive a pass grade or complete all available attempts" completion condition of "Test quiz name" is displayed as "todo"
+    And I run all adhoc tasks
+    And I reload the page
+    And the "Receive a grade" completion condition of "Test quiz name" is displayed as "done"
+    And the "Receive a passing grade" completion condition of "Test quiz name" is displayed as "failed"
     And I press "Re-attempt quiz"
     And I set the field "<answer>" to "1"
     And I press "Finish attempt ..."

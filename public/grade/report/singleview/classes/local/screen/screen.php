@@ -88,7 +88,7 @@ abstract class screen {
     protected $items;
 
     /** @var int Maximum number of students that can be shown on one page */
-    protected static $maxperpage = 5000;
+    protected static $maxperpage = 1000;
 
     /**
      * List of allowed values for 'perpage' setting
@@ -129,7 +129,7 @@ abstract class screen {
 
         $cache = \cache::make_from_params(\cache_store::MODE_SESSION, 'gradereport_singleview', 'perpage');
         $perpage = optional_param('perpage', null, PARAM_INT);
-        if (!in_array($perpage, self::$validperpage) && ($perpage !== 0)) {
+        if ((!in_array($perpage, self::$validperpage) && $perpage != self::$maxperpage) && ($perpage !== 0)) {
             // Get from cache.
             $perpage = $cache->get(get_class($this));
         } else {
@@ -259,15 +259,9 @@ abstract class screen {
     public function js() {
         global $PAGE;
 
-        $module = [
-            'name' => 'gradereport_singleview',
-            'fullpath' => '/grade/report/singleview/js/singleview.js',
-            'requires' => ['base', 'dom', 'event', 'event-simulate', 'io-base']
-        ];
-
         $PAGE->requires->strings_for_js(['overridenoneconfirm', 'removeoverride', 'removeoverridesave'],
             'gradereport_singleview');
-        $PAGE->requires->js_init_call('M.gradereport_singleview.init', [], false, $module);
+        $PAGE->requires->js_call_amd('gradereport_singleview/singleview', 'init');
     }
 
     /**
@@ -441,7 +435,7 @@ abstract class screen {
         sort($pagingoptions);
         $pagingoptions = array_combine($pagingoptions, $pagingoptions);
         if ($numusers > self::$maxperpage) {
-            $pagingoptions['0'] = self::$maxperpage;
+            $pagingoptions[self::$maxperpage] = self::$maxperpage;
         } else {
             $pagingoptions['0'] = get_string('all');
         }
@@ -461,6 +455,6 @@ abstract class screen {
         // The number of students per page is always limited even if it is claimed to be unlimited.
         $this->perpage = $this->perpage ?: self::$maxperpage;
         $perpagedata['pagingbar'] = $this->pager();
-        return $OUTPUT->render_from_template('gradereport_singleview/perpage', $perpagedata);;
+        return $OUTPUT->render_from_template('gradereport_singleview/perpage', $perpagedata);
     }
 }

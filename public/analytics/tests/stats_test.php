@@ -16,6 +16,8 @@
 
 namespace core_analytics;
 
+use core_analytics\tests\mlbackend_helper_trait;
+
 defined('MOODLE_INTERNAL') || die();
 
 require_once(__DIR__ . '/fixtures/test_indicator_fullname.php');
@@ -30,13 +32,14 @@ require_once(__DIR__ . '/fixtures/test_target_shortname.php');
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 final class stats_test extends \advanced_testcase {
+    use mlbackend_helper_trait;
 
     /**
      * Set up the test environment.
      */
     public function setUp(): void {
         parent::setUp();
-
+        $this->resetAfterTest();
         $this->setAdminUser();
     }
 
@@ -44,9 +47,6 @@ final class stats_test extends \advanced_testcase {
      * Test the {@link \core_analytics\stats::enabled_models()} implementation.
      */
     public function test_enabled_models(): void {
-
-        $this->resetAfterTest(true);
-
         // By default, sites have {@link \core_course\analytics\target\no_teaching} and
         // {@link \core_user\analytics\target\upcoming_activities_due} enabled.
         $this->assertEquals(4, \core_analytics\stats::enabled_models());
@@ -70,8 +70,9 @@ final class stats_test extends \advanced_testcase {
      * Test the {@link \core_analytics\stats::predictions()} implementation.
      */
     public function test_predictions(): void {
-
-        $this->resetAfterTest(true);
+        if (!self::is_mlbackend_python_configured()) {
+            $this->markTestSkipped('mlbackend_python is not configured.');
+        }
 
         $model = \core_analytics\model::create(
             \core_analytics\manager::get_target('test_target_shortname'),
@@ -116,7 +117,10 @@ final class stats_test extends \advanced_testcase {
      */
     public function test_actions(): void {
         global $DB;
-        $this->resetAfterTest(true);
+
+        if (!self::is_mlbackend_python_configured()) {
+            $this->markTestSkipped('mlbackend_python is not configured.');
+        }
 
         $model = \core_analytics\model::create(
             \core_analytics\manager::get_target('test_target_shortname'),

@@ -27,12 +27,13 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+use core\output\notification;
 use core_cache\application_cache;
 use core_cache\data_source_interface;
 use core_cache\definition;
 use core_question\local\bank\question_version_status;
 use core_question\output\question_version_info;
-
+use qbank_previewquestion\question_preview_options;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -81,6 +82,23 @@ abstract class question_bank {
     public static function is_qtype_installed($qtypename) {
         $plugindir = core_component::get_plugin_directory('qtype', $qtypename);
         return $plugindir && is_readable($plugindir . '/questiontype.php');
+    }
+
+    /**
+     * Check if a given question type is one that is installed and usable.
+     *
+     * Use this before doing things like rendering buttons/options which will only work for
+     * installed question types.
+     *
+     * When loaded through most of the core_question areas, qtype will still be the uninstalled type, e.g. 'mytype',
+     * but when we get to the quiz pages, it will have been converted to 'missingtype'. So we need to check that
+     * as well here.
+     *
+     * @param string $qtypename e.g. 'multichoice'.
+     * @return bool
+     */
+    public static function is_qtype_usable(string $qtypename): bool {
+        return self::is_qtype_installed($qtypename) && $qtypename !== 'missingtype';
     }
 
     /**
@@ -294,6 +312,49 @@ abstract class question_bank {
         $definition = self::get_qtype($questiondata->qtype, false)->make_question($questiondata, false);
         question_version_info::$pendingdefinitions[$definition->id] = $definition;
         return $definition;
+    }
+
+    /**
+     * Render a throw-away preview of a question.
+     *
+     * If the question cannot be rendered (e.g. because it is not installed)
+     * then display a message instead.
+     *
+     * @param question_definition $question a question.
+     * @return string HTML to output.
+     */
+    public static function render_preview_of_question(question_definition $question): string {
+        global $DB, $OUTPUT, $USER;
+
+        if (!self::is_qtype_usable($question->qtype->name())) {
+            // TODO MDL-84902 ideally this would be changed to render at least the qeuestion text.
+            // See, for example, test_render_missing in question/type/missingtype/tests/missingtype_test.php.
+            return $OUTPUT->notification(
+                get_string('invalidquestiontype', 'question', $question->qtype->name()),
+                notification::NOTIFY_WARNING,
+                closebutton: false);
+        }
+
+        // TODO MDL-84902 remove this dependency on a class from qbank_previewquestion plugin.
+        if (!class_exists(question_preview_options::class)) {
+            debugging('Preview cannot be rendered. The standard plugin ' .
+                'qbank_previewquestion plugin has been removed.', DEBUG_DEVELOPER);
+            return '';
+        }
+
+        $quba = question_engine::make_questions_usage_by_activity(
+            'core_question_preview', context_user::instance($USER->id));
+        $options = new question_preview_options($question);
+        $quba->set_preferred_behaviour($options->behaviour);
+
+        $slot = $quba->add_question($question, $options->maxmark);
+        $quba->start_question($slot, $options->variant);
+
+        $transaction = $DB->start_delegated_transaction();
+        question_engine::save_questions_usage_by_activity($quba);
+        $transaction->allow_commit();
+
+        return $quba->render_question($slot, $options, '1');
     }
 
     /**
@@ -582,123 +643,45 @@ class question_finder implements data_source_interface {
         $sql = "SELECT q.id, q.id AS id2
                   FROM {question} q
                   JOIN {question_versions} qv ON qv.questionid = q.id
+             LEFT JOIN {question_versions} qv2 ON (   qv2.questionbankentryid = qv.questionbankentryid
+                                                  AND qv2.version > qv.version
+                                                  AND qv2.status = :readystatusqv
+                                                  )
                   JOIN {question_bank_entries} qbe ON qbe.id = qv.questionbankentryid
                  WHERE qbe.questioncategoryid {$qcsql}
                        AND q.parent = 0
                        AND qv.status = :readystatus
-                       AND qv.version = (SELECT MAX(v.version)
-                                          FROM {question_versions} v
-                                          JOIN {question_bank_entries} be
-                                            ON be.id = v.questionbankentryid
-                                         WHERE be.id = qbe.id
-                                           AND v.status = :readystatusqv)
+                       AND qv2.questionbankentryid IS NULL
                        {$extraconditions}";
 
         return $DB->get_records_sql_menu($sql, $qcparams + $extraparams);
     }
 
     /**
-     * Get the ids of all the questions in a list of categories, with the number
-     * of times they have already been used in a given set of usages.
-     *
-     * The result array is returned in order of increasing (count previous uses).
-     *
-     * @param array $categoryids an array question_category ids.
-     * @param qubaid_condition $qubaids which question_usages to count previous uses from.
-     * @param string $extraconditions extra conditions to AND with the rest of
-     *      the where clause. Must use named parameters.
-     * @param array $extraparams any parameters used by $extraconditions.
-     * @return array questionid => count of number of previous uses.
-     *
      * @deprecated since Moodle 4.3
-     * @todo Final deprecation on Moodle 4.7 MDL-78091
      */
-    public function get_questions_from_categories_with_usage_counts($categoryids,
-            qubaid_condition $qubaids, $extraconditions = '', $extraparams = array()) {
-        debugging(
-            'Function get_questions_from_categories_with_usage_counts() is deprecated, please do not use the function.',
-            DEBUG_DEVELOPER
-        );
-        return $this->get_questions_from_categories_and_tags_with_usage_counts(
-                $categoryids, $qubaids, $extraconditions, $extraparams);
+    #[\core\attribute\deprecated(null, since: '4.3', mdl: 'MDL-72321', final: true)]
+    public function get_questions_from_categories_with_usage_counts(
+        $categoryids,
+        qubaid_condition $qubaids,
+        $extraconditions = '',
+        $extraparams = []
+    ) {
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
     }
 
     /**
-     * Get the ids of all the questions in a list of categories that have ALL the provided tags,
-     * with the number of times they have already been used in a given set of usages.
-     *
-     * The result array is returned in order of increasing (count previous uses).
-     *
-     * @param array $categoryids an array of question_category ids.
-     * @param qubaid_condition $qubaids which question_usages to count previous uses from.
-     * @param string $extraconditions extra conditions to AND with the rest of
-     *      the where clause. Must use named parameters.
-     * @param array $extraparams any parameters used by $extraconditions.
-     * @param array $tagids an array of tag ids
-     * @return array questionid => count of number of previous uses.
      * @deprecated since Moodle 4.3
-     * @todo Final deprecation on Moodle 4.7 MDL-78091
      */
-    public function get_questions_from_categories_and_tags_with_usage_counts($categoryids,
-            qubaid_condition $qubaids, $extraconditions = '', $extraparams = array(), $tagids = array()) {
-        debugging(
-            'Function get_questions_from_categories_and_tags_with_usage_counts() is deprecated, please do not use the function.',
-            DEBUG_DEVELOPER
-        );
-        global $DB;
-
-        list($qcsql, $qcparams) = $DB->get_in_or_equal($categoryids, SQL_PARAMS_NAMED, 'qc');
-
-        $readystatus = question_version_status::QUESTION_STATUS_READY;
-        $select = "q.id, (SELECT COUNT(1)
-                            FROM " . $qubaids->from_question_attempts('qa') . "
-                           WHERE qa.questionid = q.id AND " . $qubaids->where() . "
-                         ) AS previous_attempts";
-        $from   = "{question} q";
-        $join   = "JOIN {question_versions} qv ON qv.questionid = q.id
-                   JOIN {question_bank_entries} qbe ON qbe.id = qv.questionbankentryid";
-        $from = $from . " " . $join;
-        $where  = "qbe.questioncategoryid {$qcsql}
-               AND q.parent = 0
-               AND qv.status = '$readystatus'
-               AND qv.version = (SELECT MAX(v.version)
-                                  FROM {question_versions} v
-                                  JOIN {question_bank_entries} be
-                                    ON be.id = v.questionbankentryid
-                                 WHERE be.id = qbe.id)";
-        $params = $qcparams;
-
-        if (!empty($tagids)) {
-            // We treat each additional tag as an AND condition rather than
-            // an OR condition.
-            //
-            // For example, if the user filters by the tags "foo" and "bar" then
-            // we reduce the question list to questions that are tagged with both
-            // "foo" AND "bar". Any question that does not have ALL of the specified
-            // tags will be omitted.
-            list($tagsql, $tagparams) = $DB->get_in_or_equal($tagids, SQL_PARAMS_NAMED, 'ti');
-            $tagparams['tagcount'] = count($tagids);
-            $tagparams['questionitemtype'] = 'question';
-            $tagparams['questioncomponent'] = 'core_question';
-            $where .= " AND q.id IN (SELECT ti.itemid
-                                       FROM {tag_instance} ti
-                                      WHERE ti.itemtype = :questionitemtype
-                                            AND ti.component = :questioncomponent
-                                            AND ti.tagid {$tagsql}
-                                   GROUP BY ti.itemid
-                                     HAVING COUNT(itemid) = :tagcount)";
-            $params += $tagparams;
-        }
-
-        if ($extraconditions) {
-            $extraconditions = ' AND (' . $extraconditions . ')';
-        }
-
-        return $DB->get_records_sql_menu("SELECT $select
-                                                FROM $from
-                                               WHERE $where $extraconditions
-                                            ORDER BY previous_attempts",
-                $qubaids->from_where_params() + $params + $extraparams);
+    #[\core\attribute\deprecated(null, since: '4.3', mdl: 'MDL-72321', final: true)]
+    public function get_questions_from_categories_and_tags_with_usage_counts(
+        $categoryids,
+        qubaid_condition $qubaids,
+        $extraconditions = '',
+        $extraparams = [],
+        $tagids = []
+    ) {
+        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
     }
 
     #[\Override]

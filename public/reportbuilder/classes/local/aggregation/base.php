@@ -18,7 +18,7 @@ declare(strict_types=1);
 
 namespace core_reportbuilder\local\aggregation;
 
-use lang_string;
+use core\lang_string;
 use core_reportbuilder\local\report\column;
 
 /**
@@ -29,6 +29,18 @@ use core_reportbuilder\local\report\column;
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 abstract class base {
+
+    /**
+     * Constructor
+     *
+     * @param array $options Aggregation type specific options
+     */
+    public function __construct(
+        /** @var array Aggregation type specific options */
+        protected readonly array $options = [],
+    ) {
+
+    }
 
     /**
      * Return the class name of the aggregation type
@@ -91,8 +103,8 @@ abstract class base {
     ): string {
         global $DB;
 
-        // We need to ensure all values are char.
-        $sqlfieldrequirescast = in_array($DB->get_dbfamily(), ['mssql', 'oracle', 'postgres']);
+        // We need to ensure all values are char in supported DBs.
+        $sqlfieldrequirescast = in_array($DB->get_dbfamily(), ['mssql', 'postgres']);
 
         $concatfields = [];
         foreach ($sqlfields as $sqlfield) {
@@ -119,9 +131,32 @@ abstract class base {
     abstract public static function get_field_sql(string $field, int $columntype): string;
 
     /**
+     * Whether the aggregation method is applied to a column, this method determines whether the report table should
+     * group by the column fields or not
+     *
+     * @return bool
+     */
+    public static function column_groupby(): bool {
+        return false;
+    }
+
+    /**
+     * Return aggregated column type, that being one of the column TYPE_* constants like {@see column::get_type}
+     *
+     * Classes should override this method to define the type of data that the aggregated column value returns (e.g {@see count}
+     * returns a numeric value, regardless of the original column type to which it is applied)
+     *
+     * @param int $columntype The type of the column to which the aggregation is applied
+     * @return int
+     */
+    public static function get_column_type(int $columntype): int {
+        return column::TYPE_TEXT;
+    }
+
+    /**
      * Return formatted value for column when applying aggregation, by default executing all callbacks on the value
      *
-     * Should be overridden in child classes that need to format the column value differently (e.g. 'sum' would just show
+     * Should be overridden in child classes that need to format the column value differently (e.g. {@see sum} would just show
      * a numeric count value)
      *
      * @param mixed $value
@@ -130,7 +165,7 @@ abstract class base {
      * @param int $columntype The original type of the column, to ensure it is preserved for callbacks
      * @return mixed
      */
-    public static function format_value($value, array $values, array $callbacks, int $columntype) {
+    public function format_value($value, array $values, array $callbacks, int $columntype) {
         foreach ($callbacks as $callback) {
             [$callable, $arguments] = $callback;
             $value = ($callable)($value, (object) $values, $arguments, static::get_class_name());

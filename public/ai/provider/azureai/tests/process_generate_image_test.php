@@ -17,7 +17,7 @@
 namespace aiprovider_azureai;
 
 use core_ai\aiactions\base;
-use core_ai\provider;
+use core_ai\manager;
 use GuzzleHttp\Psr7\Response;
 
 /**
@@ -26,11 +26,14 @@ use GuzzleHttp\Psr7\Response;
  * @package    aiprovider_azureai
  * @copyright  2024 Matt Porritt <matt.porritt@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @covers     \core_ai\provider\azureai
+ * @covers     \aiprovider_azureai\process_generate_image
  */
 final class process_generate_image_test extends \advanced_testcase {
     /** @var string A successful response in JSON format. */
     protected string $responsebodyjson;
+
+    /** @var manager $manager */
+    private manager $manager;
 
     /** @var provider The provider that will process the action. */
     protected provider $provider;
@@ -43,6 +46,7 @@ final class process_generate_image_test extends \advanced_testcase {
      */
     protected function setUp(): void {
         parent::setUp();
+        $this->resetAfterTest();
         // Load a response body from a file.
         $this->responsebodyjson = file_get_contents(self::get_fixture_path('aiprovider_azureai', 'image_request_success.json'));
         $this->create_provider();
@@ -53,7 +57,20 @@ final class process_generate_image_test extends \advanced_testcase {
      * Create the provider object.
      */
     private function create_provider(): void {
-        $this->provider = new \aiprovider_azureai\provider();
+        $this->manager = \core\di::get(\core_ai\manager::class);
+        $config = [
+            'apikey' => '123',
+            'endpoint' => 'https://api.example.com',
+            'enableuserratelimit' => true,
+            'userratelimit' => 1,
+            'enableglobalratelimit' => true,
+            'globalratelimit' => 1,
+        ];
+        $this->provider = $this->manager->create_provider_instance(
+            classname: '\aiprovider_azureai\provider',
+            name: 'dummy',
+            config: $config,
+        );
     }
 
     /**
@@ -168,7 +185,6 @@ final class process_generate_image_test extends \advanced_testcase {
      * Test query_ai_api for a successful call.
      */
     public function test_query_ai_api_success(): void {
-        $this->resetAfterTest();
         // Mock the http client to return a successful response.
         ['mock' => $mock] = $this->get_mocked_http_client();
 
@@ -189,17 +205,6 @@ final class process_generate_image_test extends \advanced_testcase {
         ));
 
         $this->setAdminUser();
-
-        // Create a request object.
-        $requestobj = new \stdClass();
-        $requestobj->prompt = 'generate a test image';
-        $requestobj->model = 'awesome-ai-3';
-        $requestobj->n = '3';
-        $requestobj->quality = 'hd';
-        $requestobj->response_format = 'url;';
-        $requestobj->size = '1024x1024';
-        $requestobj->style = 'vivid';
-        $requestobj->user = 't3464h89dftjltestudfaser';
 
         $processor = new process_generate_image($this->provider, $this->action);
         $method = new \ReflectionMethod($processor, 'query_ai_api');
@@ -245,7 +250,8 @@ final class process_generate_image_test extends \advanced_testcase {
         $response = [
             'success' => false,
             'errorcode' => 500,
-            'errormessage' => 'Internal server error.',
+            'error' => 'Internal server error',
+            'errormessage' => 'Try again later',
         ];
 
         $result = $method->invoke($processor, $response);
@@ -261,7 +267,6 @@ final class process_generate_image_test extends \advanced_testcase {
      * Test url_to_file.
      */
     public function test_url_to_file(): void {
-        $this->resetAfterTest();
         // Log in user.
         $this->setUser($this->getDataGenerator()->create_user());
 
@@ -281,7 +286,6 @@ final class process_generate_image_test extends \advanced_testcase {
      * Test process.
      */
     public function test_process(): void {
-        $this->resetAfterTest();
         // Log in user.
         $this->setUser($this->getDataGenerator()->create_user());
 
@@ -344,7 +348,6 @@ final class process_generate_image_test extends \advanced_testcase {
      * Test process method with error.
      */
     public function test_process_error(): void {
-        $this->resetAfterTest();
         // Log in user.
         $this->setUser($this->getDataGenerator()->create_user());
 
@@ -372,7 +375,6 @@ final class process_generate_image_test extends \advanced_testcase {
      * Test process method with user rate limiter.
      */
     public function test_process_with_user_rate_limiter(): void {
-        $this->resetAfterTest();
         // Create users.
         $user1 = $this->getDataGenerator()->create_user();
         $user2 = $this->getDataGenerator()->create_user();
@@ -382,15 +384,36 @@ final class process_generate_image_test extends \advanced_testcase {
         $clock = $this->mock_clock_with_frozen();
 
         // Set the user rate limiter.
-        set_config('enableuserratelimit', 1, 'aiprovider_azureai');
-        set_config('userratelimit', 1, 'aiprovider_azureai');
+        $config = [
+            'apikey' => '123',
+            'endpoint' => 'https://api.example.com',
+            'enableuserratelimit' => true,
+            'userratelimit' => 1,
+        ];
+        $actionconfig = [
+            'core_ai\\aiactions\\generate_image' => [
+                'enabled' => true,
+                'settings' => [
+                    'deployment' => 'test',
+                    'apiversion' => '2024-06-01',
+                ],
+            ],
+        ];
+        $provider = $this->manager->create_provider_instance(
+            classname: provider::class,
+            name: 'dummy',
+            config: $config,
+        );
+        $provider = $this->manager->update_provider_instance(
+            provider: $provider,
+            actionconfig: $actionconfig,
+        );
 
         // Mock the http client to return a successful response.
         ['mock' => $mock] = $this->get_mocked_http_client();
         $url = 'https://example.com/test.jpg';
 
         // Case 1: User rate limit has not been reached.
-        $this->create_provider();
         $this->create_action($user1->id);
         // The response from Azure AI.
         $mock->append(new Response(
@@ -412,7 +435,7 @@ final class process_generate_image_test extends \advanced_testcase {
             ['Content-Type' => 'image/jpeg'],
             \GuzzleHttp\Psr7\Utils::streamFor(fopen(self::get_fixture_path('aiprovider_azureai', 'test.jpg'), 'r')),
         ));
-        $processor = new process_generate_image($this->provider, $this->action);
+        $processor = new process_generate_image($provider, $this->action);
         $result = $processor->process();
         $this->assertTrue($result->get_success());
 
@@ -438,18 +461,19 @@ final class process_generate_image_test extends \advanced_testcase {
             ['Content-Type' => 'image/jpeg'],
             \GuzzleHttp\Psr7\Utils::streamFor(fopen(self::get_fixture_path('aiprovider_azureai', 'test.jpg'), 'r')),
         ));
-        $this->create_provider();
         $this->create_action($user1->id);
-        $processor = new process_generate_image($this->provider, $this->action);
+        $processor = new process_generate_image($provider, $this->action);
         $result = $processor->process();
         $this->assertEquals(429, $result->get_errorcode());
-        $this->assertEquals('User rate limit exceeded', $result->get_errormessage());
+        $this->assertEquals(
+            expected: 'You have reached the maximum number of AI requests you can make in an hour. Try again later.',
+            actual: $result->get_errormessage(),
+        );
         $this->assertFalse($result->get_success());
 
         // Case 3: User rate limit has not been reached for a different user.
         // Log in user2.
         $this->setUser($user2);
-        $this->create_provider();
         $this->create_action($user2->id);
         // The response from Azure AI.
         $mock->append(new Response(
@@ -471,7 +495,7 @@ final class process_generate_image_test extends \advanced_testcase {
             ['Content-Type' => 'image/jpeg'],
             \GuzzleHttp\Psr7\Utils::streamFor(fopen(self::get_fixture_path('aiprovider_azureai', 'test.jpg'), 'r')),
         ));
-        $processor = new process_generate_image($this->provider, $this->action);
+        $processor = new process_generate_image($provider, $this->action);
         $result = $processor->process();
         $this->assertTrue($result->get_success());
 
@@ -499,9 +523,8 @@ final class process_generate_image_test extends \advanced_testcase {
             ['Content-Type' => 'image/jpeg'],
             \GuzzleHttp\Psr7\Utils::streamFor(fopen(self::get_fixture_path('aiprovider_azureai', 'test.jpg'), 'r')),
         ));
-        $this->create_provider();
         $this->create_action($user1->id);
-        $processor = new process_generate_image($this->provider, $this->action);
+        $processor = new process_generate_image($provider, $this->action);
         $result = $processor->process();
         $this->assertTrue($result->get_success());
     }
@@ -510,7 +533,6 @@ final class process_generate_image_test extends \advanced_testcase {
      * Test process method with global rate limiter.
      */
     public function test_process_with_global_rate_limiter(): void {
-        $this->resetAfterTest();
         // Create users.
         $user1 = $this->getDataGenerator()->create_user();
         $user2 = $this->getDataGenerator()->create_user();
@@ -520,15 +542,36 @@ final class process_generate_image_test extends \advanced_testcase {
         $clock = $this->mock_clock_with_frozen();
 
         // Set the global rate limiter.
-        set_config('enableglobalratelimit', 1, 'aiprovider_azureai');
-        set_config('globalratelimit', 1, 'aiprovider_azureai');
+        $config = [
+            'apikey' => '123',
+            'endpoint' => 'https://api.example.com',
+            'enableglobalratelimit' => true,
+            'globalratelimit' => 1,
+        ];
+        $actionconfig = [
+            'core_ai\\aiactions\\generate_image' => [
+                'enabled' => true,
+                'settings' => [
+                    'deployment' => 'test',
+                    'apiversion' => '2024-06-01',
+                ],
+            ],
+        ];
+        $provider = $this->manager->create_provider_instance(
+            classname: provider::class,
+            name: 'dummy',
+            config: $config,
+        );
+        $provider = $this->manager->update_provider_instance(
+            provider: $provider,
+            actionconfig: $actionconfig,
+        );
 
         // Mock the http client to return a successful response.
         ['mock' => $mock] = $this->get_mocked_http_client();
         $url = 'https://example.com/test.jpg';
 
         // Case 1: Global rate limit has not been reached.
-        $this->create_provider();
         $this->create_action($user1->id);
         // The response from Azure AI.
         $mock->append(new Response(
@@ -550,7 +593,7 @@ final class process_generate_image_test extends \advanced_testcase {
             ['Content-Type' => 'image/jpeg'],
             \GuzzleHttp\Psr7\Utils::streamFor(fopen(self::get_fixture_path('aiprovider_azureai', 'test.jpg'), 'r')),
         ));
-        $processor = new process_generate_image($this->provider, $this->action);
+        $processor = new process_generate_image($provider, $this->action);
         $result = $processor->process();
         $this->assertTrue($result->get_success());
 
@@ -576,18 +619,19 @@ final class process_generate_image_test extends \advanced_testcase {
             ['Content-Type' => 'image/jpeg'],
             \GuzzleHttp\Psr7\Utils::streamFor(fopen(self::get_fixture_path('aiprovider_azureai', 'test.jpg'), 'r')),
         ));
-        $this->create_provider();
         $this->create_action($user1->id);
-        $processor = new process_generate_image($this->provider, $this->action);
+        $processor = new process_generate_image($provider, $this->action);
         $result = $processor->process();
         $this->assertEquals(429, $result->get_errorcode());
-        $this->assertEquals('Global rate limit exceeded', $result->get_errormessage());
+        $this->assertEquals(
+            expected: 'The AI service has reached the maximum number of site-wide requests per hour. Try again later.',
+            actual: $result->get_errormessage(),
+        );
         $this->assertFalse($result->get_success());
 
         // Case 3: Global rate limit has been reached for a different user too.
         // Log in user2.
         $this->setUser($user2);
-        $this->create_provider();
         $this->create_action($user2->id);
         // The response from Azure AI.
         $mock->append(new Response(
@@ -609,7 +653,7 @@ final class process_generate_image_test extends \advanced_testcase {
             ['Content-Type' => 'image/jpeg'],
             \GuzzleHttp\Psr7\Utils::streamFor(fopen(self::get_fixture_path('aiprovider_azureai', 'test.jpg'), 'r')),
         ));
-        $processor = new process_generate_image($this->provider, $this->action);
+        $processor = new process_generate_image($provider, $this->action);
         $result = $processor->process();
         $this->assertFalse($result->get_success());
 
@@ -637,9 +681,8 @@ final class process_generate_image_test extends \advanced_testcase {
             ['Content-Type' => 'image/jpeg'],
             \GuzzleHttp\Psr7\Utils::streamFor(fopen(self::get_fixture_path('aiprovider_azureai', 'test.jpg'), 'r')),
         ));
-        $this->create_provider();
         $this->create_action($user1->id);
-        $processor = new process_generate_image($this->provider, $this->action);
+        $processor = new process_generate_image($provider, $this->action);
         $result = $processor->process();
         $this->assertTrue($result->get_success());
     }

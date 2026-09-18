@@ -227,9 +227,28 @@ class notification_helper {
         $assignmentobj = self::get_assignment_data($assignmentid);
 
         // Get our assignment users.
-        $users = $assignmentobj->list_participants(0, true, false, true);
+        $users = $assignmentobj->list_participants(0, false, false, true);
+
+        // If it's an overdue type and there are no submission plugins, skip the assignment.
+        if ($type == self::TYPE_OVERDUE) {
+            if (!$assignmentobj->is_any_submission_plugin_enabled()) {
+                // No enabled submission plugins. Removing users.
+                return [];
+            }
+        }
+
+        // Get completion info for this module.
+        $cm = $assignmentobj->get_course_module();
+        $course = $assignmentobj->get_course();
+        $completion = new \completion_info($course);
 
         foreach ($users as $key => $user) {
+            // Exclude suspended users.
+            if ($user->suspended || ($user->auth == 'nologin')) {
+                unset($users[$key]);
+                continue;
+            }
+
             // Check if the user has submitted already.
             $submission = $assignmentobj->get_user_submission($user->id, false);
             if ($submission && $submission->status === ASSIGN_SUBMISSION_STATUS_SUBMITTED) {
@@ -243,6 +262,19 @@ class notification_helper {
 
             // If the due date has no value, unset this user.
             if (empty($duedate)) {
+                unset($users[$key]);
+                continue;
+            }
+
+            // Don't send if the user has a grade for this assignment already.
+            if ($assignmentobj->get_grading_status($user->id) === ASSIGN_GRADING_STATUS_GRADED) {
+                unset($users[$key]);
+                continue;
+            }
+
+            // Don't send if the user has met completion conditions.
+            $completiondata = $completion->get_data($cm, false, $user->id);
+            if ($completiondata && $completiondata->completionstate != COMPLETION_INCOMPLETE) {
                 unset($users[$key]);
                 continue;
             }
@@ -307,7 +339,12 @@ class notification_helper {
             }
         }
 
-        return $users;
+        // Only the array key and user id field are required.
+        $userids = [];
+        foreach ($users as $key => $user) {
+            $userids[$key] = (object) ['id' => $user->id];
+        }
+        return $userids;
     }
 
     /**
@@ -323,6 +360,12 @@ class notification_helper {
         } catch (\dml_missing_record_exception) {
             // The assignment has vanished, nothing to do.
             mtrace("No notification send as the assignment $assignmentid can no longer be found in the database.");
+            return;
+        }
+
+        // Check if the module is visible to the user.
+        $cm = $assignmentobj->get_course_module();
+        if (!\core_availability\info_module::is_user_visible($cm, $userid)) {
             return;
         }
 
@@ -351,6 +394,14 @@ class notification_helper {
         ];
         $url = new \moodle_url('/mod/assign/view.php', $urlparams);
 
+        // Shortlink for SMS.
+        $shortlink = \core_sms\manager::create_shortlink_for_users(
+            component: 'mod_assign',
+            linktype: 'view',
+            identifier: $assignmentobj->get_course_module()->id,
+            userids: [$userid],
+        );
+
         $stringparams = [
             'firstname' => $user->firstname,
             'assignmentname' => format_string(
@@ -363,6 +414,7 @@ class notification_helper {
             ),
             'duedate' => userdate($duedate),
             'url' => $url,
+            'shortlink' => $shortlink,
         ];
 
         $messagedata = [
@@ -370,8 +422,13 @@ class notification_helper {
             'url' => $url->out(false),
             'subject' => get_string('assignmentduesoonsubject', 'mod_assign', $stringparams),
             'assignmentname' => $stringparams['assignmentname'],
-            'html' => get_string('assignmentduesoonhtml', 'mod_assign', $stringparams),
+            'sms' => get_string('assignmentduesoonsms', 'mod_assign', $stringparams),
         ];
+
+        // Offline assignments will have a slightly different message.
+        $messagedata['html'] = !$assignmentobj->is_any_submission_plugin_enabled()
+            ? get_string('assignmentduesoonofflinehtml', 'mod_assign', $stringparams)
+            : get_string('assignmentduesoonhtml', 'mod_assign', $stringparams);
 
         $message = new \core\message\message();
         $message->component = 'mod_assign';
@@ -382,6 +439,7 @@ class notification_helper {
         $message->fullmessageformat = FORMAT_HTML;
         $message->fullmessage = html_to_text($messagedata['html']);
         $message->fullmessagehtml = $messagedata['html'];
+        $message->fullmessagesms = $messagedata['sms'];
         $message->smallmessage = $messagedata['subject'];
         $message->notification = 1;
         $message->contexturl = $messagedata['url'];
@@ -417,6 +475,12 @@ class notification_helper {
             return;
         }
 
+        // Check if the module is visible to the user.
+        $cm = $assignmentobj->get_course_module();
+        if (!\core_availability\info_module::is_user_visible($cm, $userid)) {
+            return;
+        }
+
         // Check if the due date still considered overdue.
         $assignmentobj->update_effective_access($userid);
         $duedate = $assignmentobj->get_instance($userid)->duedate;
@@ -443,6 +507,14 @@ class notification_helper {
         ];
         $url = new \moodle_url('/mod/assign/view.php', $urlparams);
 
+        // Shortlink for SMS.
+        $shortlink = \core_sms\manager::create_shortlink_for_users(
+            component: 'mod_assign',
+            linktype: 'view',
+            identifier: $assignmentobj->get_course_module()->id,
+            userids: [$userid],
+        );
+
         // Prepare the cut-off date html string.
         $snippet = '';
         if (!empty($cutoffdate)) {
@@ -462,6 +534,7 @@ class notification_helper {
             'duedate' => userdate($duedate),
             'url' => $url,
             'cutoffsnippet' => $snippet,
+            'shortlink' => $shortlink,
         ];
 
         $messagedata = [
@@ -470,6 +543,7 @@ class notification_helper {
             'subject' => get_string('assignmentoverduesubject', 'mod_assign', $stringparams),
             'assignmentname' => $stringparams['assignmentname'],
             'html' => get_string('assignmentoverduehtml', 'mod_assign', $stringparams),
+            'sms' => get_string('assignmentoverduesms', 'mod_assign', $stringparams),
         ];
 
         $message = new \core\message\message();
@@ -481,6 +555,7 @@ class notification_helper {
         $message->fullmessageformat = FORMAT_HTML;
         $message->fullmessage = html_to_text($messagedata['html']);
         $message->fullmessagehtml = $messagedata['html'];
+        $message->fullmessagesms = $messagedata['sms'];
         $message->smallmessage = $messagedata['subject'];
         $message->notification = 1;
         $message->contexturl = $messagedata['url'];
@@ -538,6 +613,16 @@ class notification_helper {
                 'id' => $assignmentobj->get_course_module()->id,
                 'action' => 'view',
             ];
+            $url = new \moodle_url('/mod/assign/view.php', $urlparams);
+
+            // Shortlink for SMS.
+            $shortlink = \core_sms\manager::create_shortlink_for_users(
+                component: 'mod_assign',
+                linktype: 'view',
+                identifier: $assignmentobj->get_course_module()->id,
+                userids: [$userid],
+            );
+
             $assignmentsfordigest[$assignment->id] = [
                 'assignmentname' => format_string(
                     $assignmentobj->get_instance()->name,
@@ -548,7 +633,8 @@ class notification_helper {
                     options: ['context' => $assignmentobj->get_course_context()],
                 ),
                 'duetime' => userdate($duedate, get_string('strftimetime12', 'langconfig')),
-                'url' => new \moodle_url('/mod/assign/view.php', $urlparams),
+                'url' => $url,
+                'shortlink' => $shortlink,
             ];
         }
         $assignments->close();
@@ -580,6 +666,7 @@ class notification_helper {
             'user' => $userobject,
             'subject' => get_string('assignmentduedigestsubject', 'mod_assign'),
             'html' => get_string('assignmentduedigesthtml', 'mod_assign', $stringparams),
+            'sms' => get_string('assignmentduedigestsms', 'mod_assign', $stringparams),
         ];
 
         $message = new \core\message\message();
@@ -591,6 +678,7 @@ class notification_helper {
         $message->fullmessageformat = FORMAT_HTML;
         $message->fullmessage = html_to_text($messagedata['html']);
         $message->fullmessagehtml = $messagedata['html'];
+        $message->fullmessagesms = $messagedata['sms'];
         $message->smallmessage = $messagedata['subject'];
         $message->notification = 1;
 

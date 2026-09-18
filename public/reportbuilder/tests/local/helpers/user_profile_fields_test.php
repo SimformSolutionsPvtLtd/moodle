@@ -50,7 +50,8 @@ final class user_profile_fields_test extends core_reportbuilder_testcase {
                 'defaultdata' => 0, 'visible' => PROFILE_VISIBLE_NONE]);
 
         $this->getDataGenerator()->create_custom_profile_field([
-            'shortname' => 'menu', 'name' => 'Menu field', 'datatype' => 'menu', 'param1' => "Cat\nDog", 'defaultdata' => 'Cat']);
+            'shortname' => 'menu', 'name' => 'Menu field', 'datatype' => 'menu', 'param1' => "Cat\nDog\nFish",
+                'defaultdata' => 'Cat']);
 
         $this->getDataGenerator()->create_custom_profile_field([
             'shortname' => 'Social', 'name' => 'msn', 'datatype' => 'social', 'param1' => 'msn']);
@@ -130,7 +131,7 @@ final class user_profile_fields_test extends core_reportbuilder_testcase {
             true,
             true,
             true,
-            false,
+            true,
         ], array_map(
             fn(column $column): bool => $column->get_is_sortable(),
             $columns,

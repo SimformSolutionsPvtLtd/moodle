@@ -16,6 +16,7 @@
 
 namespace aiplacement_courseassist;
 
+use core_ai\aiactions\explain_text;
 use core_ai\aiactions\summarise_text;
 use core_ai\manager;
 
@@ -28,27 +29,57 @@ use core_ai\manager;
  */
 class utils {
     /**
-     * Check if AI Placement course assist is available for the context.
+     * Check if AI Placement course assist is available.
      *
-     * @param \context $context The context.
      * @return bool True if AI Placement course assist is available, false otherwise.
      */
-    public static function is_course_assist_available(\context $context): bool {
+    public static function is_course_assist_available(): bool {
         [$plugintype, $pluginname] = explode('_', \core_component::normalize_componentname('aiplacement_courseassist'), 2);
-        $manager = \core_plugin_manager::resolve_plugininfo_class($plugintype);
-        if (!$manager::is_plugin_enabled($pluginname)) {
-            return false;
-        }
-
-        $providers = manager::get_providers_for_actions([summarise_text::class], true);
-        if (!has_capability('aiplacement/courseassist:summarise_text', $context)
-            || !manager::is_action_available(summarise_text::class)
-            || !manager::is_action_enabled('aiplacement_courseassist', summarise_text::class)
-            || empty($providers[summarise_text::class])
-        ) {
+        $pluginmanager = \core_plugin_manager::resolve_plugininfo_class($plugintype);
+        if (!$pluginmanager::is_plugin_enabled($pluginname)) {
             return false;
         }
 
         return true;
+    }
+
+    /**
+     * Get all the actions available and return action data for template.
+     *
+     * @param \context $context The context.
+     * @param bool $checkcontext If true, check the action is available in context.
+     * @return array Return the actions available with data.
+     */
+    public static function get_actions_available(\context $context, bool $checkcontext = true): array {
+        $actions = [];
+        $manager = \core\di::get(manager::class);
+
+        // Summarise text.
+        if (has_capability('aiplacement/courseassist:summarise_text', $context)
+            && $manager->is_action_available(summarise_text::class)
+            && $manager->is_action_enabled('aiplacement_courseassist', summarise_text::class)
+            && (!$checkcontext || $manager->is_action_enabled_in_context($context, summarise_text::class))
+        ) {
+            $actions[] = [
+                'action' => 'summarise_text',
+                'buttontext' => get_string('summarise', 'aiplacement_courseassist'),
+                'title' => get_string('summarise_tooltips', 'aiplacement_courseassist'),
+            ];
+        }
+
+        // Explain text.
+        if (has_capability('aiplacement/courseassist:explain_text', $context)
+            && $manager->is_action_available(explain_text::class)
+            && $manager->is_action_enabled('aiplacement_courseassist', explain_text::class)
+            && (!$checkcontext || $manager->is_action_enabled_in_context($context, explain_text::class))
+        ) {
+            $actions[] = [
+                'action' => 'explain_text',
+                'buttontext' => get_string('explain', 'aiplacement_courseassist'),
+                'title' => get_string('explain_tooltips', 'aiplacement_courseassist'),
+            ];
+        }
+
+        return $actions;
     }
 }

@@ -28,8 +28,8 @@ import {
     videoButtonName,
     mediaManagerButtonName
 } from './common';
-import MediaImage from './image';
-import MediaEmbed from './embed';
+import MediaImage from './image/image';
+import MediaEmbed from './embed/embed';
 import MediaManager from './manager';
 import {getButtonImage} from 'editor_tiny/utils';
 import Selectors from './selectors';
@@ -98,7 +98,8 @@ const registerEmbedCommand = (editor, videoButtonText) => {
         onSetup: api => {
             return editor.selection.selectorChangedWithUnbind(
                 'video:not([data-mce-object]):not([data-mce-placeholder]),' +
-                'audio:not([data-mce-object]):not([data-mce-placeholder])',
+                'audio:not([data-mce-object]):not([data-mce-placeholder]),' +
+                'a:not([data-mce-object]):not([data-mce-placeholder])[class=external-media-provider]',
                 api.setActive
             ).unbind;
         }

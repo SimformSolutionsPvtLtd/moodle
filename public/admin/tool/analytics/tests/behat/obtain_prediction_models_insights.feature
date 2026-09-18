@@ -30,6 +30,9 @@ Feature: Manager can obtain prediction models insights
     # Disable "Analytics processes execution via command line only".
     And the following config values are set as admin:
       | onlycli         | 0 | analytics |
+      | enableanalytics | 1 |           |
+    And a Python Machine Learning backend server is configured
+    And I change the Python Machine Learning backend to use external server
 
   @javascript
   Scenario: Manager can obtain prediction models insights

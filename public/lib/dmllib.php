@@ -25,7 +25,7 @@ use core\router\response\not_found_response;
  * This library contains all the Data Manipulation Language (DML) functions
  * used to interact with the DB. All the dunctions in this library must be
  * generic and work against the major number of RDBMS possible. This is the
- * list of currently supported and tested DBs: mysql, postresql, mssql, oracle
+ * list of currently supported and tested DBs: mysql, postresql, and mssql.
  *
  * This library is automatically included by Moodle core so you never need to
  * include it yourself.
@@ -193,7 +193,8 @@ class dml_missing_record_exception extends dml_exception implements response_awa
      * @param array $params Optional SQL query's parameters.
      */
     function __construct($tablename, $sql='', ?array $params=null) {
-        if (empty($tablename)) {
+        // If the debug is disabled the database information should not be displayed.
+        if (empty($tablename) || !debugging()) {
             $tablename = null;
         }
         $this->tablename = $tablename;
@@ -319,10 +320,6 @@ function setup_DB() {
         switch ($CFG->dbtype) {
             case 'postgres7' :
                 $CFG->dbtype = 'pgsql';
-                break;
-
-            case 'oci8po':
-                $CFG->dbtype = 'oci';
                 break;
 
             case 'mysql' :

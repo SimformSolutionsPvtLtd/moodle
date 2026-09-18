@@ -430,12 +430,6 @@ class post extends exporter {
             $label = $subject;
         }
 
-        $replysubject = $subject;
-        $strre = get_string('re', 'forum');
-        if (!(substr($replysubject, 0, strlen($strre)) == $strre)) {
-            $replysubject = "{$strre} {$replysubject}";
-        }
-
         $showwordcount = $forum->should_display_word_count();
         if ($showwordcount) {
             $wordcount = $post->get_wordcount() ?? count_words($message);
@@ -448,7 +442,7 @@ class post extends exporter {
         return [
             'id' => $post->get_id(),
             'subject' => $subject,
-            'replysubject' => $replysubject,
+            'replysubject' => $subject,
             'label' => $label,
             'message' => $message,
             'messageformat' => $post->get_message_format(),

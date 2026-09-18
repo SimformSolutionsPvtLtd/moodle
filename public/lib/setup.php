@@ -60,6 +60,7 @@ if (!isset($CFG)) {
 // We can detect real dirroot path reliably since PHP 4.0.2,
 // it can not be anything else, there is no point in having this in config.php
 $CFG->dirroot = dirname(__DIR__);
+$CFG->root = dirname($CFG->dirroot);
 
 // File permissions on created directories in the $CFG->dataroot
 if (!isset($CFG->directorypermissions)) {
@@ -359,7 +360,7 @@ if (file_exists("$CFG->dataroot/climaintenance.html")) {
         header('Retry-After: 300');
         header('Content-type: text/html; charset=utf-8');
         header('X-UA-Compatible: IE=edge');
-        /// Headers to make it not cacheable and json
+        // Headers to make it not cacheable and json.
         header('Cache-Control: no-store, no-cache, must-revalidate');
         header('Cache-Control: post-check=0, pre-check=0', false);
         header('Pragma: no-cache');
@@ -430,7 +431,7 @@ if (isset($CFG->debug)) {
 } else {
     $CFG->debug = 0;
 }
-$CFG->debugdeveloper = (($CFG->debug & (E_ALL | E_STRICT)) === (E_ALL | E_STRICT)); // DEBUG_DEVELOPER is not available yet.
+$CFG->debugdeveloper = (($CFG->debug & E_ALL) === E_ALL); // DEBUG_DEVELOPER is not available yet.
 
 if (!defined('MOODLE_INTERNAL')) { // Necessary because cli installer has to define it earlier.
     /** Used by library scripts to check they are being called by Moodle. */
@@ -501,7 +502,7 @@ global $COURSE;
  * $OUTPUT is an instance of core_renderer or one of its subclasses. Use
  * it to generate HTML for output.
  *
- * $OUTPUT is initialised the first time it is used. See {@link bootstrap_renderer}
+ * $OUTPUT is initialised the first time it is used. See {@see bootstrap_renderer}
  * for the magic that does that. After $OUTPUT has been initialised, any attempt
  * to change something that affects the current theme ($PAGE->course, logged in use,
  * httpsrequried ... will result in an exception.)
@@ -621,10 +622,8 @@ require_once($CFG->libdir .'/setuplib.php');        // Functions that MUST be lo
 
 // Load up standard libraries.
 require_once($CFG->libdir .'/filterlib.php');       // Functions for filtering test as it is output.
-require_once($CFG->libdir .'/ajax/ajaxlib.php');    // Functions for managing our use of JavaScript and YUI.
 require_once($CFG->libdir .'/weblib.php');          // Functions relating to HTTP and content.
 require_once($CFG->libdir .'/outputlib.php');       // Functions for generating output.
-require_once($CFG->libdir .'/navigationlib.php');   // Class for generating Navigation structure.
 require_once($CFG->libdir .'/dmllib.php');          // Database access.
 require_once($CFG->libdir .'/datalib.php');         // Legacy lib with a big-mix of functions..
 require_once($CFG->libdir .'/accesslib.php');       // Access control functions.
@@ -651,14 +650,14 @@ $OUTPUT = new bootstrap_renderer();
 // Set handler for uncaught exceptions - equivalent to throw new \moodle_exception() call.
 if (!PHPUNIT_TEST or PHPUNIT_UTIL) {
     set_exception_handler('default_exception_handler');
-    set_error_handler('default_error_handler', E_ALL | E_STRICT);
+    set_error_handler('default_error_handler', E_ALL);
 }
 
 // Acceptance tests needs special output to capture the errors,
 // but not necessary for behat CLI command and init script.
 if (defined('BEHAT_SITE_RUNNING') && !defined('BEHAT_TEST') && !defined('BEHAT_UTIL')) {
     require_once(__DIR__ . '/behat/lib.php');
-    set_error_handler('behat_error_handler', E_ALL | E_STRICT);
+    set_error_handler('behat_error_handler', E_ALL);
 }
 
 if (defined('WS_SERVER') && WS_SERVER) {
@@ -667,7 +666,7 @@ if (defined('WS_SERVER') && WS_SERVER) {
 }
 
 // If there are any errors in the standard libraries we want to know!
-error_reporting(E_ALL | E_STRICT);
+error_reporting(E_ALL);
 
 // Just say no to link prefetching (Moz prefetching, Google Web Accelerator, others)
 // http://www.google.com/webmasters/faq.html#prefetchblock

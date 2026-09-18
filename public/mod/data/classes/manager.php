@@ -234,6 +234,94 @@ class manager {
     }
 
     /**
+     * Return the database entries.
+     *
+     * @param array $groups to filter by.
+     * @return [] the data records array.
+     */
+    public function get_all_entries(array $groups = []): array {
+        global $DB;
+
+        if (empty($groups)) {
+            return $DB->get_records('data_records', ['dataid' => $this->instance->id]);
+        } else {
+            [$sql, $params] = $DB->get_in_or_equal(array_keys($groups), SQL_PARAMS_NAMED);
+            $sql = 'dataid = :id AND (groupid ' . $sql . ' OR groupid = 0)';
+            $params['id'] = $this->instance->id;
+            return $DB->get_records_select('data_records', $sql, $params);
+        }
+    }
+
+    /**
+     * Return the database given entries filtered by userid.
+     *
+     * @param array $entries Entries to filter from.
+     * @param int $userid User to filter by. Zero for non-filtering.
+     *
+     * @return [] the filtered data records array.
+     */
+    public function filter_entries_by_user(array $entries, int $userid = 0): array {
+        if ($userid > 0) {
+            $entries = array_filter($entries, function($entry) use ($userid) {
+                return $entry->userid == $userid;
+            });
+        }
+
+        return $entries;
+    }
+
+    /**
+     * Return the database entries filtered by approved and/or userid.
+     *
+     * @param array $entries Entries to filter from.
+     * @param int $approved Approved value to filter by.
+     *
+     * @return [] the filtered data records array.
+     */
+    public function filter_entries_by_approval(array $entries, int $approved): array {
+        return array_filter($entries, function($entry) use ($approved) {
+            return $entry->approved == $approved;
+        });
+    }
+
+    /**
+     * Return the database comments filtered by approved entries.
+     *
+     * @param ?int $approved Approved value to filter by. Null for not filtering.
+     * @param ?array $groups to filter by.
+     *
+     * @return [] the filtered data comments array or null if there is no comment.
+     */
+    public function get_comments(?int $approved = null, array $groups = []): ?array {
+
+        $entries = $this->get_all_entries($groups);
+        if (!is_null($approved)) {
+            $entries = $this->filter_entries_by_approval($entries, $approved);
+        }
+
+        $comments = [];
+
+        // Initilising comment object.
+        $args = new stdClass;
+        $args->context = $this->get_context();
+        $args->course = $this->cm->get_course();
+        $args->cm = $this->cm;
+        $args->area = 'database_entry';
+        $args->component = 'mod_data';
+
+        foreach ($entries as $entry) {
+            $args->itemid = $entry->id;
+            $comment = new \comment($args);
+            $morecomments = $comment->get_comments();
+            if ($morecomments) {
+                $comments = array_merge($comments, $morecomments);
+            }
+        }
+
+        return $comments;
+    }
+
+    /**
      * Return the database fields.
      *
      * @return data_field_base[] the field instances.
@@ -310,6 +398,15 @@ class manager {
         $options = array_merge($options, template::get_default_display_options($templatename));
 
         return new template($this, $templatecontent, $options);
+    }
+
+    /**
+     * Return whether the database module requests entries approval or not.
+     *
+     * @return int whether the approval is requested or not
+     */
+    public function get_approval_requested(): int {
+        return $this->get_instance()->approval;
     }
 
     /** Check if the user can manage templates on the current context.

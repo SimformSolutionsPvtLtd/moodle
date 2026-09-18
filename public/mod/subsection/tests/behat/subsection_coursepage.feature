@@ -5,8 +5,7 @@ Feature: Users view subsections on course page
   I need to view subsections on course page
 
   Background:
-    Given I enable "subsection" "mod" plugin
-    And the following "users" exist:
+    Given the following "users" exist:
       | username | firstname    | lastname  | email                 |
       | teacher1 | Teacher      | 1         | teacher1@example.com  |
       | student1 | Student      | 1         | student1@example.com  |
@@ -37,6 +36,23 @@ Feature: Users view subsections on course page
     And I click on "Page1 in Subsection1" "link" in the "Subsection1" "activity"
 
   @javascript
+  Scenario: Expanded subsections do not keep the collapse all toggle stuck
+    Given I am on the "C1" "Course" page logged in as "student1"
+    And I should see "Collapse all" in the "region-main" "region"
+    # Collapse every top level section but leave the subsections expanded.
+    When I click on "Collapse" "link" in the "General" "section"
+    And I click on "Collapse" "link" in the "Section 1" "section"
+    And I click on "Collapse" "link" in the "Section 2" "section"
+    And I click on "Collapse" "link" in the "Section 3" "section"
+    And I should not see "New database" in the "region-main" "region"
+    # Subsections are hidden inside a collapsed section, so they must not hold the toggle back.
+    Then I should see "Expand all" in the "region-main" "region"
+    But I should not see "Collapse all" in the "region-main" "region"
+    # The toggle must expand everything on the first click instead of being a dead click.
+    And I click on "Expand all" "button" in the "region-main" "region"
+    And I should see "New database" in the "region-main" "region"
+
+  @javascript
   Scenario: Teacher can create activities inside subsections on course page
     When I log in as "teacher1"
     And I am on "Course 1" course homepage with editing mode on
@@ -44,6 +60,7 @@ Feature: Users view subsections on course page
     And I hover "Insert an activity or resource before 'Page1 in Subsection1'" "button"
     And I press "Insert an activity or resource before 'Page1 in Subsection1'"
     And I click on "Add a new Assignment" "link" in the "Add an activity or resource" "dialogue"
+    And I click on "Add selected activity" "button" in the "Add an activity or resource" "dialogue"
     And I set the following fields to these values:
     | Assignment name | Assignment1 in Subsection1 |
     And I press "Save and return to course"
@@ -61,6 +78,7 @@ Feature: Users view subsections on course page
     And I press "Insert content before 'Subsection2'"
     And I click on "Activity or resource" "button" in the ".dropdown-menu.show" "css_element"
     And I click on "Add a new Assignment" "link" in the "Add an activity or resource" "dialogue"
+    And I click on "Add selected activity" "button" in the "Add an activity or resource" "dialogue"
     And I set the following fields to these values:
     | Assignment name | Assignment between subsections |
     And I press "Save and return to course"
@@ -94,6 +112,7 @@ Feature: Users view subsections on course page
     And I click on "Add content" "button" in the "General" "section"
     And I click on "Activity or resource" "button" in the ".dropdown-menu.show" "css_element"
     And I click on "Add a new Forum" "link" in the "Add an activity or resource" "dialogue"
+    And I click on "Add selected activity" "button" in the "Add an activity or resource" "dialogue"
     And I set the field "Forum name" to "New forum"
     And I press "Save and return to course"
     Then I should see "New forum" in the "General" "section"
@@ -106,6 +125,7 @@ Feature: Users view subsections on course page
     And I press "Insert content before 'New page'"
     And I click on "Activity or resource" "button" in the ".dropdown-menu.show" "css_element"
     And I click on "Add a new Forum" "link" in the "Add an activity or resource" "dialogue"
+    And I click on "Add selected activity" "button" in the "Add an activity or resource" "dialogue"
     And I set the field "Forum name" to "New forum"
     And I press "Save and return to course"
     Then I should see "New forum" in the "Section 3" "section"

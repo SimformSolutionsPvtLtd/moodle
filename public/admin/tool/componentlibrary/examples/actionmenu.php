@@ -163,7 +163,7 @@ echo html_writer::div($OUTPUT->render($menu));
 echo '</div>';
 
 $menu = new action_menu($links);
-$menu->set_menu_trigger($editicon . ' ' . html_writer::span(get_string('edit'), 'sr-only'));
+$menu->set_menu_trigger($editicon . ' ' . html_writer::span(get_string('edit'), 'visually-hidden'));
 
 echo '<div class="border m-3 p-3 d-flex flex-row">';
 echo '<div class="flex-fill">An action menu with an icon and visually hidden text for its custom menu trigger button</div>';

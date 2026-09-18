@@ -17,7 +17,7 @@
 namespace qbank_managecategories\external;
 
 use context;
-use context_course;
+use context_module;
 use moodle_url;
 use qbank_managecategories\question_categories;
 
@@ -75,13 +75,18 @@ final class move_category_test extends \qbank_managecategories\manage_category_t
 
         // Create context for question categories.
         $course = $this->create_course();
-        $context = context_course::instance($course->id);
+        $qbank = $this->create_qbank($course);
+        $context = context_module::instance($qbank->cmid);
         $this->create_course_category();
 
         // Question categories.
-        $qcat1 = $this->create_question_category_for_a_course($course);
-        $qcat2 = $this->create_question_category_for_a_course($course);
-        $qcat3 = $this->create_question_category_for_a_course($course);
+        $qcat1 = question_get_default_category($context->id);
+        $qcat2 = $this->create_question_category_for_a_qbank($qbank);
+        $qcat3 = $this->create_question_category_for_a_qbank($qbank);
+
+        $this->assertEquals(999, $qcat1->sortorder);
+        $this->assertEquals(1000, $qcat2->sortorder);
+        $this->assertEquals(1001, $qcat3->sortorder);
 
         // Check current order.
         $currentorder = $this->get_current_order($context);
@@ -110,7 +115,7 @@ final class move_category_test extends \qbank_managecategories\manage_category_t
                 'action' => 'put',
                 'fields' => (object)[
                     'id' => $qcat1->id,
-                    'sortorder' => 3,
+                    'sortorder' => 1001,
                 ],
             ],
             (object)[
@@ -118,7 +123,7 @@ final class move_category_test extends \qbank_managecategories\manage_category_t
                 'action' => 'put',
                 'fields' => (object)[
                     'id' => $qcat3->id,
-                    'sortorder' => 4,
+                    'sortorder' => 1002,
                 ],
             ],
         ];
@@ -136,14 +141,14 @@ final class move_category_test extends \qbank_managecategories\manage_category_t
         $this->resetAfterTest();
 
         // Create context for question categories.
-        $course = $this->create_course();
-        $context = context_course::instance($course->id);
+        $qbank = $this->create_qbank($this->create_course());
+        $context = context_module::instance($qbank->cmid);
         $this->create_course_category();
 
         // Question categories.
-        $qcat1 = $this->create_question_category_for_a_course($course);
-        $qcat2 = $this->create_question_category_for_a_course($course);
-        $qcat3 = $this->create_question_category_for_a_course($course);
+        $qcat1 = question_get_default_category($context->id);
+        $qcat2 = $this->create_question_category_for_a_qbank($qbank);
+        $qcat3 = $this->create_question_category_for_a_qbank($qbank);
 
         // Check current order.
         $currentorder = $this->get_current_order($context);
@@ -205,14 +210,14 @@ final class move_category_test extends \qbank_managecategories\manage_category_t
         $this->resetAfterTest();
 
         // Create context for question categories.
-        $course = $this->create_course();
-        $context = context_course::instance($course->id);
+        $qbank = $this->create_qbank($this->create_course());
+        $context = context_module::instance($qbank->cmid);
         $this->create_course_category();
 
         // Question categories.
-        $qcat1 = $this->create_question_category_for_a_course($course);
-        $qcat2 = $this->create_question_category_for_a_course($course);
-        $qcat3 = $this->create_question_category_for_a_course($course);
+        $qcat1 = question_get_default_category($context->id);
+        $qcat2 = $this->create_question_category_for_a_qbank($qbank);
+        $qcat3 = $this->create_question_category_for_a_qbank($qbank);
 
         // Check current order.
         $currentorder = $this->get_current_order($context);
@@ -278,15 +283,15 @@ final class move_category_test extends \qbank_managecategories\manage_category_t
         $this->resetAfterTest();
 
         // Create context for question categories.
-        $course = $this->create_course();
-        $context = context_course::instance($course->id);
+        $qbank = $this->create_qbank($this->create_course());
+        $context = context_module::instance($qbank->cmid);
         $this->create_course_category();
 
         // Question categories.
-        $qcat1 = $this->create_question_category_for_a_course($course);
-        $qcat2 = $this->create_question_category_for_a_course($course);
-        $qcat3 = $this->create_question_category_for_a_course($course, ['parent' => $qcat1->id]);
-        $qcat4 = $this->create_question_category_for_a_course($course, ['parent' => $qcat2->id]);
+        $qcat1 = question_get_default_category($context->id);
+        $qcat2 = $this->create_question_category_for_a_qbank($qbank);
+        $qcat3 = $this->create_question_category_for_a_qbank($qbank, ['parent' => $qcat1->id]);
+        $qcat4 = $this->create_question_category_for_a_qbank($qbank, ['parent' => $qcat2->id]);
 
         // Check current order.
         $currentorder = $this->get_current_order($context);
@@ -330,77 +335,6 @@ final class move_category_test extends \qbank_managecategories\manage_category_t
     }
 
     /**
-     * Move a category from the top category of one context to another.
-     *
-     * @return void
-     */
-    public function test_move_category_between_contexts(): void {
-        $this->setAdminUser();
-        $this->resetAfterTest();
-
-        // Create context for question categories.
-        $course = $this->create_course();
-        $coursecontext = context_course::instance($course->id);
-        $coursecategory = $this->create_course_category();
-        $categorycontext = \context_coursecat::instance($coursecategory->id);
-
-        // Question categories.
-        $coursecatqcat = question_get_top_category($categorycontext->id, true);
-        $qcat1 = $this->create_question_category_for_a_course($course);
-        $qcat2 = $this->create_question_category_for_a_course($course);
-
-        $currentcourseorder = $this->get_current_order($coursecontext);
-        $expectedorder = [
-            $qcat1->id => [],
-            $qcat2->id => [],
-        ];
-        $this->assertEquals($expectedorder, $currentcourseorder);
-        $currentcoursecatorder = $this->get_current_order($categorycontext);
-        $expectedcoursecatorder = [
-        ];
-        $this->assertEquals($expectedcoursecatorder, $currentcoursecatorder);
-
-        $stateupdates = move_category::execute($coursecontext->id, $qcat1->id, $coursecatqcat->id);
-
-        $newcourseorder = $this->get_current_order($coursecontext);
-        $newexpectedorder = [
-            $qcat2->id => [],
-        ];
-        $this->assertEquals($newcourseorder, $newexpectedorder);
-        $newcoursecatorder = $this->get_current_order($categorycontext);
-        $newexpectedcoursecatorder = [
-            $qcat1->id => [],
-        ];
-        $this->assertEquals($newcoursecatorder, $newexpectedcoursecatorder);
-
-        // Expect an update to the sortorder, parent and context of the moved category.
-        // Since the original sibling is the only remaining child of a top-level category, it has its draghandle property
-        // updated as well as its sortorder.
-        $expectedstateupdates = [
-            (object)[
-                'name' => 'categories',
-                'action' => 'put',
-                'fields' => (object)[
-                    'id' => $qcat1->id,
-                    'sortorder' => 1,
-                    'parent' => $coursecatqcat->id,
-                    'context' => $categorycontext->id,
-                ],
-            ],
-            (object)[
-                'name' => 'categories',
-                'action' => 'put',
-                'fields' => (object)[
-                    'id' => $qcat2->id,
-                    'sortorder' => 1,
-                    'draghandle' => false,
-                ],
-            ],
-        ];
-        $this->assertEquals($stateupdates, $expectedstateupdates);
-    }
-
-    /**
      * Move a category that has its own children.
      *
      * The children should move with the parent.
@@ -412,16 +346,16 @@ final class move_category_test extends \qbank_managecategories\manage_category_t
         $this->resetAfterTest();
 
         // Create context for question categories.
-        $course = $this->create_course();
-        $context = context_course::instance($course->id);
+        $qbank = $this->create_qbank($this->create_course());
+        $context = context_module::instance($qbank->cmid);
         $this->create_course_category();
 
         // Question categories.
-        $qcat1 = $this->create_question_category_for_a_course($course);
-        $qcat2 = $this->create_question_category_for_a_course($course);
-        $qcat3 = $this->create_question_category_for_a_course($course);
-        $qcat4 = $this->create_question_category_for_a_course($course, ['parent' => $qcat3->id]);
-        $qcat5 = $this->create_question_category_for_a_course($course, ['parent' => $qcat3->id]);
+        $qcat1 = question_get_default_category($context->id);
+        $qcat2 = $this->create_question_category_for_a_qbank($qbank);
+        $qcat3 = $this->create_question_category_for_a_qbank($qbank);
+        $qcat4 = $this->create_question_category_for_a_qbank($qbank, ['parent' => $qcat3->id]);
+        $qcat5 = $this->create_question_category_for_a_qbank($qbank, ['parent' => $qcat3->id]);
 
         // Check current order.
         $currentorder = $this->get_current_order($context);
@@ -455,7 +389,7 @@ final class move_category_test extends \qbank_managecategories\manage_category_t
                 'action' => 'put',
                 'fields' => (object)[
                     'id' => $qcat3->id,
-                    'sortorder' => 2,
+                    'sortorder' => 1000,
                 ],
             ],
             (object)[
@@ -463,7 +397,7 @@ final class move_category_test extends \qbank_managecategories\manage_category_t
                 'action' => 'put',
                 'fields' => (object)[
                     'id' => $qcat2->id,
-                    'sortorder' => 3,
+                    'sortorder' => 1001,
                 ],
             ],
         ];
@@ -482,16 +416,16 @@ final class move_category_test extends \qbank_managecategories\manage_category_t
         $this->resetAfterTest();
 
         // Create context for question categories.
-        $course = $this->create_course();
-        $context = context_course::instance($course->id);
+        $qbank = $this->create_qbank($this->create_course());
+        $context = context_module::instance($qbank->cmid);
         $this->create_course_category();
 
         // Question categories.
-        $qcat1 = $this->create_question_category_for_a_course($course);
-        $qcat2 = $this->create_question_category_for_a_course($course);
-        $qcat3 = $this->create_question_category_for_a_course($course);
-        $qcat4 = $this->create_question_category_for_a_course($course, ['parent' => $qcat3->id]);
-        $qcat5 = $this->create_question_category_for_a_course($course, ['parent' => $qcat4->id]);
+        $qcat1 = question_get_default_category($context->id);
+        $qcat2 = $this->create_question_category_for_a_qbank($qbank);
+        $qcat3 = $this->create_question_category_for_a_qbank($qbank);
+        $qcat4 = $this->create_question_category_for_a_qbank($qbank, ['parent' => $qcat3->id]);
+        $qcat5 = $this->create_question_category_for_a_qbank($qbank, ['parent' => $qcat4->id]);
 
         // Check current order.
         $currentorder = $this->get_current_order($context);

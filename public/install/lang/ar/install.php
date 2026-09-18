@@ -21,7 +21,7 @@
  * needed during the very first steps of installation. This file was
  * generated automatically by export-installer.php (which is part of AMOS
  * {@link https://moodledev.io/general/projects/api/amos}) using the
- * list of strings defined in install/stringnames.txt file.
+ * list of strings defined in public/install/stringnames.txt file.
  *
  * @package   installer
  * @license   https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -36,7 +36,7 @@ $string['chooselanguagesub'] = 'يرجى تحديد لغة لاستعمالها 
 $string['clialreadyconfigured'] = 'ملف التهيئة config.php موجود سلفاً. لطفاً، استعمل الرابط ذي المسار admin/cli/install_database.php لتنصيب مودل في هذا الموقع.';
 $string['clialreadyinstalled'] = 'ملف التهيئة config.php موجود سلفاً. لطفاً، استعمل الرابط ذي المسار admin/cli/install_database.php لترقية مودل في هذا الموقع.';
 $string['cliinstallheader'] = 'برنامج تنصيب مودل {$a} عبر سطر الأوامر النصية';
-$string['clitablesexist'] = 'جداول قاعدة البيانات موجودة سلفاً؛ التنصيب عبر واجهة سطر الأوامر لا يمكنه الاستمرار.';
+$string['clitablesexist'] = 'جداول قاعدة البيانات موجودة سلفاً؛ التنصيب عبر واجهة سطر الأوامر (CLI) لا يمكنه الاستمرار.';
 $string['databasehost'] = 'مستضيف قاعدة البيانات';
 $string['databasename'] = 'اسم قاعدة البيانات';
 $string['databasetypehead'] = 'إختر مشغل قاعدة البيانات';
@@ -50,25 +50,6 @@ $string['environmentsub2'] = 'كل إصدار من مودل يتطلب وجود 
 $string['errorsinenvironment'] = 'فشلت مهمة التحقق من بيئة التشغيل!';
 $string['installation'] = 'التنصيب';
 $string['langdownloaderror'] = 'مع الأسف، اللغة "{$a}" تعذر تنزيلها. عملية التنصيب ستستمر باللغة الإنجليزية.';
-$string['memorylimithelp'] = '<p>إن حد استعمال الذاكرة لـ PHP في مخدمك حالياً هو {$a}.</p>
-
-<p>هذا قد يسبب لمودل مشاكل في الذاكرة لاحقاً، خصوصاً
-إن كانت لديك الكثير من الوحدات مُمَكَّنة و/أو الكثير من المستخدمين.</p>
-
-<p>نوصي بضبط ذاكرة PHP على حد أعلى إن أمكن، مثلاً 40M.
-   هناك عدة طرق للقيام بذلك والتي بإمكانك تجربتها:</p>
-<ol>
-<li>إن كنت تستطيع القيام بذلك، أعد تجميع PHP مع المفتاح <i>--enable-memory-limit</i>.
-    هذا سيسمح لمودل بضبط حد الذاكرة بنفسه.</li>
-<li>إن كنت تستطيع الوصول إلى ملف php.ini، يمكنك تغيير الخاصية <b>memory_limit</b>
-    هناك إلى شيء آخر مثل 40M. إن لم يكن بإمكانك الوصول إليه
-فقد تستطيع مطالبة المشرف بالقيام بذلك من جانبه.</li>
-<li>في بعض مخدمات PHP يمكنك إنشاء ملف .htaccess في مجلد مودل
-وجعله محتوياً على السطر الآتي:
-    <blockquote><div>php_value memory_limit 40M</div></blockquote>
-    <p>مع ذلك، في بعض المخدمات، هذا من شأنه منع <b>كل</b> صفحات PHP من العمل
-    (ستشاهد أخطاءً عند النظر إلى الصفحات) مما يحتم عليك إزالة ملف .htaccess.</p></li>
-</ol>';
 $string['paths'] = 'المسارات';
 $string['pathserrcreatedataroot'] = 'مجلد البيانات ({$a->dataroot}) لا يمكن إنشاؤه من قبل برنامج التنصيب.';
 $string['pathshead'] = 'تأكيد المسارات';
@@ -88,9 +69,8 @@ $string['pathsunsecuredataroot'] = 'موضع مجلد البيانات الرئ�
 $string['pathswrongadmindir'] = 'مجلد المشرف غير موجود';
 $string['phpextension'] = 'إمتداد PHP {$a}';
 $string['phpversion'] = 'إصدار PHP';
-$string['phpversionhelp'] = '<p>يتطلب مودل على الأقل وجود PHP بالإصدار 5.6.5 أو 7.1 (الإصدار 7.0.x فيه بعض القيود عند التشغيل).</p>
-<p>انت تستعمل حالياً الإصدار {$a}.</p>
-<p>يجب عليك ترقية PHP أو الانتقال إلى مستضيف آخر لديه إصدار أحدث من PHP.</p>';
+$string['webserverconfigproblemdescription'] = 'إن مخدمك ليس مهيئًا لمنع الوصول إلى الملفات الواقعة خارج المجلد /public. للاطلاع على تفاصيل كيفية تهيئة مخدمك بشكل صحيح، أنظر التوثيقات <a href="https://docs.moodle.org/en/Upgrading#Code_directories_restructure">الترقية - تقييد الوصول إلى مجلدات النصوص البرمجية</a>. بمجرد إعادة تهيئته، ترجى <a href="{$a}">إعادة زيارة مجلد الويب الأساسي</a>.';
+$string['webservernotconfigured'] = 'مخدم الويب غير مهيأ';
 $string['welcomep10'] = '{$a->installername} ({$a->installerversion})';
 $string['welcomep20'] = 'أنت تشاهد هذه الصفحة لأنك تمكنت بنجاح من تنصيب وإطلاق
 حزمة <strong>{$a->packname} {$a->packversion}</strong> في حاسبتك. تهانينا!';

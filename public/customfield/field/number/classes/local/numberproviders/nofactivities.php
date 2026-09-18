@@ -19,6 +19,7 @@ declare(strict_types=1);
 namespace customfield_number\local\numberproviders;
 
 use context_course;
+use core\exception\coding_exception;
 use core_plugin_manager;
 use customfield_number\data_controller;
 use customfield_number\provider_base;
@@ -71,7 +72,6 @@ class nofactivities extends provider_base {
         $mform->hideIf('configdata[activitytypes]', 'configdata[fieldtype]', 'ne', get_class($this));
         $mform->hideIf('configdata[decimalplaces]', 'configdata[fieldtype]', 'eq', get_class($this));
         $mform->hideIf('configdata[display]', 'configdata[fieldtype]', 'eq', get_class($this));
-        $mform->hideIf('str_display_format', 'configdata[fieldtype]', 'eq', get_class($this));
         $mform->hideIf('configdata[defaultvalue]', 'configdata[fieldtype]', 'eq', get_class($this));
         $mform->hideIf('configdata[minimumvalue]', 'configdata[fieldtype]', 'eq', get_class($this));
         $mform->hideIf('configdata[maximumvalue]', 'configdata[fieldtype]', 'eq', get_class($this));
@@ -81,9 +81,21 @@ class nofactivities extends provider_base {
      * Recalculate the number of activities in the course.
      *
      * @param int|null $instanceid
+     * @param string $component
+     * @param string $area
+     * @param int $itemid
      */
-    public function recalculate(?int $instanceid = null): void {
+    public function recalculate(
+        ?int $instanceid = null,
+        string $component = 'core_course',
+        string $area = 'course',
+        int $itemid = 0,
+    ): void {
         global $DB;
+        if ($component !== 'core_course' || $area !== 'course') {
+            throw new coding_exception('Can only calculate number of activities for courses');
+        }
+
         $types = $this->field->get_configdata_property('activitytypes');
         $displaywhenzero = $this->field->get_configdata_property('displaywhenzero');
 
@@ -130,7 +142,7 @@ class nofactivities extends provider_base {
                 }
             } else if (empty($record->dataid) || (int)$record->decvalue != $value) {
                 // Stored value is out of date.
-                $data = \core_customfield\api::get_instance_fields_data(
+                $data = $this->field->get_handler()->get_instance_fields_data(
                     [$fieldid => $this->field], (int)$record->id)[$fieldid];
                 $data->set('contextid', context_course::instance($record->id)->id);
                 $data->set('decvalue', $value);

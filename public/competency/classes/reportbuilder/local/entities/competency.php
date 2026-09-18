@@ -84,8 +84,6 @@ class competency extends base {
      * @return column[]
      */
     protected function get_all_columns(): array {
-        global $DB;
-
         $contextalias = $this->get_table_alias('context');
         $competencyalias = $this->get_table_alias('competency');
 
@@ -100,10 +98,6 @@ class competency extends base {
             ->set_is_sortable(true);
 
         // Description.
-        $descriptionfieldsql = "{$competencyalias}.description";
-        if ($DB->get_dbfamily() === 'oracle') {
-            $descriptionfieldsql = $DB->sql_order_by_text($descriptionfieldsql, 1024);
-        }
         $columns[] = (new column(
             'description',
             new lang_string('description'),
@@ -112,18 +106,18 @@ class competency extends base {
             ->add_joins($this->get_joins())
             ->add_joins($this->get_context_joins())
             ->set_type(column::TYPE_LONGTEXT)
-            ->add_field($descriptionfieldsql, 'description')
-            ->add_field("{$competencyalias}.descriptionformat")
+            ->add_fields("{$competencyalias}.description, {$competencyalias}.descriptionformat")
             ->add_fields(context_helper::get_preload_record_columns_sql($contextalias))
+            ->set_is_sortable(true)
             ->add_callback(static function(?string $description, stdClass $competency): string {
-                if ($description === null) {
+                if ($description === null || $competency->ctxid === null) {
                     return '';
                 }
 
                 context_helper::preload_from_record(clone $competency);
                 $context = context::instance_by_id($competency->ctxid);
 
-                return format_text($description, $competency->descriptionformat, ['context' => $context->id]);
+                return format_text($description, $competency->descriptionformat, ['context' => $context]);
             });
 
         // ID number.

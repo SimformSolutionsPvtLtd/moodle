@@ -208,15 +208,7 @@ abstract class info {
             $this->modinfo = null;
             return true;
         } else {
-            // If the item is marked as 'not visible' then we don't change the available
-            // flag (visible/available are treated distinctly), but we remove any
-            // availability info. If the item is hidden with the eye icon, it doesn't
-            // make sense to show 'Available from <date>' or similar, because even
-            // when that date arrives it will still not be available unless somebody
-            // toggles the eye icon.
-            if ($this->visible) {
-                $information = $tree->get_result_information($this, $result);
-            }
+            $information = $tree->get_result_information($this, $result);
 
             $this->modinfo = null;
             return false;
@@ -746,7 +738,11 @@ abstract class info {
                     $modulename = format_string($cm->get_name(), true, ['context' => $context]);
                     // We make sure that we add a data attribute to the name so we can change it later if the
                     // original module name changes.
-                    if ($cm->has_view() && $cm->get_user_visible()) {
+                    if (
+                        \course_modinfo::is_mod_type_visible_on_course($cm->modname)
+                        && $cm->has_view()
+                        && $cm->get_user_visible()
+                    ) {
                         // Help student by providing a link to the module which is preventing availability.
                         return \html_writer::link($cm->get_url(), $modulename, ['data-cm-name-for' => $cm->id]);
                     } else {

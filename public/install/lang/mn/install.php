@@ -21,7 +21,7 @@
  * needed during the very first steps of installation. This file was
  * generated automatically by export-installer.php (which is part of AMOS
  * {@link https://moodledev.io/general/projects/api/amos}) using the
- * list of strings defined in install/stringnames.txt file.
+ * list of strings defined in public/install/stringnames.txt file.
  *
  * @package   installer
  * @license   https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -50,19 +50,6 @@ $string['environmentsub2'] = 'Moodle системийн хувилбар бүр 
 $string['errorsinenvironment'] = 'Орчны шалгалт амжилтгүй боллоо!';
 $string['installation'] = 'Суурилуулалт';
 $string['langdownloaderror'] = 'Харамсалтай нь "{$a}" хэлийг татаж авч чадсангүй. Суулгах үйл явц англи хэл дээр үргэлжилнэ.';
-$string['memorylimithelp'] = '<p>Таны серверийн PHP санах ойн хязгаарлалтыг {$a} гэж тохируулсан байна.</p>
-
-<p>Энэ нь Moodle системд хожим санах ойн асуудал, ялангуяа олон модулийг идэвхжүүлсэн ба/буюу олон хэрэглэгчтэй үед үүсгэж болзошгүй.</p>
-
-<p>Бид танд PHP-г боломжтой бол 40M гэх мэт өндөр хязгаартайгаар тохируулахыг зөвлөж байна.
-    Үүнд хэд хэдэн арга байдаг ба тэдгээрийг ашиглаж болно:</p>
-<ol>
-<li>Хэрэв боломжтой бол PHP-г <i>--enable-memory-limit</i> ашиглан дахин хөрвүүлээрэй.
-     Энэ нь Moodle системд санах ойн хязгаарыг өөрөө тохируулах боломжийг олгоно.</li>
-<li>Хэрэв та өөрийн php.ini файлд хандах эрхтэй бол <b>memory_limit</b> тохиргоог 40M гэх зэргээр өөрчлөх боломжтой. Хандах эрхгүй бол администратортоо хандаж болно.</li>
-<li>Зарим PHP серверт дараах мөрийг агуулсан Moodle санд .htaccess файлыг үүсгэж болно: <blockquote><div>php_value memory_limit 40M</div></blockquote>
-   <p>Гэвч зарим серверт энэ нь <b>бүх</b> PHP хуудас ажиллахаас сэргийлдэг (хуудсыг харахад алдаа гарах болно) тул та .htaccess файлыг устгах шаардлагатай.</p> </li>
-</ol>';
 $string['paths'] = 'Замууд';
 $string['pathserrcreatedataroot'] = 'Суурилуулагч нь өгөгдлийн лавлахыг ({$a->dataroot}) үүсгэх боломжгүй';
 $string['pathshead'] = 'Замыг баталгаажуулах';
@@ -83,9 +70,6 @@ $string['pathsunsecuredataroot'] = 'Dataroot байршил аюулгүй би�
 $string['pathswrongadmindir'] = 'Админ лавлах байхгүй байна';
 $string['phpextension'] = '{$a} PHP өргөтгөл';
 $string['phpversion'] = 'РНР хувилбар';
-$string['phpversionhelp'] = '<p>Moodle системд хамгийн багадаа 5.6.5 эсвэл 7.1 PHP хувилбар шаардлагатай (7.0.x нь системийн зарим хязгаарлалттай).</p>
-<p>Та одоогоор {$a} хувилбарыг ажиллуулж байна.</p>
-<p>Та PHP-г шинэчлэх эсвэл шинэ PHP хувилбартай хостод шилжих шаардлагатай.</p>';
 $string['welcomep10'] = '{$a->installername} ({$a->installerversion})';
 $string['welcomep20'] = 'Та <strong>{$a->packname} {$a->packversion}</strong> багцыг компьютертоо амжилттай суулгаж, эхлүүлсэн тул та энэ хуудсыг харж байна. Баяр хүргэе!';
 $string['welcomep30'] = '<strong>{$a->installername}</strong> энэхүү хувилбарт <strong>Moodle</strong> ажиллах орчныг бүрдүүлэх аппликейшнүүд багтсан болно, тухайлбал:';

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * libphonenumber-for-php-lite data file
  * This file has been @generated from libphonenumber data
@@ -6,103 +7,48 @@
  * @internal
  */
 
-return  [
-  'generalDesc' =>
-   [
-    'NationalNumberPattern' => '(?:[256]\\d|8)\\d{3}',
-    'PossibleLength' =>
-     [
-      0 => 4,
-      1 => 5,
-    ],
-  ],
-  'fixedLine' =>
-   [
-    'NationalNumberPattern' => '2(?:[0-57-9]\\d|6[4-9])\\d\\d',
-    'ExampleNumber' => '22158',
-  ],
-  'mobile' =>
-   [
-    'NationalNumberPattern' => '[56]\\d{4}',
-    'ExampleNumber' => '51234',
-    'PossibleLength' =>
-     [
-      0 => 5,
-    ],
-  ],
-  'tollFree' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'premiumRate' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'sharedCost' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'personalNumber' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'voip' =>
-   [
-    'NationalNumberPattern' => '262\\d\\d',
-    'ExampleNumber' => '26212',
-    'PossibleLength' =>
-     [
-      0 => 5,
-    ],
-  ],
-  'pager' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'uan' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'voicemail' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'noInternationalDialling' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'id' => 'SH',
-  'countryCode' => 290,
-  'internationalPrefix' => '00',
-  'sameMobileAndFixedLinePattern' => false,
-  'numberFormat' =>
-   [
-  ],
-  'mainCountryForCode' => true,
-  'leadingDigits' => '[256]',
-  'mobileNumberPortableRegion' => false,
-];
+declare(strict_types=1);
+
+namespace libphonenumber\data;
+
+use libphonenumber\PhoneMetadata;
+use libphonenumber\PhoneNumberDesc;
+
+/**
+ * @internal
+ */
+class PhoneNumberMetadata_SH extends PhoneMetadata
+{
+    protected const ID = 'SH';
+    protected const COUNTRY_CODE = 290;
+    protected const LEADING_DIGITS = '[256]';
+
+    protected ?string $internationalPrefix = '00';
+    protected bool $mainCountryForCode = true;
+
+    public function __construct()
+    {
+        $this->generalDesc = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('(?:[256]\d|8)\d{3}')
+            ->setPossibleLength([4, 5]);
+        $this->mobile = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('[56]\d{4}')
+            ->setExampleNumber('51234')
+            ->setPossibleLength([5]);
+        $this->premiumRate = PhoneNumberDesc::empty();
+        $this->fixedLine = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('2(?:[0-57-9]\d|6[4-9])\d\d')
+            ->setExampleNumber('22158');
+        $this->tollFree = PhoneNumberDesc::empty();
+        $this->sharedCost = PhoneNumberDesc::empty();
+        $this->personalNumber = PhoneNumberDesc::empty();
+        $this->voip = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('262\d\d')
+            ->setExampleNumber('26212')
+            ->setPossibleLength([5]);
+        $this->pager = PhoneNumberDesc::empty();
+        $this->uan = PhoneNumberDesc::empty();
+        $this->voicemail = PhoneNumberDesc::empty();
+        $this->noInternationalDialling = PhoneNumberDesc::empty();
+    }
+}

@@ -142,6 +142,11 @@ class restore_assign_activity_structure_step extends restore_activity_structure_
             $data->grade = -($this->get_mappingid('scale', abs($data->grade)));
         }
 
+        // Grade penalty.
+        if (!isset($data->gradepenalty)) {
+            $data->gradepenalty = 0;
+        }
+
         $newitemid = $DB->insert_record('assign', $data);
 
         $this->apply_activity_instance($newitemid);
@@ -310,8 +315,9 @@ class restore_assign_activity_structure_step extends restore_activity_structure_
             $submission->status = ASSIGN_SUBMISSION_STATUS_NEW;
             $submission->groupid = 0;
             $submission->latest = 0;
-            $submission->timecreated = time();
-            $submission->timemodified = time();
+            $now = \core\di::get(\core\clock::class)->time();
+            $submission->timecreated = $now;
+            $submission->timemodified = $now;
             array_push($submissions, $submission);
         }
 

@@ -1938,14 +1938,14 @@ final class api_test extends \advanced_testcase {
     public static function get_conversations_mixed_provider(): array {
         return [
             'Test that conversations with messages contacts is correctly ordered.' => [
-                'users' => [
+                'usersdata' => [
                     'user1',
                     'user2',
                     'user3',
                 ],
                 'contacts' => [
                 ],
-                'messages' => [
+                'messagesdata' => [
                     [
                         'from'          => 'user1',
                         'to'            => 'user2',
@@ -2025,13 +2025,13 @@ final class api_test extends \advanced_testcase {
                 ],
             ],
             'Test conversations with a single user, where some messages are read and some are not.' => [
-                'users' => [
+                'usersdata' => [
                     'user1',
                     'user2',
                 ],
                 'contacts' => [
                 ],
-                'messages' => [
+                'messagesdata' => [
                     [
                         'from'          => 'user1',
                         'to'            => 'user2',
@@ -2084,13 +2084,13 @@ final class api_test extends \advanced_testcase {
             'are out of order' => [
             // This can happen through a combination of factors including multi-master DB replication with messages
             // read somehow (e.g. API).
-                'users' => [
+                'usersdata' => [
                     'user1',
                     'user2',
                 ],
                 'contacts' => [
                 ],
-                'messages' => [
+                'messagesdata' => [
                     [
                         'from'          => 'user1',
                         'to'            => 'user2',
@@ -2139,13 +2139,13 @@ final class api_test extends \advanced_testcase {
                 ],
             ],
             'Test unread message count is correct for both users' => [
-                'users' => [
+                'usersdata' => [
                     'user1',
                     'user2',
                 ],
                 'contacts' => [
                 ],
-                'messages' => [
+                'messagesdata' => [
                     [
                         'from'          => 'user1',
                         'to'            => 'user2',
@@ -5873,7 +5873,7 @@ final class api_test extends \advanced_testcase {
 
         return [
             'No conversations' => [
-                'conversationConfigs' => $conversations,
+                'conversationconfigs' => $conversations,
                 'deletemessagesuser' => null,
                 'deletemessages' => [],
                 'arguments' => [$user5],
@@ -5896,7 +5896,7 @@ final class api_test extends \advanced_testcase {
                 'deletedusers' => [],
             ],
             'No individual conversations, 2 group conversations' => [
-                'conversationConfigs' => $conversations,
+                'conversationconfigs' => $conversations,
                 'deletemessagesuser' => null,
                 'deletemessages' => [],
                 'arguments' => [$user4],
@@ -5919,7 +5919,7 @@ final class api_test extends \advanced_testcase {
                 'deletedusers' => [],
             ],
             '2 individual conversations (one favourited), 1 group conversation' => [
-                'conversationConfigs' => $conversations,
+                'conversationconfigs' => $conversations,
                 'deletemessagesuser' => null,
                 'deletemessages' => [],
                 'arguments' => [$user1],
@@ -5942,7 +5942,7 @@ final class api_test extends \advanced_testcase {
                 'deletedusers' => [],
             ],
             '1 individual conversation, 2 group conversations' => [
-                'conversationConfigs' => $conversations,
+                'conversationconfigs' => $conversations,
                 'deletemessagesuser' => null,
                 'deletemessages' => [],
                 'arguments' => [$user2],
@@ -5965,7 +5965,7 @@ final class api_test extends \advanced_testcase {
                 'deletedusers' => [],
             ],
             '2 group conversations only' => [
-                'conversationConfigs' => $conversations,
+                'conversationconfigs' => $conversations,
                 'deletemessagesuser' => null,
                 'deletemessages' => [],
                 'arguments' => [$user4],
@@ -5988,7 +5988,7 @@ final class api_test extends \advanced_testcase {
                 'deletedusers' => [],
             ],
             'All conversation types, delete a message from individual favourited, messages remaining' => [
-                'conversationConfigs' => $conversations,
+                'conversationconfigs' => $conversations,
                 'deletemessagesuser' => $user1,
                 'deletemessages' => [0],
                 'arguments' => [$user1],
@@ -6011,7 +6011,7 @@ final class api_test extends \advanced_testcase {
                 'deletedusers' => [],
             ],
             'All conversation types, delete a message from individual non-favourited, messages remaining' => [
-                'conversationConfigs' => $conversations,
+                'conversationconfigs' => $conversations,
                 'deletemessagesuser' => $user1,
                 'deletemessages' => [3],
                 'arguments' => [$user1],
@@ -6034,7 +6034,7 @@ final class api_test extends \advanced_testcase {
                 'deletedusers' => [],
             ],
             'All conversation types, delete all messages from individual favourited, no messages remaining' => [
-                'conversationConfigs' => $conversations,
+                'conversationconfigs' => $conversations,
                 'deletemessagesuser' => $user1,
                 'deletemessages' => [0, 1, 2],
                 'arguments' => [$user1],
@@ -6057,7 +6057,7 @@ final class api_test extends \advanced_testcase {
                 'deletedusers' => [],
             ],
             'All conversation types, delete all messages from individual non-favourited, no messages remaining' => [
-                'conversationConfigs' => $conversations,
+                'conversationconfigs' => $conversations,
                 'deletemessagesuser' => $user1,
                 'deletemessages' => [3, 4, 5],
                 'arguments' => [$user1],
@@ -6080,7 +6080,7 @@ final class api_test extends \advanced_testcase {
                 'deletedusers' => [],
             ],
             'All conversation types, delete all messages from individual favourited, no messages remaining, different user' => [
-                'conversationConfigs' => $conversations,
+                'conversationconfigs' => $conversations,
                 'deletemessagesuser' => $user1,
                 'deletemessages' => [0, 1, 2],
                 'arguments' => [$user2],
@@ -6103,7 +6103,7 @@ final class api_test extends \advanced_testcase {
                 'deletedusers' => [],
             ],
             'All conversation types, delete all messages from individual non-favourited, no messages remaining, different user' => [
-                'conversationConfigs' => $conversations,
+                'conversationconfigs' => $conversations,
                 'deletemessagesuser' => $user1,
                 'deletemessages' => [3, 4, 5],
                 'arguments' => [$user3],
@@ -6126,7 +6126,7 @@ final class api_test extends \advanced_testcase {
                 'deletedusers' => [],
             ],
             'All conversation types, delete some messages from group non-favourited, messages remaining,' => [
-                'conversationConfigs' => $conversations,
+                'conversationconfigs' => $conversations,
                 'deletemessagesuser' => $user1,
                 'deletemessages' => [6, 7],
                 'arguments' => [$user1],
@@ -6149,7 +6149,7 @@ final class api_test extends \advanced_testcase {
                 'deletedusers' => [],
             ],
             'All conversation types, delete all messages from group non-favourited, no messages remaining,' => [
-                'conversationConfigs' => $conversations,
+                'conversationconfigs' => $conversations,
                 'deletemessagesuser' => $user1,
                 'deletemessages' => [6, 7, 8, 9],
                 'arguments' => [$user1],
@@ -6172,7 +6172,7 @@ final class api_test extends \advanced_testcase {
                 'deletedusers' => [],
             ],
             'All conversation types, another user soft deleted' => [
-                'conversationConfigs' => $conversations,
+                'conversationconfigs' => $conversations,
                 'deletemessagesuser' => null,
                 'deletemessages' => [],
                 'arguments' => [$user1],
@@ -6195,7 +6195,7 @@ final class api_test extends \advanced_testcase {
                 'deletedusers' => [$user2],
             ],
             'All conversation types, all group users soft deleted' => [
-                'conversationConfigs' => $conversations,
+                'conversationconfigs' => $conversations,
                 'deletemessagesuser' => null,
                 'deletemessages' => [],
                 'arguments' => [$user1],
@@ -6218,7 +6218,7 @@ final class api_test extends \advanced_testcase {
                 'deletedusers' => [$user2, $user3, $user4],
             ],
             'Group conversation which is disabled, favourited' => [
-                'conversationConfigs' => $conversations,
+                'conversationconfigs' => $conversations,
                 'deletemessagesuser' => null,
                 'deletemessages' => [],
                 'arguments' => [$user6],
@@ -6241,7 +6241,7 @@ final class api_test extends \advanced_testcase {
                 'deletedusers' => [],
             ],
             'Group conversation which is disabled, non-favourited' => [
-                'conversationConfigs' => $conversations,
+                'conversationconfigs' => $conversations,
                 'deletemessagesuser' => null,
                 'deletemessages' => [],
                 'arguments' => [$user7],
@@ -6264,7 +6264,7 @@ final class api_test extends \advanced_testcase {
                 'deletedusers' => [],
             ],
             'Conversation with self' => [
-                'conversationConfigs' => $conversations,
+                'conversationconfigs' => $conversations,
                 'deletemessagesuser' => null,
                 'deletemessages' => [],
                 'arguments' => [$user8],

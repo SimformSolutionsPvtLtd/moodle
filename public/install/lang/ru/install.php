@@ -21,7 +21,7 @@
  * needed during the very first steps of installation. This file was
  * generated automatically by export-installer.php (which is part of AMOS
  * {@link https://moodledev.io/general/projects/api/amos}) using the
- * list of strings defined in install/stringnames.txt file.
+ * list of strings defined in public/install/stringnames.txt file.
  *
  * @package   installer
  * @license   https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -36,7 +36,7 @@ $string['chooselanguagesub'] = 'Сейчас необходимо выбрать
 $string['clialreadyconfigured'] = 'Файл config.php уже существует. Если Вы хотите установить Moodle на этот сайт, используйте admin/cli/install_database.php.';
 $string['clialreadyinstalled'] = 'Файл config.php уже существует. Если Вы хотите обновить сайт Moodle, то используйте скрипт admin/cli/upgrade.php.';
 $string['cliinstallheader'] = 'Программа установки Moodle {$a} в режиме командной строки';
-$string['clitablesexist'] = 'Таблицы базы данных уже существуют, невозможно продолжить установку в режиме командной строки.';
+$string['clitablesexist'] = 'Таблицы базы данных уже присутствуют; установка через интерфейс командной строки невозможна.';
 $string['databasehost'] = 'Сервер баз данных';
 $string['databasename'] = 'Название базы данных';
 $string['databasetypehead'] = 'Выберите драйвер базы данных';
@@ -51,21 +51,6 @@ $string['environmentsub2'] = 'У каждой версии Moodle есть ми�
 $string['errorsinenvironment'] = 'Проверка окружения не выполнена!';
 $string['installation'] = 'Установка';
 $string['langdownloaderror'] = 'К сожалению, не удалось установить язык «{$a}». Процесс установки продолжится на английском.';
-$string['memorylimithelp'] = '<p>Сейчас ограничение памяти в PHP на Вашем сервере установлено в {$a}.</p>
-
-<p>Из-за этого у через какое-то время у Moodle могут возникнуть проблемы с памятью, особенно если у Вас будет много модулей и/или пользователей.</p>
-
-<p>Мы рекомендуем, если возможно, установить в PHP более высокое ограничение памяти, например 40M.
-Это можно попробовать сделать следующими способами:</p>
-<ol>
-<li>Если есть возможность, перекомпилируйте PHP с ключом <i>--enable-memory-limit</i>.
-В этом случае Moodle сможет самостоятельно установить ограничение памяти.</li>
-<li>Если у Вас есть доступ к файлу php.ini, Вы можете изменить параметр <b>memory_limit</b>
-на что-нибудь типа 40M. Если доступа у Вас нет, может быть у Вас есть возможность попросить администратора сделать это.</li>
-<li>На некоторых серверах PHP можно создать в каталоге Moodle файл .htaccess содержащий следующую строку:
-<blockquote><div>php_value memory_limit 40M</div></blockquote>
-<p>Тем не менее, на некоторых серверах из-за этого могут перестать работать <b>все</b> страницы PHP (Вы увидите ошибки на страницах). В этом случае Вам придется удалить файл .htaccess.</p></li>
-</ol>';
 $string['paths'] = 'Пути';
 $string['pathserrcreatedataroot'] = 'Программа установки  не может создать каталог данных ({$a->dataroot}).';
 $string['pathshead'] = 'Подтвердите пути';
@@ -82,9 +67,8 @@ $string['pathsunsecuredataroot'] = 'Расположение каталога д
 $string['pathswrongadmindir'] = 'Каталог admin не существует';
 $string['phpextension'] = 'Расширение PHP «{$a}»';
 $string['phpversion'] = 'Версия PHP';
-$string['phpversionhelp'] = '<p>Для Moodle необходим PHP версии не ниже 5.6.5 или 7.1 (есть некоторые проблемы с версией 7.0.x).</p>
-<p>Сейчас у Вас используется версия {$a}</p>
-<p>Вам нужно обновить PHP или переместиться на хостинг с более новой версией PHP!<br />';
+$string['webserverconfigproblemdescription'] = 'Ваш веб-сервер не настроен на предотвращение доступа к файлам вне каталога /public. Подробнее о настройке веб-сервера см. на странице <a href="https://docs.moodle.org/en/Upgrading#Code_directories_restructure">Обновление - Код реструктуризации каталогов</a>. После повторной настройки <a href="{$a}">снова перейдите в корневой каталог веб-сервера</a>.';
+$string['webservernotconfigured'] = 'Веб-сервер не настроен';
 $string['welcomep10'] = '{$a->installername} ({$a->installerversion})';
 $string['welcomep20'] = 'Вы видите эту страницу, потому что успешно установили и запустили на своем компьютере набор программ <strong>{$a->packname} {$a->packversion}</strong>. Поздравляем!';
 $string['welcomep30'] = 'Эта версия набора программ <strong>{$a->installername}</strong> включает следующие программы, необходимые для создания среды, в которой будет работать <strong>Moodle</strong>:';

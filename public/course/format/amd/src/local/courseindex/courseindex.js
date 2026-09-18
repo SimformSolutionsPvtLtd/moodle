@@ -23,9 +23,10 @@
  */
 
 import {BaseComponent} from 'core/reactive';
+import Collapse from 'theme_boost/bootstrap/collapse';
 import {getCurrentCourseEditor} from 'core_courseformat/courseeditor';
-import jQuery from 'jquery';
 import ContentTree from 'core_courseformat/local/courseeditor/contenttree';
+import log from "core/log";
 
 export default class Component extends BaseComponent {
 
@@ -41,7 +42,7 @@ export default class Component extends BaseComponent {
             SECTION_CMLIST: `[data-for='cmlist']`,
             CM: `[data-for='cm']`,
             TOGGLER: `[data-action="togglecourseindexsection"]`,
-            COLLAPSE: `[data-toggle="collapse"]`,
+            COLLAPSE: `[data-bs-toggle="collapse"]`,
             DRAWER: `.drawer`,
         };
         // Default classes to toggle on refresh.
@@ -65,8 +66,14 @@ export default class Component extends BaseComponent {
      * @return {Component}
      */
     static init(target, selectors) {
+        let element = document.querySelector(target);
+        // TODO Remove this if condition as part of MDL-83851.
+        if (!element) {
+            log.debug('Init component with id is deprecated, use a query selector instead.');
+            element = document.getElementById(target);
+        }
         return new this({
-            element: document.getElementById(target),
+            element,
             reactive: getCurrentCourseEditor(),
             selectors,
         });
@@ -129,7 +136,11 @@ export default class Component extends BaseComponent {
 
             const section = event.target.closest(this.selectors.SECTION);
             const toggler = section.querySelector(this.selectors.COLLAPSE);
-            const isCollapsed = toggler?.classList.contains(this.classes.COLLAPSED) ?? false;
+            let isCollapsed = toggler?.classList.contains(this.classes.COLLAPSED) ?? false;
+            // If the click was on the chevron, Bootstrap already toggled the section before this event.
+            if (isChevron) {
+                isCollapsed = !isCollapsed;
+            }
 
             // Update the state.
             const sectionId = section.getAttribute('data-id');
@@ -190,11 +201,11 @@ export default class Component extends BaseComponent {
             forceValue = (element.indexcollapsed) ? false : true;
         }
 
-        // Course index is based on Bootstrap 4 collapsibles. To collapse them we need jQuery to
-        // interact with collapsibles methods. Hopefully, this will change in Bootstrap 5 because
-        // it does not require jQuery anymore (when MDL-71979 is integrated).
-        const togglerValue = (forceValue) ? 'show' : 'hide';
-        jQuery(collapsible).collapse(togglerValue);
+        if (forceValue) {
+            Collapse.getOrCreateInstance(collapsible, {toggle: false}).show();
+        } else {
+            Collapse.getOrCreateInstance(collapsible, {toggle: false}).hide();
+        }
     }
 
     /**

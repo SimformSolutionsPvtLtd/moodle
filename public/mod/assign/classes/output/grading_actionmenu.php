@@ -146,7 +146,7 @@ class grading_actionmenu implements templatable, renderable {
         $data['initialselector'] = $initialselector->export_for_template($output);
 
         if (groups_get_activity_groupmode($cm, $course)) {
-            $gs = new group_selector($PAGE->context);
+            $gs = new group_selector($PAGE->context, false);
             $data['groupselector'] = $gs->export_for_template($output);
         }
 
@@ -175,7 +175,7 @@ class grading_actionmenu implements templatable, renderable {
 
         if ($this->assign->is_any_submission_plugin_enabled()) {
             ['statusmenu' => $statusmenu, 'currentvalue' => $currentvalue] = $this->get_status_menu();
-            $statusselect = new \core\output\select_menu('status', $statusmenu, $currentvalue);
+            $statusselect = new \core\output\select_menu('status', $statusmenu, $currentvalue, true);
             $statusselect->set_label(get_string('status', 'mod_assign'), [], true);
             $data['statusselector'] = $statusselect->export_for_template($output);
         }
@@ -390,6 +390,7 @@ class grading_actionmenu implements templatable, renderable {
             [
                 'classes' => 'extrafilters d-flex',
                 'buttonclasses' => 'btn d-flex border-none align-items-center dropdown-toggle p-0',
+                'autoclose' => 'outside',
             ]
         );
     }

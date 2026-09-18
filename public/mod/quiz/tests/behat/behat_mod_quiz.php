@@ -155,7 +155,10 @@ class behat_mod_quiz extends behat_question_base {
                 return new moodle_url('/question/edit.php', [
                     'cmid' => $this->get_cm_by_quiz_name($identifier)->id,
                 ]);
-
+            case 'question categories':
+                return new moodle_url('/question/bank/managecategories/category.php', [
+                    'cmid' => $this->get_cm_by_quiz_name($identifier)->id,
+                ]);
 
             default:
                 throw new Exception('Unrecognised quiz page type "' . $type . '."');
@@ -485,9 +488,9 @@ class behat_mod_quiz extends behat_question_base {
         }
 
         if ($pageorlast == 'last') {
-            $xpath = "//div[@class = 'last-add-menu']//a[contains(@data-toggle, 'dropdown') and contains(., 'Add')]";
+            $xpath = "//div[@class = 'last-add-menu']//a[contains(@data-bs-toggle, 'dropdown') and contains(., 'Add')]";
         } else if (preg_match('~Page (\d+)~', $pageorlast, $matches)) {
-            $xpath = "//li[@id = 'page-{$matches[1]}']//a[contains(@data-toggle, 'dropdown') and contains(., 'Add')]";
+            $xpath = "//li[@id = 'page-{$matches[1]}']//a[contains(@data-bs-toggle, 'dropdown') and contains(., 'Add')]";
         } else {
             throw new ExpectationException("The I open the add to quiz menu step must specify either 'Page N' or 'last'.",
                 $this->getSession());
@@ -1029,7 +1032,8 @@ class behat_mod_quiz extends behat_question_base {
 
         $attempts = quiz_get_user_attempts($quizid, $user->id, 'unfinished', true);
         $attemptobj = quiz_attempt::create(key($attempts));
-        $attemptobj->process_finish(time(), true);
+        $attemptobj->process_submit(time(), true);
+        $attemptobj->process_grade_submission(time());
 
         $this->set_user();
     }
@@ -1069,5 +1073,18 @@ class behat_mod_quiz extends behat_question_base {
             new behat_component_named_selector('Edit slot',
             ["//li[contains(@class,'qtype')]//span[@class='slotnumber' and contains(., %locator%)]/.."])
         ];
+    }
+
+    /**
+     * Generate pre-created attempts for a quiz.
+     *
+     * @param string $quizname the name of the quiz to create attempts for.
+     * @Given quiz :quizname has pre-created attempts
+     */
+    public function quiz_has_precreated_attempts(string $quizname): void {
+        global $DB;
+
+        $quiz = $DB->get_record('quiz', ['name' => $quizname], 'id, course', MUST_EXIST);
+        \mod_quiz\task\precreate_attempts::precreate_attempts_for_quiz($quiz->id, $quiz->course);
     }
 }

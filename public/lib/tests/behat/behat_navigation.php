@@ -1295,7 +1295,7 @@ class behat_navigation extends behat_base {
             $menuxpath = $this->find_header_administration_menu() ?: $this->find_page_administration_menu();
         }
         if ($menuxpath && $this->running_javascript()) {
-            $node = $this->find('xpath', $menuxpath . '//a[@data-toggle=\'dropdown\']');
+            $node = $this->find('xpath', $menuxpath . '//a[@data-bs-toggle=\'dropdown\']');
             if ($node->isVisible()) {
                 $this->execute('behat_general::i_click_on', [$node, 'NodeElement']);
             }
@@ -1693,5 +1693,53 @@ class behat_navigation extends behat_base {
         JS;
 
         $this->getSession()->executeScript($script);
+    }
+
+    /**
+     * Checks if a dropdown item is active.
+     *
+     * @Then dropdown item :dropdownitem should be active
+     * @param string $dropdownitem The dropdown item name.
+     */
+    public function dropdown_item_should_be_active(string $dropdownitem): void {
+        $elementselector = "//li[contains(text(), '$dropdownitem') and @aria-selected='true']";
+        $params = [$elementselector, "xpath_element"];
+        $this->execute("behat_general::should_exist", $params);
+    }
+
+    /**
+     * Checks if a dropdown item is not active.
+     *
+     * @Then dropdown item :dropdownitem should not be active
+     * @param string $dropdownitem The dropdown item name.
+     */
+    public function dropdown_item_should_not_be_active(string $dropdownitem): void {
+        $elementselector = "//li[contains(text(), '$dropdownitem') and @aria-selected='true']";
+        $params = [$elementselector, "xpath_element"];
+        $this->execute("behat_general::should_not_exist", $params);
+    }
+
+    /**
+     * Selects the specified item from the dropdown menu.
+     *
+     * @When /^I select "([^"]*)" from the dropdown$/
+     * @param string $selecteditem THe dropdown item selected.
+     * @throws ExpectationException
+     */
+    public function i_select_from_the_dropdown(string $selecteditem): void {
+        $isdropdownvisible = $this->getSession()->getPage()->find('css', '.dropdown-menu.show');
+        if (!$isdropdownvisible) {
+            throw new ExpectationException("Dropdown menu is not visible.", $this->getSession());
+        }
+
+        $dropdownitem = $this->getSession()->getPage()->find(
+            'xpath',
+            "//li[contains(@class, 'dropdown-item') and contains(text(), '$selecteditem')]"
+        );
+        if (!$dropdownitem) {
+            throw new ExpectationException("Dropdown item '$selecteditem' not found.", $this->getSession());
+        }
+
+        $dropdownitem->click();
     }
 }

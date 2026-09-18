@@ -16,9 +16,11 @@
 
 namespace core_courseformat\local;
 
-
+use core\exception\moodle_exception;
 use core_courseformat\sectiondelegatemodule;
+use core_text;
 use course_modinfo;
+
 /**
  * Course module course format actions.
  *
@@ -68,6 +70,7 @@ class cmactions extends baseactions {
      * @param int $cmid the course module id.
      * @param string $name the new name.
      * @return bool true if the course module was renamed, false otherwise.
+     * @throws moodle_exception If the name is too long
      */
     public function rename(int $cmid, string $name): bool {
         global $CFG, $DB;
@@ -76,11 +79,12 @@ class cmactions extends baseactions {
         $paramcleaning = empty($CFG->formatstringstriptags) ? PARAM_CLEANHTML : PARAM_TEXT;
         $name = clean_param($name, $paramcleaning);
 
-        if (empty($name)) {
+        if ($name === '') {
             return false;
         }
-        if (\core_text::strlen($name) > 255) {
-            throw new \moodle_exception('maximumchars', 'moodle', '', 255);
+
+        if (core_text::strlen($name) > 1333) {
+            throw new moodle_exception('maximumchars', 'moodle', '', 1333);
         }
 
         // The name is stored in the activity instance record.
@@ -100,10 +104,8 @@ class cmactions extends baseactions {
                 'timemodified' => time(),
             ]
         );
-        $cm->name = $name;
-        $fields = new \stdClass();
-        $fields->name = $name;
 
+        $cm->name = $name;
         \core\event\course_module_updated::create_from_cm($cm)->trigger();
 
         course_modinfo::purge_course_module_cache($cm->course, $cm->id);

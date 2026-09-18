@@ -23,7 +23,8 @@
  */
 
 import {BaseComponent} from 'core/reactive';
-import {debounce} from 'core/utils';
+import Collapse from 'theme_boost/bootstrap/collapse';
+import {throttle, debounce} from 'core/utils';
 import {getCurrentCourseEditor} from 'core_courseformat/courseeditor';
 import Config from 'core/config';
 import inplaceeditable from 'core/inplace_editable';
@@ -33,9 +34,8 @@ import Fragment from 'core/fragment';
 import Templates from 'core/templates';
 import DispatchActions from 'core_courseformat/local/content/actions';
 import * as CourseEvents from 'core_course/events';
-// The jQuery module is only used for interacting with Boostrap 4. It can we removed when MDL-71979 is integrated.
-import jQuery from 'jquery';
 import Pending from 'core/pending';
+import log from "core/log";
 
 export default class Component extends BaseComponent {
 
@@ -55,7 +55,7 @@ export default class Component extends BaseComponent {
             COURSE_SECTIONLIST: `[data-for='course_sectionlist']`,
             CM: `[data-for='cmitem']`,
             TOGGLER: `[data-action="togglecoursecontentsection"]`,
-            COLLAPSE: `[data-toggle="collapse"]`,
+            COLLAPSE: `[data-bs-toggle="collapse"]`,
             TOGGLEALL: `[data-toggle="toggleall"]`,
             // Formats can override the activity tag but a default one is needed to create new elements.
             ACTIVITYTAG: 'li',
@@ -95,8 +95,14 @@ export default class Component extends BaseComponent {
      * @return {Component}
      */
     static init(target, selectors, sectionReturn, pageSectionId) {
+        let element = document.querySelector(target);
+        // TODO Remove this if condition as part of MDL-83851.
+        if (!element) {
+            log.debug('Init component with id is deprecated, use a query selector instead.');
+            element = document.getElementById(target);
+        }
         return new Component({
-            element: document.getElementById(target),
+            element,
             reactive: getCurrentCourseEditor(),
             selectors,
             sectionReturn,
@@ -154,7 +160,7 @@ export default class Component extends BaseComponent {
         this.addEventListener(
             document,
             "scroll",
-            this._scrollHandler
+            throttle(this._scrollHandler.bind(this), 50)
         );
     }
 
@@ -177,7 +183,11 @@ export default class Component extends BaseComponent {
 
             const section = event.target.closest(this.selectors.SECTION);
             const toggler = section.querySelector(this.selectors.COLLAPSE);
-            const isCollapsed = toggler?.classList.contains(this.classes.COLLAPSED) ?? false;
+            let isCollapsed = toggler?.classList.contains(this.classes.COLLAPSED) ?? false;
+            // If the click was on the chevron, Bootstrap already toggled the section before this event.
+            if (isChevron) {
+                isCollapsed = !isCollapsed;
+            }
 
             const sectionId = section.getAttribute('data-id');
             this.reactive.dispatch(
@@ -267,9 +277,9 @@ export default class Component extends BaseComponent {
     }
 
     /**
-     * Update section collapsed state via bootstrap 4 if necessary.
+     * Update section collapsed state via bootstrap if necessary.
      *
-     * Formats that do not use bootstrap 4 must override this method in order to keep the section
+     * Formats that do not use bootstrap must override this method in order to keep the section
      * toggling working.
      *
      * @param {object} args
@@ -295,11 +305,11 @@ export default class Component extends BaseComponent {
             if (!collapsible) {
                 return;
             }
-
-            // Course index is based on Bootstrap 4 collapsibles. To collapse them we need jQuery to
-            // interact with collapsibles methods. Hopefully, this will change in Bootstrap 5 because
-            // it does not require jQuery anymore (when MDL-71979 is integrated).
-            jQuery(collapsible).collapse(element.contentcollapsed ? 'hide' : 'show');
+            if (element.contentcollapsed) {
+                Collapse.getOrCreateInstance(collapsible, {toggle: false}).hide();
+            } else {
+                Collapse.getOrCreateInstance(collapsible, {toggle: false}).show();
+            }
         }
 
         this._refreshAllSectionsToggler(state);
@@ -307,6 +317,9 @@ export default class Component extends BaseComponent {
 
     /**
      * Refresh the collapse/expand all sections element.
+     *
+     * Delegated sections, like subsections, are nested inside a regular section, so they are only
+     * visible when their parent section is expanded. They must not drive the toggler state.
      *
      * @param {Object} state The state data
      */
@@ -317,26 +330,15 @@ export default class Component extends BaseComponent {
         }
 
         const sectionIsCollapsible = this._getCollapsibleSections();
-
-        // Check if we have all sections collapsed/expanded.
-        let allcollapsed = true;
-        let allexpanded = true;
-        state.section.forEach(
-            section => {
-                if (sectionIsCollapsible[section.id]) {
-                    allcollapsed = allcollapsed && section.contentcollapsed;
-                    allexpanded = allexpanded && !section.contentcollapsed;
-                }
-            }
+        const sections = [...state.section.values()].filter(
+            section => sectionIsCollapsible[section.id] && section.component === null
         );
-        if (allcollapsed) {
-            target.classList.add(this.classes.COLLAPSED);
-            target.setAttribute('aria-expanded', false);
-        }
-        if (allexpanded) {
-            target.classList.remove(this.classes.COLLAPSED);
-            target.setAttribute('aria-expanded', true);
-        }
+
+        // The toggler only offers to expand all when every listed section is collapsed.
+        const allcollapsed = sections.length > 0 && sections.every(section => section.contentcollapsed);
+
+        target.classList.toggle(this.classes.COLLAPSED, allcollapsed);
+        target.setAttribute('aria-expanded', !allcollapsed);
     }
 
     /**
@@ -408,10 +410,7 @@ export default class Component extends BaseComponent {
      *
      * The courseActions module used for most course section tools still depends on css classes and
      * section numbers (not id). To prevent inconsistencies when a section is moved, we need to refresh
-     * the
-     *
-     * Course formats can override the section title rendering so the frontend depends heavily on backend
-     * rendering. Luckily in edit mode we can trigger a title update using the inplace_editable module.
+     * the section number.
      *
      * @param {Object} param
      * @param {Object} param.element details the update details.
@@ -431,26 +430,13 @@ export default class Component extends BaseComponent {
         target.dataset.sectionid = element.number;
         // The data-number is the attribute used by components to store the section number.
         target.dataset.number = element.number;
-
-        // Update title and title inplace editable, if any.
-        const inplace = inplaceeditable.getInplaceEditable(target.querySelector(this.selectors.SECTION_ITEM));
-        if (inplace) {
-            // The course content HTML can be modified at any moment, so the function need to do some checkings
-            // to make sure the inplace editable still represents the same itemid.
-            const currentvalue = inplace.getValue();
-            const currentitemid = inplace.getItemId();
-            // Unnamed sections must be recalculated.
-            if (inplace.getValue() === '') {
-                // The value to send can be an empty value if it is a default name.
-                if (currentitemid == element.id && (currentvalue != element.rawtitle || element.rawtitle == '')) {
-                    inplace.setValue(element.rawtitle);
-                }
-            }
-        }
     }
 
     /**
      * Update a course section name on the whole page.
+     *
+     * Course formats can override the section title rendering so the frontend depends heavily on backend
+     * rendering. Luckily in edit mode we can trigger a title update using the inplace_editable module.
      *
      * @param {object} param
      * @param {Object} param.element details the update details.
@@ -463,6 +449,24 @@ export default class Component extends BaseComponent {
         allSectionNamesFor.forEach((sectionNameFor) => {
             sectionNameFor.textContent = element.title;
         });
+
+        // Find the element.
+        const target = this.getElement(this.selectors.SECTION, element.id);
+        if (!target) {
+            // Job done. Nothing to refresh.
+            return;
+        }
+
+        // Update title and title inplace editable, if any.
+        const inplace = inplaceeditable.getInplaceEditable(target.querySelector(this.selectors.SECTION_ITEM));
+        if (inplace) {
+            // The course content HTML can be modified at any moment, so the function need to do some checkings
+            // to make sure the inplace editable still represents the same itemid.
+            const currentitemid = inplace.getItemId();
+            if (currentitemid == element.id) {
+                inplace.setValue(element.rawtitle);
+            }
+        }
     }
 
     /**
@@ -676,6 +680,7 @@ export default class Component extends BaseComponent {
             promise.then((html, js) => {
                 Templates.replaceNode(sectionitem, html, js);
                 this._indexContents();
+                this._refreshAllSectionsToggler(this.reactive.state);
                 pendingReload.resolve();
             }).catch(() => {
                 pendingReload.resolve();

@@ -198,4 +198,30 @@ $functions = array(
         'type' => 'write',
         'services' => array(MOODLE_OFFICIAL_MOBILE_SERVICE)
     ),
+    'mod_forum_set_forum_subscription' => [
+        'classname' => 'mod_forum\external\set_forum_subscription',
+        'methodname' => 'execute',
+        'description' => 'Subscribe or unsubscribe the user to a forum.',
+        'type' => 'write',
+        'ajax' => true,
+        'services' => [MOODLE_OFFICIAL_MOBILE_SERVICE],
+    ],
+    'mod_forum_set_forum_tracking' => [
+        'classname' => 'mod_forum\external\set_forum_tracking',
+        'methodname' => 'execute',
+        'description' => 'Track or not unread messages in a forum for the user.',
+        'type' => 'write',
+        'ajax' => true,
+        'services' => [MOODLE_OFFICIAL_MOBILE_SERVICE],
+    ],
+    'mod_forum_mark_posts_read' => [
+        'classname' => 'mod_forum_external',
+        'methodname' => 'mark_posts_read',
+        'classpath' => 'mod/forum/externallib.php',
+        'description' => 'Mark forum posts as read.',
+        'type' => 'write',
+        'ajax' => true,
+        'capabilities' => 'mod/forum:viewdiscussion',
+        'services' => [MOODLE_OFFICIAL_MOBILE_SERVICE],
+    ],
 );

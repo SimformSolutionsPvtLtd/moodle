@@ -2,6 +2,8 @@
 
 // This file defines settingpages and externalpages under the "appearance" category
 
+$ADMIN->add('appearance', new admin_category('themes', new lang_string('themesettingscustom', 'admin')));
+
 $capabilities = array(
     'moodle/my:configsyspages',
     'moodle/tag:manage'
@@ -330,6 +332,10 @@ if ($hassiteconfig or has_any_capability($capabilities, $systemcontext)) { // sp
     $temp->add(new admin_setting_configcheckbox('logininfoinsecurelayout',
         new lang_string('logininfoinsecurelayout', 'admin'),
         new lang_string('logininfoinsecurelayout_desc', 'admin'), 0));
+    // Process primary navigation (custom menu) through Moodle filters.
+    $temp->add(new admin_setting_configcheckbox('navfilter',
+        new lang_string('navfilter', 'admin'),
+        new lang_string('navfilter_desc', 'admin'), 0));
     $temp->add(new admin_setting_configtextarea('custommenuitems', new lang_string('custommenuitems', 'admin'),
         new lang_string('configcustommenuitems', 'admin'), '', PARAM_RAW, '50', '10'));
     $defaultsettingcustomusermenuitems = [
@@ -355,7 +361,6 @@ if ($hassiteconfig or has_any_capability($capabilities, $systemcontext)) { // sp
         new lang_string('themeselector', 'admin'), $CFG->wwwroot . '/admin/themeselector.php'));
 
     // Settings page for each theme.
-    $ADMIN->add('appearance', new admin_category('themes', new lang_string('themesettingscustom', 'admin')));
     foreach (core_component::get_plugin_list('theme') as $theme => $themedir) {
         $settingspath = "$themedir/settings.php";
         if (file_exists($settingspath)) {

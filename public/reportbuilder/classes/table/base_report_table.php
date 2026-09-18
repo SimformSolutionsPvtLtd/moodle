@@ -116,15 +116,6 @@ abstract class base_report_table extends table_sql implements dynamic, renderabl
         $from .= ' ' . implode(' ', array_unique($joins));
 
         $this->set_sql($fields, $from, $wheresql, $params);
-
-        $counttablealias = database::generate_alias();
-        $this->set_count_sql("
-            SELECT COUNT(1)
-              FROM (SELECT {$fields}
-                      FROM {$from}
-                     WHERE {$wheresql}
-                           {$this->groupbysql}
-                   ) {$counttablealias}", $params);
     }
 
     /**
@@ -165,13 +156,13 @@ abstract class base_report_table extends table_sql implements dynamic, renderabl
     /**
      * Generate suitable SQL for the table
      *
+     * @param bool $includesort
      * @return string
      */
-    protected function get_table_sql(): string {
+    protected function get_table_sql(bool $includesort = true): string {
         $sql = "SELECT {$this->sql->fields} FROM {$this->sql->from} WHERE {$this->sql->where} {$this->groupbysql}";
 
-        $sort = $this->get_sql_sort();
-        if ($sort) {
+        if ($includesort && ($sort = $this->get_sql_sort())) {
             $sql .= " ORDER BY {$sort}";
         }
 
@@ -188,13 +179,46 @@ abstract class base_report_table extends table_sql implements dynamic, renderabl
         global $DB;
 
         if (!$this->is_downloading()) {
-            $this->pagesize($pagesize, $DB->count_records_sql($this->countsql, $this->countparams));
 
-            $this->rawdata = $DB->get_recordset_sql($this->get_table_sql(), $this->sql->params, $this->get_page_start(),
-                $this->get_page_size());
+            // Initially set the page size, so the following SQL read has correct values.
+            $this->pagesize($pagesize, 0);
+
+            $countedcolumn = database::generate_alias();
+            $countedrecordset = $DB->get_counted_recordset_sql(
+                $this->get_table_sql(false),
+                $countedcolumn,
+                $this->get_sql_sort(),
+                $this->sql->params,
+                (int) $this->get_page_start(),
+                (int) $this->get_page_size(),
+            );
+
+            // Now set the total page size.
+            $countedsize = (int) ($countedrecordset->current()->{$countedcolumn} ?? 0);
+            $this->pagesize($pagesize, $countedsize);
+
+            $this->rawdata = $countedrecordset;
         } else {
             $this->rawdata = $DB->get_recordset_sql($this->get_table_sql(), $this->sql->params);
         }
+    }
+
+    /**
+     * Return total row count for report table. Note we'd typically use {@see query_db} and then read the {@see totalrows}
+     * property to reduce DB calls, however we can use this method when we specifically don't also need to obtain all data
+     *
+     * @return int
+     */
+    public function get_total_row_count(): int {
+        global $DB;
+
+        $counttablesql = $this->get_table_sql(false);
+        $counttablealias = database::generate_alias();
+
+        return $DB->count_records_sql(
+            "SELECT COUNT(1) FROM ({$counttablesql}) {$counttablealias}",
+            $this->sql->params,
+        );
     }
 
     /**
@@ -221,24 +245,28 @@ abstract class base_report_table extends table_sql implements dynamic, renderabl
             $column = $columnsbyalias[$alias] ?? null;
 
             // If the column is not being aggregated and defines custom sort fields, then use them.
-            if ($column && !$column->get_aggregation() &&
-                    ($sortfields = $column->get_sort_fields())) {
-
+            if ($column && !$column->get_aggregation() && ($sortfields = $column->get_sort_fields())) {
                 foreach ($sortfields as $sortfield) {
-                    $columnsortby[$sortfield] = $order;
+                    if (!array_key_exists($sortfield, $columnsortby)) {
+                        $columnsortby[$sortfield] = $order;
+                    }
+                }
+            } else if (array_key_exists($alias, $sortedcolumnsfullname)) {
+                // Ensure that magic fullname sorted columns refer to correct alias.
+                foreach ($columnsbyalias as $column) {
+                    $sortfieldalias = array_filter(
+                        $column->get_sort_fields(),
+                        fn(string $key) => preg_match("/^c[\d]+_{$alias}$/", $key),
+                    );
+                    if (count($sortfieldalias) > 0) {
+                        $columnsortby[reset($sortfieldalias)] = $order;
+                        break;
+                    }
                 }
             } else {
                 $columnsortby[$alias] = $order;
             }
         }
-
-        // Now ensure that any fullname sorted columns have duplicated aliases removed.
-        $columnsortby = array_filter($columnsortby, static function(string $alias) use ($sortedcolumnsfullname): bool {
-            if (preg_match('/^c[\d]+_(?<column>.*)$/', $alias, $matches)) {
-                return !array_key_exists($matches['column'], $sortedcolumnsfullname);
-            }
-            return true;
-        }, ARRAY_FILTER_USE_KEY);
 
         return static::construct_order_by($columnsortby);
     }
@@ -287,9 +315,9 @@ abstract class base_report_table extends table_sql implements dynamic, renderabl
 
         $this->wrap_html_start();
 
-        $this->set_caption($this->report::get_name(), ['class' => 'sr-only']);
+        $this->set_caption($this->report::get_name(), ['class' => 'visually-hidden']);
 
-        echo html_writer::start_tag('div');
+        echo html_writer::start_tag('div', ['class' => 'table-responsive']);
         echo html_writer::start_tag('table', $this->attributes) . $this->render_caption();
     }
 }

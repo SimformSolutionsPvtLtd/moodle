@@ -318,10 +318,11 @@ class sectionactions extends baseactions {
         );
 
         // Move all modules to section 0.
-        $sectionzero = $DB->get_record('course_sections', ['course' => $this->course->id, 'section' => '0']);
-        $modules = $DB->get_records('course_modules', ['section' => $sectioninfo->id], '');
-        foreach ($modules as $mod) {
-            moveto_module($mod, $sectionzero);
+        $modinfo = get_fast_modinfo($this->course->id);
+        foreach ($modinfo->get_cms() as $cm) {
+            if ($cm->sectionnum == $sectioninfo->section) {
+                moveto_module($cm, $modinfo->get_section_info(0));
+            }
         }
 
         $removaltask = new \core_course\task\course_delete_modules();
@@ -352,8 +353,8 @@ class sectionactions extends baseactions {
 
         // Some fields can not be updated using this method.
         $fields = array_diff_key((array) $fields, array_flip(['id', 'course', 'section', 'sequence']));
-        if (array_key_exists('name', $fields) && \core_text::strlen($fields['name']) > 255) {
-            throw new \moodle_exception('maximumchars', 'moodle', '', 255);
+        if (array_key_exists('name', $fields) && \core_text::strlen($fields['name']) > 1333) {
+            throw new \moodle_exception('maximumchars', 'moodle', '', 1333);
         }
 
         // If the section is delegated to a component, it may control some section values.
@@ -408,8 +409,8 @@ class sectionactions extends baseactions {
         $cmids = [];
 
         // In case the section is delegated by a module, we change also the visibility for the source module.
-        if ($sectioninfo->is_delegated()) {
-            $delegateinstance = $sectioninfo->get_component_instance();
+        $delegateinstance = $sectioninfo->get_component_instance();
+        if ($delegateinstance) {
             // We only return sections delegated by course modules. Sections delegated to other
             // types of components must implement their own methods to get the section.
             if ($delegateinstance && ($delegateinstance instanceof \core_courseformat\sectiondelegatemodule)) {

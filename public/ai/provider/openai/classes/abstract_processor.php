@@ -17,9 +17,9 @@
 namespace aiprovider_openai;
 
 use core\http_client;
-use core_ai\aiactions\responses\response_base;
 use core_ai\process_base;
 use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Psr7\Uri;
 use GuzzleHttp\RequestOptions;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -38,14 +38,44 @@ abstract class abstract_processor extends process_base {
      *
      * @return UriInterface
      */
-    abstract protected function get_endpoint(): UriInterface;
+    protected function get_endpoint(): UriInterface {
+        return new Uri($this->provider->actionconfig[$this->action::class]['settings']['endpoint']);
+    }
 
     /**
      * Get the name of the model to use.
      *
      * @return string
      */
-    abstract protected function get_model(): string;
+    protected function get_model(): string {
+        return $this->provider->actionconfig[$this->action::class]['settings']['model'];
+    }
+
+    /**
+     * Get the model settings.
+     *
+     * @return array
+     */
+    protected function get_model_settings(): array {
+        $settings = $this->provider->actionconfig[$this->action::class]['settings'];
+        if (!empty($settings['modelextraparams'])) {
+            // Custom model settings.
+            $params = json_decode($settings['modelextraparams'], true);
+            foreach ($params as $key => $param) {
+                $settings[$key] = $param;
+            }
+        }
+
+        // Unset unnecessary settings.
+        unset(
+            $settings['model'],
+            $settings['endpoint'],
+            $settings['systeminstruction'],
+            $settings['providerid'],
+            $settings['modelextraparams'],
+        );
+        return $settings;
+    }
 
     /**
      * Get the system instructions.
@@ -94,11 +124,7 @@ abstract class abstract_processor extends process_base {
             ]);
         } catch (RequestException $e) {
             // Handle any exceptions.
-            return [
-                'success' => false,
-                'errorcode' => $e->getCode(),
-                'errormessage' => $e->getMessage(),
-            ];
+            return \core_ai\error\factory::create($e->getCode(), $e->getMessage())->get_error_details();
         }
 
         // Double-check the response codes, in case of a non 200 that didn't throw an error.
@@ -117,19 +143,14 @@ abstract class abstract_processor extends process_base {
      * @return array The error response.
      */
     protected function handle_api_error(ResponseInterface $response): array {
-        $responsearr = [
-            'success' => false,
-            'errorcode' => $response->getStatusCode(),
-        ];
-
         $status = $response->getStatusCode();
         if ($status >= 500 && $status < 600) {
-            $responsearr['errormessage'] = $response->getReasonPhrase();
+            $errormessage = $response->getReasonPhrase();
         } else {
             $bodyobj = json_decode($response->getBody()->getContents());
-            $responsearr['errormessage'] = $bodyobj->error->message;
+            $errormessage = $bodyobj->error->message;
         }
 
-        return $responsearr;
+        return \core_ai\error\factory::create($status, $errormessage)->get_error_details();
     }
 }

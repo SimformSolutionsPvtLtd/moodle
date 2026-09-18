@@ -68,19 +68,6 @@
             }
         }
     }
-    body.mediumwidth {
-        #page.drawers {
-            .main-inner {
-                max-width: $medium-content-maxwidth;
-            }
-            .footer-popover {
-                max-width: $medium-content-maxwidth;
-                width: 100%;
-                margin: 0 auto;
-                @include border-radius();
-            }
-        }
-    }
     .header-maxwidth {
         max-width: $course-content-maxwidth;
         margin: 0 auto;
@@ -153,7 +140,7 @@
     display: none;
 }
 
-@include media-breakpoint-down(sm) {
+@include media-breakpoint-down(md) {
     //the scroll to top button
     .drawer-toggles {
         z-index: 100;
@@ -218,7 +205,6 @@
         .drawer-left,
         .drawer-right {
             top: $navbar-height;
-            height: calc(100vh - #{$navbar-height} - #{$stickyfooter-height});
         }
     }
 

@@ -41,8 +41,8 @@ Feature: Book activity chapter visibility management
     And I am on "Course 1" course homepage
     And I turn editing mode off
     And I click on "Test book" "link" in the "region-main" "region"
-    Then the "class" attribute of "2. Second chapter" "link" should contain "dimmed_text"
-    And the "class" attribute of "3. Third chapter" "link" should contain "dimmed_text"
+    Then the "class" attribute of "x. Second chapter" "link" should contain "dimmed_text"
+    And the "class" attribute of "x. Third chapter" "link" should contain "dimmed_text"
     And I am on "Course 1" course homepage with editing mode on
     And I click on "Test book" "link" in the "region-main" "region"
     And I follow "Next: Second chapter"

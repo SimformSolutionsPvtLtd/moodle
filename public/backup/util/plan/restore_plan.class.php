@@ -96,6 +96,14 @@ class restore_plan extends base_plan implements loggable {
     }
 
     /**
+     * Returns fields that we want to skip importing
+     * @return array|null
+     */
+    public function get_skiptemplatefields(): ?array {
+        return $this->controller->get_skiptemplatefields();
+    }
+
+    /**
      * Gets the progress reporter, which can be used to report progress within
      * the backup or restore process.
      *
@@ -184,6 +192,9 @@ class restore_plan extends base_plan implements loggable {
             if ($this->controller->is_samesite()) {
                 $otherarray['originalcourseid'] = $this->controller->get_info()->original_course_id;
             }
+
+            // Add the settings to the event data.
+            $otherarray['settings'] = $this->get_settings();
 
             // Trigger a course restored event.
             $event = \core\event\course_restored::create(array(

@@ -53,12 +53,15 @@ class behat_core_question extends behat_question_base {
      * Convert page names to URLs for steps like 'When I am on the "[identifier]" "[page type]" page'.
      *
      * Recognised page names are:
-     * | pagetype               | name meaning               | description                              |
-     * | course question bank   | Course name                | The question bank for a course           |
-     * | course question import | Course name                | The import questions screen for a course |
-     * | course question export | Course name                | The export questions screen for a course |
-     * | preview                | Question name              | The screen to preview a question         |
-     * | edit                   | Question name              | The screen to edit a question            |
+     * | pagetype               | name meaning               | description                                           |
+     * | course question bank   | Course name                | The default question bank for a course                |
+     * | course question import | Course name                | The import questions screen for a course default bank |
+     * | course question export | Course name                | The export questions screen for a course default bank |
+     * | question bank          | Question bank name         | The question bank module                              |
+     * | question import        | Question bank name         | The import questions screen for a question bank       |
+     * | question export        | Question bank name         | The export questions screen for a question bank       |
+     * | preview                | Question name              | The screen to preview a question                      |
+     * | edit                   | Question name              | The screen to edit a question                         |
      *
      * @param string $type identifies which type of page this is, e.g. 'Preview'.
      * @param string $identifier identifies the particular page, e.g. 'My question'.
@@ -71,21 +74,51 @@ class behat_core_question extends behat_question_base {
                 // The question bank does not handle fields at the edge of the viewport well.
                 // Increase the size to avoid this.
                 $this->execute('behat_general::i_change_window_size_to', ['window', 'large']);
+                $qbank = $this->get_default_bank_for_course_identifier($identifier);
                 return new moodle_url('/question/edit.php', [
-                    'courseid' => $this->get_course_id($identifier),
+                    'cmid' => $qbank->id,
                 ]);
 
+            case 'question bank':
+                // The question bank does not handle fields at the edge of the viewport well.
+                // Increase the size to avoid this.
+                $this->execute('behat_general::i_change_window_size_to', ['window', 'large']);
+                return new moodle_url('/question/edit.php',
+                    ['cmid' => $this->get_cm_by_activity_name('qbank', $identifier)->id]
+                );
+
             case 'course question categories':
+                $qbank = $this->get_default_bank_for_course_identifier($identifier);
                 return new moodle_url('/question/bank/managecategories/category.php',
-                        ['courseid' => $this->get_course_id($identifier)]);
+                    ['cmid' => $qbank->id]
+                );
+
+            case 'question categories':
+                return new moodle_url('/question/bank/managecategories/category.php',
+                    ['cmid' => $this->get_cm_by_activity_name('qbank', $identifier)->id]
+                );
 
             case 'course question import':
+                $qbank = $this->get_default_bank_for_course_identifier($identifier);
                 return new moodle_url('/question/bank/importquestions/import.php',
-                        ['courseid' => $this->get_course_id($identifier)]);
+                    ['cmid' => $qbank->id]
+                );
+
+            case 'question import':
+                return new moodle_url('/question/bank/importquestions/import.php',
+                    ['cmid' => $this->get_cm_by_activity_name('qbank', $identifier)->id]
+                );
 
             case 'course question export':
+                $qbank = $this->get_default_bank_for_course_identifier($identifier);
                 return new moodle_url('/question/bank/exportquestions/export.php',
-                        ['courseid' => $this->get_course_id($identifier)]);
+                    ['cmid' => $qbank->id]
+                );
+
+            case 'question export':
+                return new moodle_url('/question/bank/exportquestions/export.php',
+                    ['cmid' => $this->get_cm_by_activity_name('qbank', $identifier)->id]
+                );
 
             case 'preview':
                 [$questionid, $otheridtype, $otherid] = $this->find_question_by_name($identifier);
@@ -100,6 +133,17 @@ class behat_core_question extends behat_question_base {
             default:
                 throw new Exception('Unrecognised core_question page type "' . $type . '."');
         }
+    }
+
+    /**
+     * Get the course default question bank, creating it if it doesn't yet exist
+     *
+     * @param string $identifier The name of the course to add a default bank to.
+     * @return cm_info The newly created default question bank.
+     */
+    private function get_default_bank_for_course_identifier(string $identifier): cm_info {
+        $course = get_course($this->get_course_id($identifier));
+        return \core_question\local\bank\question_bank_helper::get_default_open_instance_system_type($course, true);
     }
 
     /**
@@ -358,10 +402,42 @@ class behat_core_question extends behat_question_base {
         // Set the filter value.
         $this->execute('behat_forms::i_set_the_field_to', [
             $filtertype,
-            $value
+            $value,
         ]);
 
         // Apply filters.
         $this->execute("behat_forms::press_button", [get_string('applyfilters')]);
+    }
+
+    /**
+     * Record that a user has recently accessed the question bank related to a particular activity.
+     *
+     * @Given :user has recently viewed the :activityname :activitytype question bank
+     * @param string $useridentifier The user's username or email.
+     * @param string $activityname name of an activity.
+     * @param string $activitytype type of an activity, e.g. 'quiz' or 'qbank'.
+     */
+    public function user_has_recently_viewed_question_bank(
+        string $useridentifier,
+        string $activityname,
+        string $activitytype,
+    ): void {
+        global $USER;
+        $originaluser = $USER;
+
+        if (!plugin_supports('mod', $activitytype, FEATURE_USES_QUESTIONS)) {
+            throw new Exception($activitytype . ' do not have a question bank.');
+        }
+
+        $user = $this->get_user_by_identifier($useridentifier);
+        if (!$user) {
+            throw new Exception('Unknow user ' . $useridentifier . '.');
+        }
+        $USER = $user;
+
+        $cm = $this->get_cm_by_activity_name($activitytype, $activityname);
+        \core_question\local\bank\question_bank_helper::add_bank_context_to_recently_viewed($cm->context);
+
+        $USER = $originaluser;
     }
 }

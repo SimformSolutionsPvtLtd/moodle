@@ -13,18 +13,21 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
 /**
  * List alignments, skills, or standards are targeted by a BadgeClass.
  *
- * @package    core
+ * @package    core_badges
  * @subpackage badges
  * @copyright  2018 Tung Thai
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @author     Tung Thai <Tung.ThaiDuc@nashtechglobal.com>
  */
+
+use core_badges\form\alignment;
+
 require_once(__DIR__ . '/../config.php');
 require_once($CFG->libdir . '/badgeslib.php');
-require_once($CFG->dirroot . '/badges/alignment_form.php');
 
 $badgeid = required_param('id', PARAM_INT);
 $alignmentid = optional_param('alignmentid', 0, PARAM_INT);
@@ -38,7 +41,7 @@ if (empty($CFG->enablebadges)) {
 $badge = new badge($badgeid);
 $context = $badge->get_context();
 $title = [get_string('alignment', 'badges'), $badge->name];
-$navurl = new moodle_url('/badges/index.php', array('type' => $badge->type));
+$navurl = new moodle_url('/badges/index.php', ['type' => $badge->type]);
 require_capability('moodle/badges:configuredetails', $context);
 
 if ($badge->type == BADGE_TYPE_COURSE) {
@@ -49,7 +52,7 @@ if ($badge->type == BADGE_TYPE_COURSE) {
     $course = get_course($badge->courseid);
     $heading = format_string($course->fullname, true, ['context' => $context]);
     $title[] = $heading;
-    $navurl = new moodle_url('/badges/index.php', array('type' => $badge->type, 'id' => $badge->courseid));
+    $navurl = new moodle_url('/badges/index.php', ['type' => $badge->type, 'id' => $badge->courseid]);
     $PAGE->set_pagelayout('standard');
     navigation_node::override_active_url($navurl);
 } else {
@@ -58,7 +61,7 @@ if ($badge->type == BADGE_TYPE_COURSE) {
     navigation_node::override_active_url($navurl, true);
 }
 
-$currenturl = new moodle_url('/badges/alignment.php', array('id' => $badge->id));
+$currenturl = new moodle_url('/badges/alignment.php', ['id' => $badge->id]);
 $PAGE->set_context($context);
 $PAGE->set_url($currenturl);
 $PAGE->set_heading($heading);
@@ -68,8 +71,8 @@ $PAGE->navbar->add($badge->name);
 $output = $PAGE->get_renderer('core', 'badges');
 $msg = optional_param('msg', '', PARAM_TEXT);
 $emsg = optional_param('emsg', '', PARAM_TEXT);
-$url = new moodle_url('/badges/alignment.php', array('id' => $badge->id, 'action' => $action, 'alignmentid' => $alignmentid));
-$mform = new alignment_form($url, array('badge' => $badge, 'action' => $action, 'alignmentid' => $alignmentid));
+$url = new moodle_url('/badges/alignment.php', ['id' => $badge->id, 'action' => $action, 'alignmentid' => $alignmentid]);
+$mform = new alignment($url, ['badge' => $badge, 'action' => $action, 'alignmentid' => $alignmentid]);
 if ($mform->is_cancelled()) {
     redirect($currenturl);
 } else if ($mform->is_submitted() && $mform->is_validated() && ($data = $mform->get_data())) {
@@ -100,7 +103,7 @@ if ($alignmentid || $action == 'add' || $action == 'edit') {
     $mform->display();
 } else if (empty($action)) {
     if (!$badge->is_active() && !$badge->is_locked()) {
-        $urlbutton = new moodle_url('/badges/alignment.php', array('id' => $badge->id, 'action' => 'add'));
+        $urlbutton = new moodle_url('/badges/alignment.php', ['id' => $badge->id, 'action' => 'add']);
         echo $OUTPUT->box($OUTPUT->single_button($urlbutton, get_string('addalignment', 'badges')), 'clearfix mdl-align');
     }
     $alignments = $badge->get_alignments();

@@ -18,18 +18,20 @@ Feature: Teacher can build quiz in a single activity format course
     And the following "activities" exist:
       | activity | course | name            | idnumber |
       | quiz     | C1     | Quiz 1          | q1       |
+      | qbank    | C1     | Question bank 1 | qbank1   |
+      | qbank    | C1     | Question bank 2 | qbank2   |
     And the following "question categories" exist:
-      | contextlevel    | reference | name               |
-      | Activity module | q1        | Test questions     |
-      | Course          | C1        | Course questions 1 |
-      | Course          | C1        | Course questions 2 |
+      | contextlevel    | reference | name              |
+      | Activity module | q1        | Test questions    |
+      | Activity module | qbank1    | Qbank questions 1 |
+      | Activity module | qbank2    | Qbank questions 2 |
     And the following "questions" exist:
-      | questioncategory   | qtype       | template    | name                    |
-      | Test questions     | multichoice | one_of_four | MCQ1                    |
-      | Test questions     | multichoice | one_of_four | MCQ2                    |
-      | Course questions 1 | truefalse   |             | TFQ1                    |
-      | Course questions 2 | truefalse   |             | TFQ2                    |
-      | Test questions     | random      |             | Random (Test questions) |
+      | questioncategory  | qtype       | template    | name                    |
+      | Test questions    | multichoice | one_of_four | MCQ1                    |
+      | Test questions    | multichoice | one_of_four | MCQ2                    |
+      | Qbank questions 1 | truefalse   |             | TFQ1                    |
+      | Qbank questions 2 | truefalse   |             | TFQ2                    |
+      | Test questions    | random      |             | Random (Test questions) |
     # Add questions from different question categories and question banks to the quiz.
     # Add at least 1 random question.
     And quiz "Quiz 1" contains the following questions:

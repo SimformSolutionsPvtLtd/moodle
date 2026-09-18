@@ -41,19 +41,8 @@
  */
 
 function xmldb_forum_upgrade($oldversion) {
-    global $CFG, $DB;
-
-    $dbman = $DB->get_manager(); // Loads ddl manager and xmldb classes.
-
-    // Automatically generated Moodle v4.1.0 release upgrade line.
-    // Put any upgrade step following this.
-
-    if ($oldversion < 2022112801) {
-        // Some very old discussions from early Moodle versions may have the usermodified set to zero.
-        $DB->execute("UPDATE {forum_discussions} SET usermodified = userid WHERE usermodified = 0");
-
-        upgrade_mod_savepoint(true, 2022112801, 'forum');
-    }
+    global $DB;
+    $dbman = $DB->get_manager();
 
     // Automatically generated Moodle v4.2.0 release upgrade line.
     // Put any upgrade step following this.
@@ -67,14 +56,22 @@ function xmldb_forum_upgrade($oldversion) {
     // Automatically generated Moodle v4.5.0 release upgrade line.
     // Put any upgrade step following this.
 
-    // Automatically generated Moodle v4.1.0 release upgrade line.
+    // Automatically generated Moodle v5.0.0 release upgrade line.
     // Put any upgrade step following this.
 
-    if ($oldversion < 2022112801) {
-        // Some very old discussions from early Moodle versions may have the usermodified set to zero.
-        $DB->execute("UPDATE {forum_discussions} SET usermodified = userid WHERE usermodified = 0");
+    // Automatically generated Moodle v5.1.0 release upgrade line.
+    // Put any upgrade step following this.
 
-        upgrade_mod_savepoint(true, 2022112801, 'forum');
+    if ($oldversion < 2025100601) {
+        // Changing precision of field name on table forum to (1333).
+        $table = new xmldb_table('forum');
+        $field = new xmldb_field('name', XMLDB_TYPE_CHAR, '1333', null, XMLDB_NOTNULL, null, null, 'type');
+
+        // Launch change of precision for field name.
+        $dbman->change_field_precision($table, $field);
+
+        // Forum savepoint reached.
+        upgrade_mod_savepoint(true, 2025100601, 'forum');
     }
 
     return true;

@@ -22,10 +22,10 @@ namespace core_badges;
  * Unit tests for backpack_api class.
  *
  * @package     core_badges
- * @covers      \core_badges\backpack_api
  * @copyright   2025 Sara Arjona <sara@moodle.com>
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(backpack_api::class)]
 final class backpack_api_test extends \advanced_testcase {
     /**
      * Test get_providers function.

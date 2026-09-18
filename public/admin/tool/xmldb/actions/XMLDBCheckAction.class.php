@@ -90,10 +90,10 @@ abstract class XMLDBCheckAction extends XMLDBAction {
 
         // If  not confirmed, show confirmation box
         if (!$confirmed) {
-            $o = '<table class="generaltable" border="0" cellpadding="5" cellspacing="0" id="notice">';
+            $o = '<table class="table generaltable table-hover" border="0" cellpadding="5" cellspacing="0" id="notice">';
             $o.= '  <tr><td class="generalboxcontent">';
             $o.= '    <p class="centerpara">' . $this->str[$this->introstr] . '</p>';
-            $o.= '    <table class="boxaligncenter" cellpadding="20"><tr><td>';
+            $o .= '    <table class="table-reboot w-100" cellpadding="20"><tr><td class="text-end">';
             $o.= '      <div class="singlebutton">';
             $o.= '        <form action="index.php?action=' . $this->title . '&amp;confirmed=yes&amp;sesskey=' . sesskey() . '" method="post"><fieldset class="invisiblefieldset">';
             $o.= '          <input type="submit" value="'. $this->str['yes'] .'" /></fieldset></form></div>';

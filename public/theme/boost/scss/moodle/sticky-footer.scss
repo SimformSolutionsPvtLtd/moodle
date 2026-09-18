@@ -14,7 +14,8 @@ body {
     height: $stickyfooter-height;
     bottom: calc(#{$stickyfooter-height} * -1);
     transition: bottom .5s;
-    z-index: $zindex-sticky;
+    // Sticky footer overlays the main content, but not the page layout.
+    z-index: map-get($zindex-levels, 3);
     box-shadow: 0 0 1rem rgba($black, .15);
     font-size: calc(#{$font-size-base} * 1.10);
     // Adjust sticky footer width to the main content area.
@@ -24,9 +25,6 @@ body {
             .pagelayout-standard &,
             body.limitedwidth.uses-drawers & {
                 max-width: $course-content-maxwidth;
-            }
-            body.mediumwidth.uses-drawers & {
-                max-width: $medium-content-maxwidth;
             }
         }
     }
@@ -89,7 +87,7 @@ body {
     }
 }
 
-@include media-breakpoint-down(sm) {
+@include media-breakpoint-down(md) {
     #page-wrapper {
         height: 100%;
         display: flex;

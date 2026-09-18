@@ -24,6 +24,8 @@
 namespace auth_oauth2;
 
 use context_user;
+use core\clock;
+use core\di;
 use stdClass;
 use moodle_exception;
 use moodle_url;
@@ -38,6 +40,11 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class api {
+    /**
+     * @var string Interval string of the expiration duration
+     * @see https://www.php.net/manual/en/dateinterval.construct.php
+     */
+    public const CONFIRMTOKEN_EXPIRES = 'PT30M';
 
     /**
      * Remove all linked logins that are using issuers that have been deleted.
@@ -55,7 +62,7 @@ class api {
      * Requires auth/oauth2:managelinkedlogins capability at the user context.
      *
      * @param int $userid (defaults to $USER->id)
-     * @return boolean
+     * @return linked_login[]
      */
     public static function get_linked_logins($userid = false) {
         global $USER;
@@ -79,16 +86,23 @@ class api {
      *
      * @param string $username as returned from an oauth client.
      * @param \core\oauth2\issuer $issuer
-     * @return stdClass User record if found.
+     * @return linked_login|false record if found and user exists, false otherwise.
      */
     public static function match_username_to_user($username, $issuer) {
-        $params = [
-            'issuerid' => $issuer->get('id'),
-            'username' => $username
-        ];
-        $result = linked_login::get_record($params);
+        global $DB;
 
-        if ($result) {
+        $where = "issuerid = :issuerid
+              AND username = :username
+              AND (confirmtokenexpires = 0 OR confirmtokenexpires > :now)";
+
+        $record = $DB->get_record_select(linked_login::TABLE, $where, [
+            'issuerid' => $issuer->get('id'),
+            'username' => $username,
+            'now' => di::get(clock::class)->now()->getTimestamp(),
+        ]);
+
+        if ($record) {
+            $result = new linked_login(0, $record);
             $user = \core_user::get_user($result->get('userid'));
             if (!empty($user) && !$user->deleted) {
                 return $result;
@@ -106,7 +120,7 @@ class api {
      * @param \core\oauth2\issuer $issuer
      * @param int $userid (defaults to $USER->id)
      * @param bool $skippermissions During signup we need to set this before the user is setup for capability checks.
-     * @return bool
+     * @return linked_login
      */
     public static function link_login($userinfo, $issuer, $userid = false, $skippermissions = false) {
         global $USER;
@@ -164,8 +178,10 @@ class api {
         $record->email = $userinfo['email'];
         $record->confirmtoken = random_string(32);
         $expires = new \DateTime('NOW');
-        $expires->add(new \DateInterval('PT30M'));
+        $expires->add(new \DateInterval(self::CONFIRMTOKEN_EXPIRES));
         $record->confirmtokenexpires = $expires->getTimestamp();
+
+        linked_login::delete_expired_pending($issuer, $userinfo['username'], $userid);
 
         $linkedlogin = new linked_login(0, $record);
         $linkedlogin->create();
@@ -232,7 +248,7 @@ class api {
         $expires = $login->get('confirmtokenexpires');
         if (time() > $expires) {
             $login->delete();
-            return;
+            return false;
         }
         $login->set('confirmtokenexpires', 0);
         $login->set('confirmtoken', '');
@@ -245,7 +261,7 @@ class api {
      *
      * @param array $userinfo as returned from an oauth client.
      * @param \core\oauth2\issuer $issuer
-     * @return bool
+     * @return stdClass
      */
     public static function create_new_confirmed_account($userinfo, $issuer) {
         global $CFG, $DB;
@@ -282,7 +298,7 @@ class api {
      * @param array $userinfo as returned from an oauth client.
      * @param \core\oauth2\issuer $issuer
      * @param int $userid (defaults to $USER->id)
-     * @return bool
+     * @return stdClass
      */
     public static function send_confirm_account_email($userinfo, $issuer) {
         global $CFG, $DB;
@@ -352,7 +368,6 @@ class api {
      * Requires auth/oauth2:managelinkedlogins capability at the user context.
      *
      * @param int $linkedloginid
-     * @return boolean
      */
     public static function delete_linked_login($linkedloginid) {
         global $USER;
@@ -401,7 +416,7 @@ class api {
      *
      * @param array $userinfo
      * @param object $user
-     * @return object
+     * @return stdClass
      */
     private static function save_user(array $userinfo, object $user): object {
         // Map supplied issuer user info to Moodle user fields.

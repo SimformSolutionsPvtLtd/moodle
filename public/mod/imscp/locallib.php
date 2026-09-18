@@ -24,6 +24,8 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+use core\url;
+
 require_once("$CFG->dirroot/mod/imscp/lib.php");
 require_once("$CFG->libdir/filelib.php");
 require_once("$CFG->libdir/resourcelib.php");
@@ -68,9 +70,14 @@ function imscp_htmllize_item($item, $imscp, $cm) {
             $url = $item['href'];
         } else {
             $context = context_module::instance($cm->id);
-            $urlbase = "$CFG->wwwroot/pluginfile.php";
-            $path = '/'.$context->id.'/mod_imscp/content/'.$imscp->revision.'/'.$item['href'];
-            $url = file_encode_url($urlbase, $path, false);
+            $url = url::make_pluginfile_url(
+                contextid: $context->id,
+                component: 'mod_imscp',
+                area: 'content',
+                itemid: $imscp->revision,
+                pathname: '/',
+                filename: $item['href']
+            )->out();
         }
         $result = "<li><a href=\"$url\">".$item['title'].'</a>';
     } else {
@@ -262,23 +269,6 @@ function imscp_recursive_item($xmlitem, $level, $resources) {
                  'level'    => $level,
                  'subitems' => $subitems,
                 );
-}
-
-/**
- * Wrapper for function libxml_disable_entity_loader() deprecated in PHP 8
- *
- * Method was deprecated in PHP 8 and it shows deprecation message. However it is still
- * required in the previous versions on PHP. While Moodle supports both PHP 7 and 8 we need to keep it.
- * @see https://php.watch/versions/8.0/libxml_disable_entity_loader-deprecation
- *
- * @param bool $value
- * @return bool
- *
- * @deprecated since Moodle 4.3
- */
-function imscp_libxml_disable_entity_loader(bool $value): bool {
-    debugging(__FUNCTION__ . '() is deprecated, please do not use it any more', DEBUG_DEVELOPER);
-    return true;
 }
 
 /**

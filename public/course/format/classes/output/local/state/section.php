@@ -83,7 +83,6 @@ class section implements renderable {
             'rawtitle' => $section->name,
             'cmlist' => [],
             'visible' => !empty($section->visible),
-            'sectionurl' => course_get_url($course, $section->section, ['navigation' => true])->out(false),
             'current' => $format->is_section_current($section),
             'indexcollapsed' => $indexcollapsed,
             'contentcollapsed' => $contentcollapsed,
@@ -94,13 +93,17 @@ class section implements renderable {
             'parentsectionid' => $section->get_component_instance()?->get_parent_section()?->id,
         ];
 
+        if ($section->uservisible) {
+            $data->sectionurl = course_get_url($course, $section->section, ['navigation' => true])?->out(false);
+        }
+
         if (empty($modinfo->sections[$section->section])) {
             return $data;
         }
 
         foreach ($modinfo->sections[$section->section] as $modnumber) {
             $mod = $modinfo->cms[$modnumber];
-            if ($section->uservisible && $mod->is_visible_on_course_page()) {
+            if ($section->uservisible && $mod->is_visible_on_course_page() && $mod->is_of_type_that_can_display()) {
                 $data->cmlist[] = $mod->id;
             }
         }

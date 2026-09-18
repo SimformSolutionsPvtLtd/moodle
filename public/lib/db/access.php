@@ -1025,6 +1025,17 @@ $capabilities = array(
         )
     ),
 
+    'moodle/course:viewoverview' => [
+        'captype' => 'read',
+        'contextlevel' => CONTEXT_COURSE,
+        'archetypes' => [
+            'student' => CAP_ALLOW,
+            'teacher' => CAP_ALLOW,
+            'editingteacher' => CAP_ALLOW,
+            'manager' => CAP_ALLOW,
+        ],
+    ],
+
     'moodle/course:changefullname' => array(
 
         'riskbitmask' => RISK_XSS,
@@ -1495,6 +1506,7 @@ $capabilities = array(
         'captype' => 'read',
         'contextlevel' => CONTEXT_COURSE,
         'archetypes' => array(
+            'teacher' => CAP_ALLOW,
             'editingteacher' => CAP_ALLOW,
             'manager' => CAP_ALLOW
         ),
@@ -1504,6 +1516,7 @@ $capabilities = array(
         'captype' => 'read',
         'contextlevel' => CONTEXT_COURSE,
         'archetypes' => array(
+            'teacher' => CAP_ALLOW,
             'editingteacher' => CAP_ALLOW,
             'manager' => CAP_ALLOW
         ),
@@ -2738,6 +2751,14 @@ $capabilities = array(
         'archetypes' => [],
     ],
 
+    // Allow users to configure custom fields for custom reports.
+    'moodle/reportbuilder:configurecustomfields' => [
+        'captype' => 'write',
+        'riskbitmap' => RISK_PERSONAL,
+        'contextlevel' => CONTEXT_SYSTEM,
+        'archetypes' => [],
+    ],
+
     // Allow users to schedule reports as other users.
     'moodle/reportbuilder:scheduleviewas' => [
         'captype' => 'read',
@@ -2809,5 +2830,31 @@ $capabilities = array(
         'archetypes' => [
             'user' => CAP_ALLOW,
         ],
+    ],
+    // Allow managers to view the AI policy acceptance report.
+    'moodle/ai:viewaipolicyacceptancereport' => [
+        'riskbitmask' => RISK_PERSONAL,
+        'captype' => 'read',
+        'contextlevel' => CONTEXT_SYSTEM,
+        'archetypes' => [
+            'manager' => CAP_ALLOW,
+        ],
+    ],
+    // Allow managers to view the AI usage report.
+    'moodle/ai:viewaiusagereport' => [
+        'riskbitmask' => RISK_PERSONAL,
+        'captype' => 'read',
+        'contextlevel' => CONTEXT_SYSTEM,
+        'archetypes' => [
+            'manager' => CAP_ALLOW,
+        ],
+    ],
+
+    // Allow users to configure shared custom fields.
+    'moodle/customfield:configureshared' => [
+        'captype' => 'write',
+        'riskbitmap' => RISK_PERSONAL,
+        'contextlevel' => CONTEXT_SYSTEM,
+        'archetypes' => [],
     ],
 );

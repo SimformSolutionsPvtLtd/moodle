@@ -33,6 +33,7 @@ Feature: Assign group override
       | activity | name                 | intro                   | course | assignsubmission_onlinetext_enabled |
       | assign   | Test assignment name | Submit your online text | C1     | 1                                   |
 
+  @javascript
   Scenario: Add, modify then delete a group override
     Given I am on the "Test assignment name" Activity page logged in as teacher1
     When I navigate to "Overrides" in current page administration
@@ -163,7 +164,7 @@ Feature: Assign group override
     And I am on the "Assignment 2" Activity page logged in as teacher1
     When I navigate to "Overrides" in current page administration
     And I select "Group overrides" from the "jump" singleselect
-    Then I should see "No groups you can access."
+    Then I should see "There are no groups in this course."
     And the "Add group override" "button" should be disabled
 
   Scenario: A teacher without accessallgroups permission should only be able to add group override for groups that he/she is a member of,
@@ -224,6 +225,55 @@ Feature: Assign group override
     And I should see "Only visible to members/Non-Participation" in the "Override group" "select"
     And I should see "Only see own membership" in the "Override group" "select"
     And I should not see "Not visible" in the "Override group" "select"
+
+  @javascript
+  Scenario: Teachers can trigger grade penalty recalculation when modifying or deleting group overrides
+    Given I enable grade penalties for assignment
+    And the following "activity" exists:
+      | activity                             | assign                      |
+      | course                               | C1                          |
+      | name                                 | Test assignment penalty     |
+      | intro                                | Test assignment description |
+      | grade                                | 100                         |
+      | duedate                              | ##tomorrow##                |
+      | gradepenalty                         | 1                           |
+      | assignsubmission_onlinetext_enabled  | 1                           |
+      | submissiondrafts                     | 0                           |
+    And the following "mod_assign > submissions" exist:
+      | assign                | user      | onlinetext                        |
+      | Test assignment name  | student1  | I'm the student first submission  |
+    And the following "mod_assign > group overrides" exist:
+      | assignment               | group | duedate            |
+      | Test assignment penalty  | G1    | ##tomorrow +1day## |
+    And I am on the "Test assignment penalty" Activity page logged in as teacher1
+    And I change window size to "large"
+    And I go to "Sam1 Student1" "Test assignment penalty" activity advanced grading page
+    And I set the field "Grade out of 100" to "90"
+    And I set the field "Notify student" to "0"
+    And I press "Save changes"
+    And I follow "View all submissions"
+    And "Sam1 Student1" row "Grade" column of "submissions" table should contain "90.00"
+    And "Sam1 Student1" row "Final grade" column of "submissions" table should contain "90.00"
+    # Modify the group override by changing the due date to a past date.
+    And I navigate to "Overrides" in current page administration
+    And I select "Group overrides" from the "jump" singleselect
+    And I click on "Edit" "link" in the "Group 1" "table_row"
+    When I set the following fields to these values:
+      | Recalculate penalty | Yes                |
+      | Due date            | ##yesterday##      |
+    And I press "Save"
+    And I navigate to "Submissions" in current page administration
+    Then "Sam1 Student1" row "Grade" column of "submissions" table should contain "90.00"
+    And "Sam1 Student1" row "Final grade" column of "submissions" table should contain "80.00"
+    # Delete the group override.
+    And I navigate to "Overrides" in current page administration
+    And I select "Group overrides" from the "jump" singleselect
+    And I click on "Delete" "link" in the "Group 1" "table_row"
+    And I click on "Recalculate penalty for user(s) in the override" "checkbox" in the "Confirm" "dialogue"
+    And I click on "Continue" "button" in the "Confirm" "dialogue"
+    And I navigate to "Submissions" in current page administration
+    And "Sam1 Student1" row "Grade" column of "submissions" table should contain "90.00"
+    And "Sam1 Student1" row "Final grade" column of "submissions" table should contain "90.00"
 
   @javascript
   Scenario: Assign activity group overrides are displayed on the timeline block

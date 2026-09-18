@@ -141,6 +141,13 @@
     display: block;
 }
 
+.chooserdialogue-questionchooser .modicon img.icon,
+#categoryquestions .qtype img.icon,
+.choosercontainer .modicon img.icon {
+    /* Override default icon width set for fontawesome icons */
+    width: 16px;
+}
+
 table.question-bank-table {
     margin: 0;
     background-color: $white;
@@ -154,11 +161,27 @@ table.question-bank-table {
     }
 
     & > tbody > tr.r1 {
-        background-color: $table-accent-bg;
+        background-color: $table-striped-bg;
     }
 
-    & > tbody > tr.highlight {
-        border: $border-width solid $info;
+    &.generaltable > tbody > tr.highlight.firstrow td {
+        border-top: map-get($border-widths, 3) solid $info;
+    }
+
+    & > tbody > tr.highlight.firstrow {
+        border-right: map-get($border-widths, 2) solid $info;
+        border-left: map-get($border-widths, 2) solid $info;
+    }
+
+    &.generaltable > tbody > tr.highlight.extrarow td,
+    &.generaltable > tbody > tr.highlight.firstrow.onlyhighlightrow td {
+        border-bottom: map-get($border-widths, 2) solid $info;
+    }
+
+    & > tbody > tr.highlight.extrarow {
+        border-top: 0;
+        border-right: map-get($border-widths, 2) solid $info;
+        border-left: map-get($border-widths, 2) solid $info;
     }
 
     .checkbox input[type="checkbox"] {
@@ -243,16 +266,12 @@ table.question-bank-table {
 
 body.path-question-type {
     /* Hacks to display the labels within a form group. */
-    .fitem .col-form-label.sr-only:not(legend):not([for="id_category"], [for="id_filetypeslist"]) {
-        position: static;
-        width: auto;
-        height: auto;
-        padding: 0;
-        margin: 0 0.5rem 0 0;
-        overflow: visible;
-        clip: auto;
-        clip-path: none;
-        border: 0;
+    .fitem .col-form-label.visually-hidden:not(legend):not([for="id_category"], [for="id_filetypeslist"]) {
+        /* stylelint-disable declaration-no-important */
+        position: static !important;
+        width: auto !important;
+        overflow: visible !important;
+        /* stylelint-enable declaration-no-important */
     }
 }
 
@@ -327,7 +346,7 @@ body.path-question-type {
 }
 .que .outcome,
 .que .comment {
-    color: shift-color($warning, $alert-color-scale - 10%);
+    color: shift-color($warning, $alert-color-scale);
     border-color: shift-color($warning, $alert-border-scale);
     @include gradient-bg(shift-color($warning, $alert-bg-scale - 5%));
     // Darken link colour inside comments for better colour contrast against regular text.
@@ -370,7 +389,9 @@ body.path-question-type {
 }
 
 .que .comment {
-    @include alert-variant(shift-color($success, $alert-bg-scale), shift-color($success, $alert-border-scale), shift-color($success, $alert-color-scale)); /* stylelint-disable-line max-line-length */
+    color: shift-color($success, $alert-color-scale);
+    border-color: shift-color($success, $alert-border-scale);
+    @include gradient-bg(shift-color($success, $alert-bg-scale));
 }
 
 .que .ablock {
@@ -394,14 +415,17 @@ body.path-question-type {
 
 .que .correctness {
     &.correct {
-        @include badge-variant($success);
+        color: color-contrast($success);
+        background-color: $success;
     }
     &.partiallycorrect {
-        @include badge-variant($warning);
+        color: color-contrast($warning);
+        background-color: $warning;
     }
     &.notanswered,
     &.incorrect {
-        @include badge-variant($danger);
+        color: color-contrast($danger);
+        background-color: $danger;
     }
 }
 

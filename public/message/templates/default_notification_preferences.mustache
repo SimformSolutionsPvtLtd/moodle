@@ -59,7 +59,8 @@
                                 "lockedlabel": "Sending Assignment via Web locked status",
                                 "enabledsetting": "mod_assign_assign_notification_enabled[popup]",
                                 "enabled": 1,
-                                "enabledlabel": "Sending Assignment via Web enabled status"
+                                "enabledlabel": "Sending Assignment via Web enabled status",
+                                "supportsprocessor": true
                             }
                         ]
                     }
@@ -76,7 +77,7 @@
             <thead>
                 <tr>
                     <th>
-                        <span class="sr-only">{{#str}}preference, message{{/str}}</span>
+                        <span class="visually-hidden">{{#str}}preference, message{{/str}}</span>
                     </th>
                     <th>{{#str}} enabled, core_message {{/str}}</th>
                     {{#processors}}
@@ -92,14 +93,14 @@
                             <td>{{{displayname}}}</td>
                             <td>
                                 <div data-preference="{{{enabledsetting}}}">
-                                    <div class="custom-control custom-switch">
+                                    <div class="form-check form-switch">
                                         <input type="checkbox"
                                             id="{{{enabledsetting}}}"
                                             name="{{{enabledsetting}}}"
-                                            class="custom-control-input provider_enabled"
+                                            class="form-check-input provider_enabled"
                                             {{#enabled}}checked{{/enabled}}
                                         >
-                                        <label for="{{{enabledsetting}}}" class="custom-control-label">
+                                        <label for="{{{enabledsetting}}}" class="form-check-label">
                                             <span class="accesshide">{{enabledlabel}}</span>
                                         </label>
                                     </div>
@@ -107,32 +108,39 @@
                             </td>
                             {{#settings}}
                                 <td class="text-start">
-                                    <div data-preference="{{{enabledsetting}}}">
-                                        <div class="custom-control custom-switch {{#locked}} dimmed_text{{/locked}} pb-1">
-                                            <input type="checkbox"
-                                                id="{{{enabledsetting}}}"
-                                                name="{{{enabledsetting}}}"
-                                                class="custom-control-input enabled_message_setting"
-                                                {{#enabled}}checked{{/enabled}}
-                                            >
-                                            <label for="{{{enabledsetting}}}" class="custom-control-label">
-                                                {{#str}} enabled, core_message {{/str}}
-                                            </label>
+                                    {{#supportsprocessor}}
+                                        <div data-preference="{{{enabledsetting}}}">
+                                            <div class="form-check form-switch {{#locked}} dimmed_text{{/locked}} pb-1">
+                                                <input type="checkbox"
+                                                       id="{{{enabledsetting}}}"
+                                                       name="{{{enabledsetting}}}"
+                                                       class="form-check-input enabled_message_setting"
+                                                       {{#enabled}}checked{{/enabled}}
+                                                >
+                                                <label for="{{{enabledsetting}}}" class="form-check-label">
+                                                    {{#str}} enabled, core_message {{/str}}
+                                                </label>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div data-preference="{{{lockedsetting}}}">
-                                        <div class="custom-control custom-switch pt-1">
-                                            <input type="checkbox"
-                                                id="{{{lockedsetting}}}"
-                                                name="{{{lockedsetting}}}"
-                                                class="custom-control-input locked_message_setting"
-                                                {{#locked}}checked{{/locked}}
-                                            >
-                                            <label for="{{{lockedsetting}}}" class="custom-control-label">
-                                                {{#str}} forced, core_message {{/str}}
-                                            </label>
+                                        <div data-preference="{{{lockedsetting}}}">
+                                            <div class="form-check form-switch pt-1">
+                                                <input type="checkbox"
+                                                       id="{{{lockedsetting}}}"
+                                                       name="{{{lockedsetting}}}"
+                                                       class="form-check-input locked_message_setting"
+                                                       {{#locked}}checked{{/locked}}
+                                                >
+                                                <label for="{{{lockedsetting}}}" class="form-check-label">
+                                                    {{#str}} forced, core_message {{/str}}
+                                                </label>
+                                            </div>
                                         </div>
-                                    </div>
+                                    {{/supportsprocessor}}
+                                    {{^supportsprocessor}}
+                                        <div class="text-center">
+                                            {{#str}} notsupported, core_message {{/str}}
+                                        </div>
+                                    {{/supportsprocessor}}
                                 </td>
                             {{/settings}}
                         </tr>

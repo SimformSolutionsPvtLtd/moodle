@@ -21,7 +21,7 @@
  * needed during the very first steps of installation. This file was
  * generated automatically by export-installer.php (which is part of AMOS
  * {@link https://moodledev.io/general/projects/api/amos}) using the
- * list of strings defined in install/stringnames.txt file.
+ * list of strings defined in public/install/stringnames.txt file.
  *
  * @package   installer
  * @license   https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -49,7 +49,6 @@ $string['environmentsub2'] = 'د هر ماډل خپرول د PHP  نسخه اړ�
 $string['errorsinenvironment'] = 'د چاپیریال چیک ناکام شو!';
 $string['installation'] = 'لګول';
 $string['langdownloaderror'] = 'بدبختانه ژبه "{$ a}" ډاونلوډ کولی نشو. د انسټالولو پروسه به په انګلیسي کې دوام ومومي.';
-$string['memorylimithelp'] = '<p> ستاسو د سرور لپاره د PHP حافظې حد اوس مهال {$ a } ته ټاکل شوی . < / p> <p> دا ممکن وروسته موډل د حافظې ستونزې رامنځته کړي ، په ځانګړي توګه که ستاسو ډیری موډلونه او / یا ډیری کاروونکي  فعال وي. </ p> <p>  وړاندیز مو دا دی چې تاسو  PHP  له لوړ حد سره تنظیم کړئ که امکان ولري 40M. د دې تر سره کولو لپاره ډیرې لارې شته دي چې تاسو یې هڅه  کولای شئ: </ p> < ol > <li> که تاسو وړ یاست، نو له <i>--enable-memory-limit</i> سره PHP  بیا تنظیم کړئ. دا به موډل ته اجازه ورکړي چې خپل ځان د حافظې له حد سره تنظیم کړي. < / li> <li> که تاسو خپل php.ini فایل ته لاسرسی لرئ ، نو تاسو کولی شئ د<b>memory_limit</b>  تنظیمات 40M ته بدل کړئ. که تاسو لاسرسی نلرئ تاسو وکولی شئ له خپل مدیر څخه وغواړئ چې دا ستاسو لپاره ترسره کړي. </ li> <li> د PHP  په ځینو سرورونو کې تاسو کولی شئ په موډل ډایرکټوري کې د htaccess فایل رامنخته کولی شی چې دا کرښه لري<blockquote><div>php_value memory_limit 40M</div></blockquote> <p>';
 $string['paths'] = 'لارې';
 $string['pathserrcreatedataroot'] = 'د ډېټا  ډایرکټوري  ({$ a-> dataroot }) د انسټالر لخوا نشي رامنځته کیدلی.';
 $string['pathshead'] = 'د لارو تصدیق کول';
@@ -63,7 +62,6 @@ $string['pathsunsecuredataroot'] = 'د ډېټا روپ ځای امن ندی';
 $string['pathswrongadmindir'] = 'اډمین ډایرکټوري شتون نلري';
 $string['phpextension'] = '} $ a} د PHP اکسټنشن';
 $string['phpversion'] = 'د PHP  نسخه';
-$string['phpversionhelp'] = '<p> موډل د PHP لږترلږه 5.6.5 یا 7.1 نسخې ته اړتیا لري( 7.0.x ځینې انجن محدودیتونه لري)</p> <p>  تاسو دا مهال {$a} نسخه پرمخ وړئ </p> <p> تاسو باید PHP  اپګرېډ کړئ یا  د PHP له نوې نسخې سره هاسټ ته لاړشئ. </ p>';
 $string['welcomep20'] = 'تاسو دا پاڼه ځکه  ګورئ  چې تاسو په خپل کمپیوټر کې د <strong> {$ a-> Packname } pack $ a-> Packversion } < /strong>  بسته په بریالیتوب سره انسټال او پیل کړې . مبارک!';
 $string['welcomep30'] = 'د<strong>{$a->installername}</strong>  دا خپرولو کې غوښتنلیکونه شامل دي ترڅو داسې یو چاپیریال رامنځته کړي چې پکې<strong>Moodle</strong>  به کار کوي.';
 $string['welcomep40'] = 'په کڅوړه کې <strong>Moodle {$a->moodlerelease} ({$a->moodleversion})</strong> هم شامل دي.';

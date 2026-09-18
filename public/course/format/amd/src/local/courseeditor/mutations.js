@@ -69,6 +69,8 @@ export default class {
     /**
      * Private method to call core_courseformat_create_module webservice.
      *
+     * @deprecated since Moodle 5.0 MDL-83469.
+     * @todo MDL-83851 This will be deleted in Moodle 6.0.
      * @method _callEditWebservice
      * @param {number} courseId
      * @param {string} modName module name
@@ -76,6 +78,7 @@ export default class {
      * @param {number} targetCmId optional target cm id
      */
     async _callAddModuleWebservice(courseId, modName, targetSectionNum, targetCmId) {
+        log.debug('_callAddModuleWebservice() is deprecated. Use _callNewModuleWebservice() instead');
         const args = {
             courseid: courseId,
             modname: modName,
@@ -413,28 +416,6 @@ export default class {
     }
 
     /**
-     * Move course modules to specific course location.
-     *
-     * @deprecated since Moodle 4.4 MDL-77038.
-     * @todo MDL-80116 This will be deleted in Moodle 4.8.
-     * @param {StateManager} stateManager the current state manager
-     * @param {array} sectionIds the list of section ids to move
-     * @param {number} targetSectionId the target section id
-     */
-    async sectionMove(stateManager, sectionIds, targetSectionId) {
-        log.debug('sectionMove() is deprecated. Use sectionMoveAfter() instead');
-        if (!targetSectionId) {
-            throw new Error(`Mutation sectionMove requires targetSectionId`);
-        }
-        const course = stateManager.get('course');
-        this.sectionLock(stateManager, sectionIds, true);
-        const updates = await this._callEditWebservice('section_move', course.id, sectionIds, targetSectionId);
-        this.bulkReset(stateManager);
-        stateManager.processUpdates(updates);
-        this.sectionLock(stateManager, sectionIds, false);
-    }
-
-    /**
      * Move course modules after a specific course location.
      *
      * @param {StateManager} stateManager the current state manager
@@ -506,12 +487,15 @@ export default class {
     /**
      * Add a new module to a specific course section.
      *
+     * @deprecated since Moodle 5.0 MDL-83469.
+     * @todo MDL-83851 This will be deleted in Moodle 6.0.
      * @param {StateManager} stateManager the current state manager
      * @param {string} modName the modulename to add
      * @param {number} targetSectionNum the target section number
      * @param {number} targetCmId optional the target cm id
      */
     async addModule(stateManager, modName, targetSectionNum, targetCmId) {
+        log.debug('addModule() is deprecated. Use newModule() instead');
         if (!modName) {
             throw new Error(`Mutation addModule requires moduleName`);
         }
@@ -710,9 +694,12 @@ export default class {
                 return;
             }
         }
+        const course = stateManager.get('course');
+        if (course.pageItem && course.pageItem.type === type && course.pageItem.id === id) {
+            return;
+        }
         stateManager.setReadOnly(false);
         // Remove the current page item.
-        const course = stateManager.get('course');
         course.pageItem = null;
         // Save the new page item.
         if (newPageItem) {

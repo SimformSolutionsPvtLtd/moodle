@@ -18,13 +18,8 @@ declare(strict_types=1);
 
 namespace core_courseformat\external;
 
-defined('MOODLE_INTERNAL') || die();
-
 use core_courseformat\stateactions;
 use core_courseformat\stateupdates;
-
-global $CFG;
-require_once($CFG->dirroot . '/webservice/tests/helpers.php');
 
 /**
  * Tests for the delete section test class.
@@ -35,16 +30,7 @@ require_once($CFG->dirroot . '/webservice/tests/helpers.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @coversDefaultClass \core_courseformat\stateactions
  */
-final class delete_section_test extends \externallib_advanced_testcase {
-
-    /**
-     * Setup to ensure that fixtures are loaded.
-     */
-    public static function setupBeforeClass(): void { // phpcs:ignore
-        global $CFG;
-        require_once($CFG->dirroot . '/course/format/tests/fixtures/format_theunittestdelete.php');
-    }
-
+final class delete_section_test extends \core_external\tests\externallib_testcase {
     /**
      * Test the webservice can execute the section_delete action.
      *
@@ -52,19 +38,15 @@ final class delete_section_test extends \externallib_advanced_testcase {
      * @dataProvider section_delete_provider
      * @param int $sectionum
      * @param string $format
-     * @param array $formatoptions
      * @param int $expectedsectionum
      *
      * @throws \moodle_exception
      */
-    public function test_delete_section(int $sectionum, string $format, array $formatoptions, int $expectedsectionum): void {
+    public function test_delete_section(int $sectionum, string $format, int $expectedsectionum): void {
         $this->resetAfterTest();
 
         $course =
-            $this->getDataGenerator()->create_course(array_merge(
-                ['numsections' => $sectionum, 'format' => $format],
-                $formatoptions,
-            ));
+            $this->getDataGenerator()->create_course(['numsections' => $sectionum, 'format' => $format]);
         $teacher = $this->getDataGenerator()->create_and_enrol($course, 'editingteacher');
         // Execute the method.
         $courseformat = course_get_format($course->id);
@@ -85,9 +67,6 @@ final class delete_section_test extends \externallib_advanced_testcase {
         $modinfo = get_fast_modinfo($course);
         $sections  = $modinfo->get_section_info_all();
         $this->assertCount($expectedsectionum, $sections);
-        if ($format == 'theunittestdelete') {
-            $this->assertDebuggingCalled();
-        }
     }
 
     /**
@@ -100,20 +79,17 @@ final class delete_section_test extends \externallib_advanced_testcase {
             'format topic' => [
                 'sectionum' => 4,
                 'format' => 'topics',
-                'formatoptions' => [],
                 'expectedsectionum' => 1,
             ],
-            'format theunittestdelete' => [
+            'format weeks' => [
                 'sectionum' => 4,
-                'format' => 'theunittestdelete',
-                'formatoptions' => [],
+                'format' => 'weeks',
+                'expectedsectionum' => 1,
+            ],
+            'format social' => [
+                'sectionum' => 4,
+                'format' => 'social',
                 'expectedsectionum' => 5,
-            ],
-            'format theunittestdelete can delete' => [
-                'sectionum' => 4,
-                'format' => 'theunittestdelete',
-                'formatoptions' => ['can_delete_sections' => true],
-                'expectedsectionum' => 1,
             ],
         ];
     }

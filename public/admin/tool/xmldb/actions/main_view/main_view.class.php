@@ -56,7 +56,6 @@ class main_view extends XMLDBAction {
             'checkdefaults' => 'tool_xmldb',
             'checkforeignkeys' => 'tool_xmldb',
             'checkbigints' => 'tool_xmldb',
-            'checkoraclesemantics' => 'tool_xmldb',
             'reconcilefiles' => 'tool_xmldb',
             'doc' => 'tool_xmldb',
             'filemodifiedoutfromeditor' => 'tool_xmldb',
@@ -108,10 +107,6 @@ class main_view extends XMLDBAction {
         if ($DB->get_dbfamily() == 'mysql' || $DB->get_dbfamily() == 'postgres') {
             $b .= '&nbsp;<a href="index.php?action=check_bigints&amp;sesskey=' . sesskey() . '">[' . $this->str['checkbigints'] . ']</a>';
         }
-        // The check semantics button (only for Oracle) MDL-29416
-        if ($DB->get_dbfamily() == 'oracle') {
-            $b .= '&nbsp;<a href="index.php?action=check_oracle_semantics&amp;sesskey=' . sesskey() . '">[' . $this->str['checkoraclesemantics'] . ']</a>';
-        }
         $b .= '&nbsp;<a href="index.php?action=check_foreign_keys&amp;sesskey=' . sesskey() . '">[' . $this->str['checkforeignkeys'] . ']</a>';
         $b .= '</p>';
         // Send buttons to output
@@ -124,7 +119,7 @@ class main_view extends XMLDBAction {
         // Display list of DB directories if everything is ok
         if ($result && !empty($XMLDB->dbdirs)) {
             $o .= '<table id="listdirectories" border="0" cellpadding="5" cellspacing="1"' .
-                ' class="table-striped table-sm admintable generaltable">';
+                ' class="table table-striped table-sm admintable generaltable table-hover">';
             $row = 0;
             foreach ($XMLDB->dbdirs as $key => $dbdir) {
                 // Detect if this is the lastused dir

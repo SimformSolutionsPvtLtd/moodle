@@ -23,7 +23,6 @@ use blog_entry;
 use cache;
 use calendar_event;
 use coding_exception;
-use comment;
 use completion_criteria_date;
 use completion_completion;
 use context_course;
@@ -36,7 +35,6 @@ use core_external;
 use core_tag_index_builder;
 use core_tag_tag;
 use course_capability_assignment;
-use course_request;
 use core_course_category;
 use enrol_imsenterprise\imsenterprise_test;
 use core_external\external_api;
@@ -550,6 +548,7 @@ final class courselib_test extends advanced_testcase {
         // Completion common to all module.
         $moduleinfo->completion = COMPLETION_TRACKING_AUTOMATIC;
         $moduleinfo->completionview = COMPLETION_VIEW_REQUIRED;
+        $moduleinfo->completionusegrade = 1;
         $moduleinfo->completiongradeitemnumber = 1;
         $moduleinfo->completionpassgrade = 0;
         $moduleinfo->completionexpected = time() + (7 * 24 * 3600);
@@ -880,13 +879,15 @@ final class courselib_test extends advanced_testcase {
         rebuild_course_cache($course->id, true);
 
         // Create some cms for testing.
+        $mods = $DB->get_records('modules');
+        $mod = reset($mods);
         $cmids = array();
         for ($i=0; $i<4; $i++) {
-            $cmids[$i] = $DB->insert_record('course_modules', array('course' => $course->id));
+            $cmids[$i] = $DB->insert_record('course_modules', ['course' => $course->id, 'module' => $mod->id]);
         }
 
         // Add it to section that exists.
-        course_add_cm_to_section($course, $cmids[0], 1);
+        course_add_cm_to_section($course, $cmids[0], 1, null, $mod->name);
 
         // Check it got added to sequence.
         $sequence = $DB->get_field('course_sections', 'sequence', array('course' => $course->id, 'section' => 1));
@@ -894,7 +895,7 @@ final class courselib_test extends advanced_testcase {
 
         // Add a second, this time using courseid variant of parameters.
         $coursecacherev = $DB->get_field('course', 'cacherev', array('id' => $course->id));
-        course_add_cm_to_section($course->id, $cmids[1], 1);
+        course_add_cm_to_section($course->id, $cmids[1], 1, null, $mod->name);
         $sequence = $DB->get_field('course_sections', 'sequence', array('course' => $course->id, 'section' => 1));
         $this->assertEquals($cmids[0] . ',' . $cmids[1], $sequence);
 
@@ -904,16 +905,55 @@ final class courselib_test extends advanced_testcase {
         $this->assertEmpty(cache::make('core', 'coursemodinfo')->get_versioned($course->id, $newcacherev));
 
         // Add one to section that doesn't exist (this might rebuild modinfo).
-        course_add_cm_to_section($course, $cmids[2], 2);
+        course_add_cm_to_section($course, $cmids[2], 2, null, $mod->name);
         $this->assertEquals(3, $DB->count_records('course_sections', array('course' => $course->id)));
         $sequence = $DB->get_field('course_sections', 'sequence', array('course' => $course->id, 'section' => 2));
         $this->assertEquals($cmids[2], $sequence);
 
         // Add using the 'before' option.
-        course_add_cm_to_section($course, $cmids[3], 2, $cmids[2]);
+        course_add_cm_to_section($course, $cmids[3], 2, $cmids[2], $mod->name);
         $this->assertEquals(3, $DB->count_records('course_sections', array('course' => $course->id)));
         $sequence = $DB->get_field('course_sections', 'sequence', array('course' => $course->id, 'section' => 2));
         $this->assertEquals($cmids[3] . ',' . $cmids[2], $sequence);
+    }
+
+    /**
+     * Module types that have FEATURE_CAN_DISPLAY flag set to false cannot be in any section other than 0.
+     *
+     * @return void
+     * @covers ::course_add_cm_to_section()
+     */
+    public function test_add_non_display_types_to_cm_section(): void {
+        global $DB;
+
+        $this->resetAfterTest(true);
+        $generator = self::getDataGenerator();
+
+        // Create course with 1 section.
+        $course = self::getDataGenerator()->create_course(
+            [
+                'shortname' => 'GrowingCourse',
+                'fullname' => 'Growing Course',
+                'numsections' => 1,
+            ],
+            ['createsections' => true]
+        );
+
+        // Create the module and assert in section 0.
+        $sectionzero = $DB->get_record('course_sections', ['course' => $course->id, 'section' => 0], '*', MUST_EXIST);
+        $module = $generator->create_module('qbank', ['course' => $course, 'section' => $sectionzero->section]);
+
+        // Try to add to section 1.
+        $this->expectExceptionMessage("Modules with FEATURE_CAN_DISPLAY set to false can not be moved from section 0");
+
+        try {
+            course_add_cm_to_section($course, $module->cmid, 1, null, 'qbank');
+        } finally {
+            // Assert still in section 0.
+            $cm = $DB->get_record('course_modules', ['id' => $module->cmid]);
+            $modsection = $DB->get_record('course_sections', ['id' => $cm->section]);
+            $this->assertEquals($sectionzero->section, $modsection->section);
+        }
     }
 
     public function test_reorder_sections(): void {
@@ -1320,6 +1360,36 @@ final class courselib_test extends advanced_testcase {
         $newsection = $DB->get_record('course_sections', array('id' => $newsection->id));
         $newsequences = explode(',', $newsection->sequence);
         $this->assertTrue(in_array($cm->id, $newsequences));
+    }
+
+    /**
+     * Ensure that qbank module which has feature flag FEATURE_CAN_DISPLAY set to false cannot be moved from section 0.
+     *
+     * @return void
+     * @covers ::moveto_module()
+     */
+    public function test_move_feature_cannot_display(): void {
+        $this->resetAfterTest(true);
+        // Setup fixture.
+        $course = $this->getDataGenerator()->create_course(['numsections' => 5], ['createsections' => true]);
+        $qbank = $this->getDataGenerator()->create_module('qbank', ['course' => $course->id]);
+        $qbankcms = get_fast_modinfo($course)->get_instances_of('qbank');
+        $qbankcm = reset($qbankcms);
+
+        // Check that mods with FEATURE_CAN_DISPLAY set to false cannot be moved from section 0.
+        $newsection = get_fast_modinfo($course)->get_section_info(3);
+
+        $codingerror = "/ .* Modules with FEATURE_CAN_DISPLAY set to false can not be moved from section 0/";
+
+        // Try to perform the move.
+        $this->expectExceptionMessageMatches($codingerror);
+        try {
+            moveto_module($qbankcm, $newsection);
+        } finally {
+            $qbankcms = get_fast_modinfo($course)->get_instances_of('qbank');
+            $qbankcm = reset($qbankcms);
+            $this->assertEquals(0, $qbankcm->sectionnum);
+        }
     }
 
     public function test_module_visibility(): void {
@@ -1937,7 +2007,10 @@ final class courselib_test extends advanced_testcase {
 
         // Create the XML file we want to use.
         $course->category = (array)$course->category;
-        $imstestcase = new imsenterprise_test();
+
+        // Note: this is a violation of component communication principles.
+        // TODO MDL-83789.
+        $imstestcase = new imsenterprise_test('courselib_imsenterprise_test');
         $imstestcase->imsplugin = enrol_get_plugin('imsenterprise');
         $imstestcase->set_test_config();
         $imstestcase->set_xml_file(false, array($course));
@@ -3134,6 +3207,22 @@ final class courselib_test extends advanced_testcase {
     }
 
     /**
+     * Ensure that modules with the feature flag FEATURE_CAN_DISPLAY set to false cannot be duplicated into a section other than 0.
+     * @covers ::duplicate_module()
+     */
+    public function test_duplicate_cannot_display_mods(): void {
+        self::setAdminUser();
+        $this->resetAfterTest();
+        $course = self::getDataGenerator()->create_course(['numsections' => 2], ['createsections' => true]);
+        $res = self::getDataGenerator()->create_module('qbank', ['course' => $course]);
+        $cm = get_coursemodule_from_id('qbank', $res->cmid, 0, false, MUST_EXIST);
+        $sectionid = get_fast_modinfo($course)->get_section_info(1)->id;
+
+        $this->expectExceptionMessage("Modules with FEATURE_CAN_DISPLAY set to false can not be moved from section 0");
+        duplicate_module($course, $cm, $sectionid);
+    }
+
+    /**
      * Tests that when creating or updating a module, if the availability settings
      * are present but set to an empty tree, availability is set to null in
      * database.
@@ -3783,7 +3872,6 @@ final class courselib_test extends advanced_testcase {
         global $CFG, $DB, $USER;
         require_once($CFG->dirroot . '/mod/glossary/lib.php');
         require_once($CFG->dirroot . '/rating/lib.php');
-        require_once($CFG->dirroot . '/comment/lib.php');
 
         $this->resetAfterTest(true);
 
@@ -3853,7 +3941,7 @@ final class courselib_test extends advanced_testcase {
         $args->itemid    = $entry->id;
         $args->client_id = 1;
         $args->component = 'mod_glossary';
-        $manager = new comment($args);
+        $manager = new \core_comment\manager($args);
         $manager->add('blah blah blah');
 
         // Check upgrade status.
@@ -4305,6 +4393,7 @@ final class courselib_test extends advanced_testcase {
      * Test the higher level checks for updating calendar events for a module.
      */
     public function test_course_module_bulk_update_calendar_events(): void {
+        global $DB;
         $this->resetAfterTest();
         $this->setAdminUser();
 
@@ -4313,7 +4402,7 @@ final class courselib_test extends advanced_testcase {
 
         $course = $this->getDataGenerator()->create_course(['enablecompletion' => COMPLETION_ENABLED]);
         $course2 = $this->getDataGenerator()->create_course(['enablecompletion' => COMPLETION_ENABLED]);
-        $assign = $this->getDataGenerator()->create_module('assign', [
+        $this->getDataGenerator()->create_module('assign', [
                     'course' => $course,
                     'completionexpected' => $completionexpected,
                     'duedate' => $duedate
@@ -4327,6 +4416,77 @@ final class courselib_test extends advanced_testcase {
         $this->assertTrue(course_module_bulk_update_calendar_events('assign'));
         // Update the assign instances for this course.
         $this->assertTrue(course_module_bulk_update_calendar_events('assign', $course->id));
+
+        // Success even the course has been deleted.
+        $DB->delete_records('course', ['id' => $course->id]);
+        $debuggingmessage = get_string('calendareventskipformissingcourse', 'error', $course->id);
+        // Update all assign instances.
+        $this->assertTrue(course_module_bulk_update_calendar_events('assign'));
+        $this->assertDebuggingCalled($debuggingmessage, DEBUG_DEVELOPER);
+        $this->resetDebugging();
+        // Update the assign instances for this course.
+        $this->assertTrue(course_module_bulk_update_calendar_events('assign', $course->id));
+        $this->assertDebuggingCalled($debuggingmessage, DEBUG_DEVELOPER);
+        $this->resetDebugging();
+        $course3 = $this->getDataGenerator()->create_course(['enablecompletion' => COMPLETION_ENABLED]);
+        $brokenassign = $this->getDataGenerator()->create_module('assign', [
+            'course' => $course3,
+            'completionexpected' => $completionexpected,
+            'duedate' => $duedate,
+        ]);
+
+        // Corrupt the course structure for one assign instance while keeping
+        // mdl_course_modules and mdl_assign valid. This reproduces the case where
+        // get_coursemodule_from_instance() succeeds, but modinfo cannot resolve the cm.
+        $cm = get_coursemodule_from_instance('assign', $brokenassign->id, $course3->id, false, MUST_EXIST);
+        $this->assertNotEmpty($cm);
+
+        $section = $DB->get_record('course_sections', ['id' => $cm->section], '*', MUST_EXIST);
+        $sequence = array_filter(
+            explode(',', (string)$section->sequence),
+            static function (string $id): bool {
+                return !empty($id);
+            }
+        );
+        $sequence = array_values(array_filter(
+            $sequence,
+            static function (string $id) use ($cm): bool {
+                return (int)$id !== (int)$cm->id;
+            }
+        ));
+
+        $DB->set_field('course_sections', 'sequence', implode(',', $sequence), ['id' => $section->id]);
+        rebuild_course_cache($course3->id, true);
+
+        // Sanity check: DB lookup still works, but modinfo lookup now fails.
+        $cmcheck = get_coursemodule_from_instance('assign', $brokenassign->id, $course3->id, false, MUST_EXIST);
+        $this->assertEquals($cm->id, $cmcheck->id);
+
+        try {
+            get_fast_modinfo($course3->id)->get_cm($cm->id);
+            $this->fail('Expected get_cm() to fail for a broken course structure.');
+        } catch (\moodle_exception $e) {
+            $this->assertNotEmpty($e->getMessage());
+        }
+        // Update all assign instances. The broken instance should be skipped, not fatal.
+        $a = new stdClass();
+        $a->modulename = "assign";
+        $a->instance = $brokenassign->id;
+        $a->course = $course3->id;
+        $a->cm = $cm->id;
+        $brokenmessage = get_string('calendareventskipforbrokencoursemodule', 'error', $a);
+        $this->assertTrue(course_module_bulk_update_calendar_events('assign'));
+        // With module name 'assign' it will include the missing course above so 2 different messages are expected.
+        $getdebuggingmessage = fn(stdClass $debugging): array => [$debugging->message, $debugging->level];
+        $debuggings = array_map($getdebuggingmessage, $this->getDebuggingMessages());
+        $this->resetDebugging();
+
+        $this->assertCount(2, $debuggings);
+        $this->assertEqualsCanonicalizing([[$debuggingmessage, DEBUG_DEVELOPER], [$brokenmessage, DEBUG_DEVELOPER]], $debuggings);
+
+        // Update the broken course only. It should also skip cleanly.
+        $this->assertTrue(course_module_bulk_update_calendar_events('assign', $course3->id));
+        $this->assertDebuggingCalled($brokenmessage, DEBUG_DEVELOPER);
     }
 
     /**
@@ -7188,112 +7348,6 @@ final class courselib_test extends advanced_testcase {
     }
 
     /**
-     * Tests for the course_request::can_request
-     */
-    public function test_can_request_course(): void {
-        global $CFG, $DB;
-        $this->resetAfterTest();
-
-        $user = $this->getDataGenerator()->create_user();
-        $cat1 = $CFG->defaultrequestcategory;
-        $cat2 = $this->getDataGenerator()->create_category()->id;
-        $cat3 = $this->getDataGenerator()->create_category()->id;
-        $context1 = context_coursecat::instance($cat1);
-        $context2 = context_coursecat::instance($cat2);
-        $context3 = context_coursecat::instance($cat3);
-        $this->setUser($user);
-
-        // By default users don't have capability to request courses.
-        $this->assertFalse(course_request::can_request(context_system::instance()));
-        $this->assertFalse(course_request::can_request($context1));
-        $this->assertFalse(course_request::can_request($context2));
-        $this->assertFalse(course_request::can_request($context3));
-
-        // Allow for the 'user' role the capability to request courses.
-        $userroleid = $DB->get_field('role', 'id', ['shortname' => 'user']);
-        assign_capability('moodle/course:request', CAP_ALLOW, $userroleid,
-            context_system::instance()->id);
-        accesslib_clear_all_caches_for_unit_testing();
-
-        // Lock category selection.
-        $CFG->lockrequestcategory = 1;
-
-        // Now user can only request course in the default category or in system context.
-        $this->assertTrue(course_request::can_request(context_system::instance()));
-        $this->assertTrue(course_request::can_request($context1));
-        $this->assertFalse(course_request::can_request($context2));
-        $this->assertFalse(course_request::can_request($context3));
-
-        // Enable category selection. User can request course anywhere.
-        $CFG->lockrequestcategory = 0;
-        $this->assertTrue(course_request::can_request(context_system::instance()));
-        $this->assertTrue(course_request::can_request($context1));
-        $this->assertTrue(course_request::can_request($context2));
-        $this->assertTrue(course_request::can_request($context3));
-
-        // Remove cap from cat2.
-        $roleid = create_role('Test role', 'testrole', 'Test role description');
-        assign_capability('moodle/course:request', CAP_PROHIBIT, $roleid,
-            $context2->id, true);
-        role_assign($roleid, $user->id, $context2->id);
-        accesslib_clear_all_caches_for_unit_testing();
-
-        $this->assertTrue(course_request::can_request(context_system::instance()));
-        $this->assertTrue(course_request::can_request($context1));
-        $this->assertFalse(course_request::can_request($context2));
-        $this->assertTrue(course_request::can_request($context3));
-
-        // Disable course request functionality.
-        $CFG->enablecourserequests = false;
-        $this->assertFalse(course_request::can_request(context_system::instance()));
-        $this->assertFalse(course_request::can_request($context1));
-        $this->assertFalse(course_request::can_request($context2));
-        $this->assertFalse(course_request::can_request($context3));
-    }
-
-    /**
-     * Tests for the course_request::can_approve
-     */
-    public function test_can_approve_course_request(): void {
-        global $CFG;
-        $this->resetAfterTest();
-
-        $requestor = $this->getDataGenerator()->create_user();
-        $user = $this->getDataGenerator()->create_user();
-        $cat1 = $CFG->defaultrequestcategory;
-        $cat2 = $this->getDataGenerator()->create_category()->id;
-        $cat3 = $this->getDataGenerator()->create_category()->id;
-
-        // Enable course requests. Default 'user' role has capability to request courses.
-        $CFG->enablecourserequests = true;
-        $CFG->lockrequestcategory = 0;
-        $this->setUser($requestor);
-        $requestdata = ['summary_editor' => ['text' => '', 'format' => 0], 'name' => 'Req', 'reason' => 'test'];
-        $request1 = course_request::create((object)($requestdata));
-        $request2 = course_request::create((object)($requestdata + ['category' => $cat2]));
-        $request3 = course_request::create((object)($requestdata + ['category' => $cat3]));
-
-        $this->setUser($user);
-        // Add capability to approve courses.
-        $roleid = create_role('Test role', 'testrole', 'Test role description');
-        assign_capability('moodle/site:approvecourse', CAP_ALLOW, $roleid,
-            context_system::instance()->id, true);
-        role_assign($roleid, $user->id, context_coursecat::instance($cat2)->id);
-        accesslib_clear_all_caches_for_unit_testing();
-
-        $this->assertFalse($request1->can_approve());
-        $this->assertTrue($request2->can_approve());
-        $this->assertFalse($request3->can_approve());
-
-        // Delete category where course was requested. Now only site-wide manager can approve it.
-        core_course_category::get($cat2, MUST_EXIST, true)->delete_full(false);
-        $this->assertFalse($request2->can_approve());
-
-        $this->setAdminUser();
-        $this->assertTrue($request2->can_approve());
-    }
-
-    /**
      * Test the course allowed module method.
      */
     public function test_course_allowed_module(): void {
@@ -7313,6 +7367,12 @@ final class courselib_test extends advanced_testcase {
 
         // Manager has permissions.
         $this->assertTrue(course_allowed_module($course, 'assign', $manager));
+
+        // Disable the assign module.
+        $DB->set_field('modules', 'visible', 0, ['name' => 'assign']);
+
+        // Verify that disabled modules are not allowed.
+        $this->assertFalse(course_allowed_module($course, 'assign', $manager));
     }
 
     /**

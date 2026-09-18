@@ -53,12 +53,12 @@
 
     {{#usebutton}}
         <div tabindex="0"
-             data-toggle="dropdown"
+             data-bs-toggle="dropdown"
              aria-expanded="false"
              role="combobox"
              aria-haspopup="dialog"
              aria-controls="dialog-{{instance}}-{{uniqid}}"
-             class="{{#buttonclasses}}{{.}}{{/buttonclasses}} btn dropdown-toggle d-flex text-start align-items-center p-0 font-weight-bold"
+             class="{{#buttonclasses}}{{.}}{{/buttonclasses}} btn dropdown-toggle d-flex text-start align-items-center p-0 fw-bold"
              aria-label="{{label}}"
              data-input-element="input-{{instance}}-{{uniqid}}">
             {{{buttoncontent}}}
@@ -91,4 +91,4 @@
     </div>
 </div>
 <!-- ARIA live region for screen readers -->
-<div id="combobox-status-{{instance}}-{{uniqid}}" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+<div id="combobox-status-{{instance}}-{{uniqid}}" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>

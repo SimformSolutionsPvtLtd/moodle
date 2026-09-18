@@ -19,16 +19,13 @@ declare(strict_types=1);
 namespace core_reportbuilder\external\reports;
 
 use context_system;
+use core\output\pix_icon;
 use core_reportbuilder_generator;
 use core_external\external_api;
-use externallib_advanced_testcase;
 use core_reportbuilder\exception\report_access_exception;
+use core_reportbuilder\manager;
+use core_reportbuilder\output\report_action;
 use core_user\reportbuilder\datasource\users;
-
-defined('MOODLE_INTERNAL') || die();
-
-global $CFG;
-require_once("{$CFG->dirroot}/webservice/tests/helpers.php");
 
 /**
  * Unit tests of external class for getting reports
@@ -38,8 +35,7 @@ require_once("{$CFG->dirroot}/webservice/tests/helpers.php");
  * @copyright   2021 David Matamoros <davidmc@moodle.com>
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-final class get_test extends externallib_advanced_testcase {
-
+final class get_test extends \core_external\tests\externallib_testcase {
     /**
      * Text execute method for edit mode
      */
@@ -49,12 +45,11 @@ final class get_test extends externallib_advanced_testcase {
 
         /** @var core_reportbuilder_generator $generator */
         $generator = $this->getDataGenerator()->get_plugin_generator('core_reportbuilder');
+        $report = $generator->create_report(['name' => 'My report', 'source' => users::class, 'default' => false]);
 
-        $report = $generator->create_report([
-            'name' => 'My report',
-            'source' => users::class,
-            'default' => false,
-        ]);
+        $instance = manager::get_report_from_persistent($report);
+        $instance->set_report_action(new report_action('Add', ['class' => 'btn', 'data-action' => 'action']));
+        $instance->set_report_info_container('Hello');
 
         // Add two filters.
         $filterfullname = $generator->create_filter(['reportid' => $report->get('id'), 'uniqueidentifier' => 'user:fullname']);
@@ -68,6 +63,7 @@ final class get_test extends externallib_advanced_testcase {
         $this->assertEquals($result['source'], users::class);
         $this->assertNotEmpty($result['table']);
         $this->assertNotEmpty($result['javascript']);
+        $this->assertEquals('Hello', $result['infocontainer']);
         $this->assertFalse($result['filterspresent']);
         $this->assertEmpty($result['filtersform']);
         $this->assertTrue($result['editmode']);
@@ -83,6 +79,9 @@ final class get_test extends externallib_advanced_testcase {
         $this->assertEquals($filteremail->get('id'), $result['filters']['activefilters'][1]['id']);
         $this->assertNotEmpty($result['sorting']);
         $this->assertNotEmpty($result['cardview']);
+
+        // The following should not be present when editing.
+        $this->assertArrayNotHasKey('button', $result);
     }
 
     /**
@@ -94,12 +93,12 @@ final class get_test extends externallib_advanced_testcase {
 
         /** @var core_reportbuilder_generator $generator */
         $generator = $this->getDataGenerator()->get_plugin_generator('core_reportbuilder');
+        $report = $generator->create_report(['name' => 'My report', 'source' => users::class, 'default' => false]);
 
-        $report = $generator->create_report([
-            'name' => 'My report',
-            'source' => users::class,
-            'default' => false,
-        ]);
+        $instance = manager::get_report_from_persistent($report);
+        $instance->set_report_action(new report_action('Add', ['class' => 'btn', 'data-action' => 'action'], 'button',
+            new pix_icon('t/add', 'Add')));
+        $instance->set_report_info_container('Hello');
 
         // Add two filters.
         $generator->create_filter(['reportid' => $report->get('id'), 'uniqueidentifier' => 'user:fullname']);
@@ -113,11 +112,25 @@ final class get_test extends externallib_advanced_testcase {
         $this->assertEquals($result['source'], users::class);
         $this->assertNotEmpty($result['table']);
         $this->assertNotEmpty($result['javascript']);
+        $this->assertEquals([
+            'tag' => 'button',
+            'title' => 'Add',
+            'icon' => [
+                'key' => 't/add',
+                'component' => 'moodle',
+                'title' => 'Add',
+            ],
+            'attributes' => [
+                ['name' => 'class', 'value' => 'btn'],
+                ['name' => 'data-action', 'value' => 'action'],
+            ],
+        ], $result['button']);
+        $this->assertEquals('Hello', $result['infocontainer']);
         $this->assertTrue($result['filterspresent']);
         $this->assertNotEmpty($result['filtersform']);
         $this->assertFalse($result['editmode']);
 
-        // Confirm editor-specific data is not returned.
+        // The following should not be present when viewing.
         $this->assertArrayNotHasKey('sidebarmenucards', $result);
         $this->assertArrayNotHasKey('conditions', $result);
         $this->assertArrayNotHasKey('filters', $result);

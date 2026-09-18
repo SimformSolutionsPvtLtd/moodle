@@ -22,7 +22,7 @@
  * @since 4.0
  */
 
-import $ from 'jquery';
+import Collapse from 'theme_boost/bootstrap/collapse';
 import Pending from 'core/pending';
 
 const SELECTORS = {
@@ -43,12 +43,12 @@ const CLASSES = {
  * @param {string} collapsesections the collapse/expand link id.
  */
 export const init = collapsesections => {
-    // All jQuery in this code can be replaced when MDL-71979 is integrated (move to Bootstrap 5).
     const pendingPromise = new Pending('core_form/collapsesections');
     const collapsemenu = document.querySelector(collapsesections);
 
     const formParent = collapsemenu.closest(SELECTORS.FORM);
     const formContainers = formParent.querySelectorAll(SELECTORS.FORMCONTAINER);
+    [...formContainers].map(formContainer => new Collapse(formContainer, {toggle: false}));
 
     collapsemenu.addEventListener('keydown', e => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -77,15 +77,18 @@ export const init = collapsesections => {
 
     // When the collapse menu is toggled, update each form container to match.
     collapsemenu.addEventListener('click', () => {
-        let action = 'hide';
         if (collapsemenu.classList.contains(CLASSES.COLLAPSED)) {
-            action = 'show';
-        }
-
-        if (formContainers.length) {
-            const pendingPromiseToggle = new Pending('core_form/collapsesections:toggle-' + action);
+            const pendingPromiseToggle = new Pending('core_form/collapsesections:toggle-on');
             formContainers.forEach((container, index, array) => {
-                $(container).collapse(action);
+                Collapse.getInstance(container).show();
+                if (index === array.length - 1) {
+                    pendingPromiseToggle.resolve();
+                }
+            });
+        } else {
+            const pendingPromiseToggle = new Pending('core_form/collapsesections:toggle-off');
+            formContainers.forEach((container, index, array) => {
+                Collapse.getInstance(container).hide();
                 if (index === array.length - 1) {
                     pendingPromiseToggle.resolve();
                 }
@@ -102,19 +105,22 @@ export const init = collapsesections => {
     collapsemenu.setAttribute('aria-controls', collapseElementIds.join(' '));
 
     // When any form container is toggled, re-calculate collapse menu state.
-    $(SELECTORS.FORMCONTAINER).on('hidden.bs.collapse', () => {
-        const allCollapsed = [...formContainers].every(container => !container.classList.contains(CLASSES.SHOW));
-        if (allCollapsed) {
-            collapsemenu.classList.add(CLASSES.COLLAPSED);
-            collapsemenu.setAttribute('aria-expanded', false);
-        }
-    });
-    $(SELECTORS.FORMCONTAINER).on('shown.bs.collapse', () => {
-        const allExpanded = [...formContainers].every(container => container.classList.contains(CLASSES.SHOW));
-        if (allExpanded) {
-            collapsemenu.classList.remove(CLASSES.COLLAPSED);
-            collapsemenu.setAttribute('aria-expanded', true);
-        }
+    const collapseTriggerList = document.querySelectorAll(SELECTORS.FORMCONTAINER);
+    [...collapseTriggerList].forEach(collapseTriggerEl => {
+        collapseTriggerEl.addEventListener('hidden.bs.collapse', () => {
+            const allCollapsed = [...formContainers].every(container => !container.classList.contains(CLASSES.SHOW));
+            if (allCollapsed) {
+                collapsemenu.classList.add(CLASSES.COLLAPSED);
+                collapsemenu.setAttribute('aria-expanded', false);
+            }
+        });
+        collapseTriggerEl.addEventListener('shown.bs.collapse', () => {
+            const allExpanded = [...formContainers].every(container => container.classList.contains(CLASSES.SHOW));
+            if (allExpanded) {
+                collapsemenu.classList.remove(CLASSES.COLLAPSED);
+                collapsemenu.setAttribute('aria-expanded', true);
+            }
+        });
     });
     pendingPromise.resolve();
 };

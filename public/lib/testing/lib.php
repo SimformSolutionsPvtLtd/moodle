@@ -58,7 +58,7 @@ function testing_cli_argument_path($moodlepath) {
         $cwd = substr($cwd, -1);
     }
 
-    $path = realpath($CFG->dirroot.$moodlepath);
+    $path = realpath(dirname($CFG->dirroot).$moodlepath);
 
     // We need standrad directory seperator for path and cwd, so it can be compared.
     $cwd = testing_cli_fix_directory_separator($cwd);
@@ -188,7 +188,7 @@ function testing_update_composer_dependencies(bool $selfupdate = true, bool $upd
     $cwd = getcwd();
 
     // Set some paths.
-    $dirroot = dirname(dirname(__DIR__));
+    $dirroot = dirname(dirname(dirname(__DIR__)));
 
     // Switch to Moodle's dirroot for easier path handling.
     chdir($dirroot);

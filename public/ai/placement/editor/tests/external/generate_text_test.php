@@ -31,8 +31,6 @@ final class generate_text_test extends \advanced_testcase {
     public function test_execute(): void {
         $this->resetAfterTest();
         set_config('enabled', 1, 'aiplacement_editor');
-        set_config('enabled', 1, 'aiprovider_openai');
-        set_config('apikey', '123', 'aiprovider_openai');
         $this->setAdminUser();
 
         // Get system context.
@@ -49,6 +47,9 @@ final class generate_text_test extends \advanced_testcase {
 
         $mockmanager = $this->createMock(\core_ai\manager::class);
         $mockmanager->method('process_action')->willReturn($response);
+        $mockmanager->method('is_action_available')->willReturn(true);
+        $mockmanager->method('is_action_enabled')->willReturn(true);
+        $mockmanager->method('is_action_enabled_in_context')->willReturn(true);
         \core\di::set(\core_ai\manager::class, function() use ($mockmanager) {
             return $mockmanager;
         });

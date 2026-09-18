@@ -62,19 +62,6 @@ class core_course_management_renderer extends plugin_renderer_base {
     }
 
     /**
-     * @deprecated since Moodle 4.0. This is now handled/replaced with the tertiary navigation
-     */
-    #[\core\attribute\deprecated(
-        replacement: 'manage_categories_action_bar',
-        since: '4.0',
-        mdl: 'MDL-73462',
-        final: true,
-    )]
-    public function management_heading() {
-        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
-    }
-
-    /**
      * Prepares the form element for the course category listing bulk actions.
      *
      * @return string
@@ -119,11 +106,11 @@ class core_course_management_renderer extends plugin_renderer_base {
 
         $listing = core_course_category::top()->get_children();
 
-        $attributes = array(
-                'class' => 'ms-1 list-unstyled',
-                'role' => 'tree',
-                'aria-labelledby' => 'category-listing-title'
-        );
+        $attributes = [
+            'class' => 'ms-1 list-unstyled category-list list-group',
+            'role' => 'tree',
+            'aria-labelledby' => 'category-listing-title',
+        ];
 
         $html  = html_writer::start_div('category-listing card w-100');
         $html .= html_writer::tag('h3', get_string('categories'),
@@ -178,7 +165,9 @@ class core_course_management_renderer extends plugin_renderer_base {
                 'data-selected' => $activecategory ? '1' : '0',
                 'data-visible' => $category->visible ? '1' : '0',
                 'role' => 'treeitem',
-                'aria-expanded' => $isexpanded ? 'true' : 'false'
+                'aria-expanded' => $isexpanded ? 'true' : 'false',
+                'data-course-count' => $category->get_courses_count(['recursive' => 1]),
+                'data-category-name' => $category->get_formatted_name(),
         );
         $text = $category->get_formatted_name();
         if (($parent = $category->get_parent_coursecat()) && $parent->id) {
@@ -193,7 +182,7 @@ class core_course_management_renderer extends plugin_renderer_base {
                 'type' => 'checkbox',
                 'name' => 'bcat[]',
                 'value' => $category->id,
-                'class' => 'bulk-action-checkbox custom-control-input',
+                'class' => 'bulk-action-checkbox form-check-input',
                 'data-action' => 'select'
         );
 
@@ -243,11 +232,11 @@ class core_course_management_renderer extends plugin_renderer_base {
         $html = html_writer::start_tag('li', $attributes);
         $html .= html_writer::start_div('clearfix');
         $html .= html_writer::start_div('float-start ' . $checkboxclass);
-        $html .= html_writer::start_div('custom-control custom-checkbox me-1 ');
+        $html .= html_writer::start_div('form-check me-1 ');
         $html .= html_writer::empty_tag('input', $bcatinput);
-        $labeltext = html_writer::span(get_string('bulkactionselect', 'moodle', $text), 'sr-only');
+        $labeltext = html_writer::span(get_string('bulkactionselect', 'moodle', $text), 'visually-hidden');
         $html .= html_writer::tag('label', $labeltext, array(
-            'class' => 'custom-control-label',
+            'class' => 'form-check-label',
             'for' => 'categorylistitem' . $category->id));
         $html .= html_writer::end_div();
         $html .= html_writer::end_div();
@@ -344,7 +333,7 @@ class core_course_management_renderer extends plugin_renderer_base {
         }
         $menu = new action_menu();
         $label = get_string('actionsmenu');
-        $actionicon = $this->output->pix_icon('t/edit_menu', '') . html_writer::span($label, 'sr-only');
+        $actionicon = $this->output->pix_icon('t/edit_menu', '') . html_writer::span($label, 'visually-hidden');
         $menu->set_menu_trigger($actionicon, 'iconsmall actionmenu');
         $menu->triggerattributes['title'] = $label;
         $menu->attributes['class'] .= ' category-item-actions item-actions';
@@ -529,7 +518,7 @@ class core_course_management_renderer extends plugin_renderer_base {
         $html .= html_writer::start_div('card-body');
         $html .= $this->course_listing_actions($category, $course, $perpage);
         $html .= $this->listing_pagination($category, $page, $perpage, false, $viewmode);
-        $html .= html_writer::start_tag('ul', array('class' => 'ml course-list'));
+        $html .= html_writer::start_tag('ul', ['class' => 'course-list list-group', 'role' => 'list']);
         foreach ($category->get_courses($options) as $listitem) {
             $html .= $this->course_listitem($category, $listitem, $courseid);
         }
@@ -607,7 +596,7 @@ class core_course_management_renderer extends plugin_renderer_base {
                 'type' => 'checkbox',
                 'name' => 'bc[]',
                 'value' => $course->id,
-                'class' => 'bulk-action-checkbox custom-control-input',
+                'class' => 'bulk-action-checkbox form-check-input',
                 'data-action' => 'select'
         );
 
@@ -628,11 +617,11 @@ class core_course_management_renderer extends plugin_renderer_base {
         }
 
         $html .= html_writer::start_div('float-start ' . $checkboxclass);
-        $html .= html_writer::start_div('custom-control custom-checkbox me-1 ');
+        $html .= html_writer::start_div('form-check me-1 ');
         $html .= html_writer::empty_tag('input', $bulkcourseinput);
-        $labeltext = html_writer::span(get_string('bulkactionselect', 'moodle', $text), 'sr-only');
+        $labeltext = html_writer::span(get_string('bulkactionselect', 'moodle', $text), 'visually-hidden');
         $html .= html_writer::tag('label', $labeltext, array(
-            'class' => 'custom-control-label',
+            'class' => 'form-check-label',
             'for' => 'courselistitem' . $course->id));
         $html .= html_writer::end_div();
         $html .= html_writer::end_div();
@@ -728,7 +717,7 @@ class core_course_management_renderer extends plugin_renderer_base {
         $menu->attributes['class'] .= ' courses-per-page';
         $menu->set_menu_trigger(get_string('perpagea', 'moodle', $perpage));
         $actions[] = $this->render($menu);
-        return html_writer::div(join(' ', $actions), 'listing-actions course-listing-actions');
+        return html_writer::div(join(' ', $actions), 'listing-actions course-listing-actions mb-3');
     }
 
     /**
@@ -842,8 +831,8 @@ class core_course_management_renderer extends plugin_renderer_base {
      */
     protected function detail_pair($key, $value, $class ='') {
         $html = html_writer::start_div('detail-pair row yui3-g '.preg_replace('#[^a-zA-Z0-9_\-]#', '-', $class));
-        $html .= html_writer::div(html_writer::span($key), 'pair-key col-md-3 yui3-u-1-4 font-weight-bold');
-        $html .= html_writer::div(html_writer::span($value), 'pair-value col-md-8 yui3-u-3-4');
+        $html .= html_writer::div(html_writer::span($key), 'pair-key col-md-3 yui3-u-1-4 fw-bold');
+        $html .= html_writer::div(html_writer::div($value, 'd-flex'), 'pair-value col-md-8 yui3-u-3-4');
         $html .= html_writer::end_div();
         return $html;
     }
@@ -879,9 +868,9 @@ class core_course_management_renderer extends plugin_renderer_base {
      */
     protected function action_button(moodle_url $url, $text, $id = null, $class = null, $title = null, array $attributes = array()) {
         if (isset($attributes['class'])) {
-            $attributes['class'] .= ' yui3-button';
+            $attributes['class'] .= ' page-link';
         } else {
-            $attributes['class'] = 'yui3-button';
+            $attributes['class'] = 'page-link';
         }
         if (!is_null($id)) {
             $attributes['id'] = $id;
@@ -896,7 +885,15 @@ class core_course_management_renderer extends plugin_renderer_base {
         if (!isset($attributes['role'])) {
             $attributes['role'] = 'button';
         }
-        return html_writer::link($url, $text, $attributes);
+        return html_writer::tag(
+            'li',
+            html_writer::link(
+                $url,
+                $text,
+                $attributes,
+            ),
+            ['class' => 'page-item'],
+        );
     }
 
     /**
@@ -1092,7 +1089,7 @@ class core_course_management_renderer extends plugin_renderer_base {
         ));
         $html .= html_writer::tag('h3', get_string('courses'));
         $html .= $this->search_pagination($totalcourses, $page, $perpage);
-        $html .= html_writer::start_tag('ul', array('class' => 'ml'));
+        $html .= html_writer::start_tag('ul', ['class' => 'list-group ml']);
         foreach ($courses as $listitem) {
             $i++;
             if ($i == $totalcourses) {
@@ -1155,22 +1152,42 @@ class core_course_management_renderer extends plugin_renderer_base {
         if ($page > 0) {
             $items[] = $this->action_button(new moodle_url($baseurl, array('page' => 0)), get_string('first'));
             $items[] = $this->action_button(new moodle_url($baseurl, array('page' => $page - 1)), get_string('prev'));
-            $items[] = '...';
+            $items[] = html_writer::tag(
+                'li',
+                html_writer::tag(
+                    'span',
+                    '...',
+                    ['class' => 'page-link disabled']
+                ),
+                ['class' => 'page-item', 'aria-hidden' => 'true'],
+            );
         }
         for ($i = $start; $i <= $end; $i++) {
             $class = '';
             if ($page == $i) {
-                $class = 'active-page';
+                $class = 'active';
             }
             $items[] = $this->action_button(new moodle_url($baseurl, array('page' => $i)), $i + 1, null, $class);
         }
         if ($page < ($totalpages - 1)) {
-            $items[] = '...';
+            $items[] = html_writer::tag(
+                'li',
+                html_writer::tag(
+                    'span',
+                    '...',
+                    ['class' => 'page-link disabled']
+                ),
+                ['class' => 'page-item', 'aria-hidden' => 'true']
+            );
             $items[] = $this->action_button(new moodle_url($baseurl, array('page' => $page + 1)), get_string('next'));
             $items[] = $this->action_button(new moodle_url($baseurl, array('page' => $totalpages - 1)), get_string('last'));
         }
 
-        $html .= html_writer::div(join('', $items), 'listing-pagination');
+        $html .= html_writer::tag(
+            'ul',
+            join('', $items),
+            ['class' => 'pagination pagination-sm justify-content-center mb-3'],
+        );
         return $html;
     }
 
@@ -1199,7 +1216,7 @@ class core_course_management_renderer extends plugin_renderer_base {
                     'id' => 'coursesearchlistitem' . $course->id,
                     'name' => 'bc[]',
                     'value' => $course->id,
-                    'class' => 'bulk-action-checkbox custom-control-input',
+                    'class' => 'bulk-action-checkbox form-check-input',
                     'data-action' => 'select'
             );
         }
@@ -1210,11 +1227,11 @@ class core_course_management_renderer extends plugin_renderer_base {
         $html .= html_writer::start_div('clearfix');
         $html .= html_writer::start_div('float-start');
         if ($bulkcourseinput) {
-            $html .= html_writer::start_div('custom-control custom-checkbox me-1');
+            $html .= html_writer::start_div('form-check me-1');
             $html .= html_writer::empty_tag('input', $bulkcourseinput);
-            $labeltext = html_writer::span(get_string('bulkactionselect', 'moodle', $text), 'sr-only');
+            $labeltext = html_writer::span(get_string('bulkactionselect', 'moodle', $text), 'visually-hidden');
             $html .= html_writer::tag('label', $labeltext, array(
-                'class' => 'custom-control-label',
+                'class' => 'form-check-label',
                 'for' => 'coursesearchlistitem' . $course->id));
             $html .= html_writer::end_div();
         }
@@ -1281,19 +1298,6 @@ class core_course_management_renderer extends plugin_renderer_base {
             return '';
         }
         return html_writer::span(join('', $actions), 'course-item-actions item-actions');
-    }
-
-    /**
-     * @deprecated since Moodle 4.0. This is now handled within manage_categories_action_bar
-     */
-    #[\core\attribute\deprecated(
-        replacement: 'manage_categories_action_bar',
-        since: '4.0',
-        mdl: 'MDL-73462',
-        final: true,
-    )]
-    public function course_search_form() {
-        \core\deprecation::emit_deprecation([self::class, __FUNCTION__]);
     }
 
     /**

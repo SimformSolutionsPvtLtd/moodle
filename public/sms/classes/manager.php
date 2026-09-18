@@ -18,6 +18,7 @@ namespace core_sms;
 
 use Generator;
 use stdClass;
+use core\url;
 
 /**
  * SMS manager.
@@ -27,9 +28,6 @@ use stdClass;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class manager {
-    /** @var int The maximum length of a message */
-    const MESSAGE_LENGTH_LIMIT = 160 * 3;
-
     /**
      * Create a new SMS manager.
      *
@@ -78,18 +76,39 @@ class manager {
             throw new \coding_exception('Sensitive messages cannot be sent asynchronously');
         }
 
+        return $this->send_message(
+            message: $message,
+            async: $async,
+            gatewayid: $gatewayid,
+        );
+    }
+
+    /**
+     * Send a message using the message object.
+     *
+     * @param message $message The message object
+     * @param bool $async Whether this SMS should be sent asynchronously. Note: sensitive messages cannot be sent async
+     * @param ?int $gatewayid the gateway instance id to send the sms in a specific gateway config
+     * @return message the message object after trying to send the message
+     */
+    public function send_message(
+        message $message,
+        bool $async = true,
+        ?int $gatewayid = null,
+    ): message {
         if ($async) {
-            // TODO See MDL-81015 for further information.
-            throw new \coding_exception('Asynchronous sending is not yet implemented');
+            $message = $message->with(status: message_status::GATEWAY_QUEUED);
+            $message = $this->save_message($message);
+            \core_sms\task\send_sms_task::queue($message);
+            return $message;
         }
 
-        if (\core_text::strlen($content) > self::MESSAGE_LENGTH_LIMIT) {
-            $message = $message->with(status: message_status::MESSAGE_OVER_SIZE);
-        } else if ($gateway = $this->get_gateway_for_message($message, $gatewayid)) {
-            $message = $message->with(gatewayid: $gateway->id);
-            $message = $gateway->send(
-                message: $message,
+        if ($gateway = $this->get_gateway_for_message($message, $gatewayid)) {
+            $modifiedmessage = $message->with(
+                gatewayid: $gateway->id,
+                content: $gateway->truncate_message($message->content),
             );
+            $message = $gateway->send($modifiedmessage);
         } else {
             $message = $message->with(status: message_status::GATEWAY_NOT_AVAILABLE);
         }
@@ -421,5 +440,61 @@ class manager {
         }
 
         return $phonenumber;
+    }
+
+    /**
+     * Create a shortlink for the specified user.
+     *
+     * To create a global shortlink, a userid of 0 can be used.
+     *
+     * @param string $component
+     * @param string $linktype
+     * @param int|string $identifier
+     * @param int $userid
+     * @throws \coding_exception
+     * @return url
+     */
+    public static function create_shortlink(
+        string $component,
+        string $linktype,
+        null|int|string $identifier,
+        int $userid,
+    ): url {
+        return \core\di::get(\core\shortlink::class)->create_shortlink(
+            component: $component,
+            linktype: $linktype,
+            identifier: $identifier,
+            userid: $userid,
+            minlength: 4,
+            maxlength: 4,
+        );
+    }
+
+    /**
+     * Create a shortlink for a set of users.
+     *
+     * The shortlink returned will be the same for all specified users.
+     *
+     * @param string $component
+     * @param string $linktype
+     * @param string $identifier
+     * @param array $userids
+     * @throws \coding_exception
+     * @return url
+     */
+    public static function create_shortlink_for_users(
+        string $component,
+        string $linktype,
+        string $identifier,
+        array $userids,
+    ): url {
+        return \core\di::get(\core\shortlink::class)->create_shortlink_for_users(
+            component: $component,
+            linktype: $linktype,
+            identifier: $identifier,
+            userids: $userids,
+            minlength: 4,
+            maxlength: 4,
+        );
     }
 }

@@ -240,9 +240,8 @@ class block_base {
             $bc->title = $this->title;
         }
 
-        if (empty($bc->title)) {
-            $bc->arialabel = new lang_string('pluginname', get_class($this));
-            $this->arialabel = $bc->arialabel;
+        if ((string) $bc->title === '') {
+            $this->arialabel = $bc->arialabel = get_string('pluginname', get_class($this));
         }
 
         if ($this->page->user_is_editing() && $this->instance_can_be_edited()) {
@@ -386,16 +385,6 @@ class block_base {
      */
     function has_config() {
         return false;
-    }
-
-    /**
-     * Default behavior: save all variables as $CFG properties
-     * You don't need to override this if you 're satisfied with the above
-     *
-     * @deprecated since Moodle 2.9 MDL-49385 - Please use Admin Settings functionality to save block configuration.
-     */
-    function config_save($data) {
-        throw new coding_exception('config_save() can not be used any more, use Admin Settings functionality to save block configuration.');
     }
 
     /**

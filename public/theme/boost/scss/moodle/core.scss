@@ -31,7 +31,7 @@ $font-size-xs: ($font-size-base * .75) !default;
     }
 }
 
-@include media-breakpoint-down(sm) {
+@include media-breakpoint-down(md) {
     .context-header-settings-menu,
     .region-main-settings-menu {
         display: flex;
@@ -145,7 +145,7 @@ input[type="checkbox"],
 input[type="radio"],
 input[type="file"],
 input[type="image"],
-.sr-only-focusable,
+.visually-hidden-focusable,
 a.dropdown-toggle,
 .moodle-dialogue-base .closebutton,
 button.btn-close,
@@ -221,18 +221,6 @@ button.btn-close,
     padding: 0;
 }
 
-.section li.movehere a {
-    display: block;
-    width: 100%;
-    height: 2rem;
-    border: 2px dashed $gray-800;
-}
-
-.editing .course-content .hidden.sectionname {
-    visibility: hidden;
-    display: initial;
-}
-
 .inline,
 .inline-list li {
     display: inline;
@@ -296,7 +284,7 @@ a.autolink {
     margin-top: -1px;
 }
 
-@include media-breakpoint-down(sm) {
+@include media-breakpoint-down(md) {
     .pagelayout-mydashboard,
     .pagelayout-login {
         #region-main-box {
@@ -417,27 +405,11 @@ form.popupform div {
     overflow: auto;
 }
 
-// Position required for table sizing inside a flex container.
-.no-overflow > .generaltable {
-    margin-bottom: 0;
-}
-
-.no-overflow,
-.table-responsive {
-    .generaltable {
-        .sr-only,
-        .accesshide {
-            position: relative;
-            display: block;
-        }
-    }
-}
-
 // Accessibility features
 
 // Accessibility: text 'seen' by screen readers but not visual users.
 .accesshide {
-    @include sr-only();
+    @include visually-hidden();
 }
 
 span.hide,
@@ -532,16 +504,6 @@ a.skip:active {
 
 #group-usersummary {
     width: 14em;
-}
-
-.groupselector {
-    margin-top: 3px;
-    margin-bottom: 3px;
-    display: inline-block;
-}
-
-.groupselector label {
-    display: inline-block;
 }
 
 // Notes
@@ -730,11 +692,6 @@ table.mod_index {
 /**
 * Tags
 */
-
-#tag-search-box {
-    text-align: center;
-    margin: 10px auto;
-}
 
 span.flagged-tag,
 tr.flagged-tag,
@@ -1022,40 +979,6 @@ tr.flagged-tag a {
     position: fixed;
     top: 50%;
     left: 50%;
-}
-
-.mod-indent-outer {
-    display: table;
-}
-
-.mod-indent {
-    display: table-cell;
-}
-
-.label .mod-indent {
-    float: left;
-    padding-top: 20px;
-}
-
-.activity.label.modtype_label .mod-indent {
-    float: none;
-}
-
-@include media-breakpoint-up(sm) {
-    $mod-indent-size: 30px;
-    /* Creates a series of .mod-indent-# rule declarations based on indent size and number of indent levels. */
-
-    @for $i from 1 through 16 {
-        $width: ($i * $mod-indent-size);
-
-        .mod-indent-#{$i} {
-            width: $width;
-        }
-    }
-
-    .mod-indent-huge {
-        width: (16 * $mod-indent-size);
-    }
 }
 
 /* Audio player size in 'block' mode (can only change width, height is hardcoded in JS) */
@@ -1475,7 +1398,7 @@ audio.mediaplugin_html5audio {
 }
 
 
-@include media-breakpoint-down(xs) {
+@include media-breakpoint-down(sm) {
     .jsenabled .choosercontainer #chooseform .alloptions {
         max-width: 100%;
     }
@@ -1483,156 +1406,6 @@ audio.mediaplugin_html5audio {
     .jsenabled .choosercontainer #chooseform .instruction,
     .jsenabled .choosercontainer #chooseform .typesummary {
         position: static;
-    }
-}
-
-/**
- * Module chooser dialogue (moodle-core-chooserdialogue)
- *
- * This CSS belong to the chooser dialogue which should work both with, and
- * without javascript enabled
- */
-.modchooser .modal-body {
-    padding: 0;
-    overflow-y: auto;
-    min-height: 640px;
-    display: flex;
-    flex-direction: column;
-
-    .searchresultitemscontainer-wrapper {
-        min-height: 495px;
-    }
-
-    .carousel-item.active {
-        display: flex;
-    }
-    .chooser-container {
-        display: flex;
-        flex-direction: column;
-        flex: 1 1 auto;
-    }
-
-    .loading-icon {
-        opacity: 1;
-        .icon {
-            display: block;
-            font-size: 3em;
-            max-height: 3em;
-            max-width: 3em;
-        }
-    }
-    .carousel-item .loading-icon .icon {
-        margin: 1em auto;
-    }
-    .searchbar {
-        width: 100%;
-    }
-}
-
-.modchooser .modal-footer {
-    height: 70px;
-    background: $modal-content-bg;
-    .moodlenet-logo {
-        .icon {
-            height: 2.5rem;
-            width: 6rem;
-            max-height: 2.5rem;
-            max-width: 6rem;
-            margin-bottom: .6rem;
-        }
-    }
-}
-
-.modchoosercontainer.noscroll {
-    overflow-y: hidden;
-}
-
-.modchoosercontainer .optionscontainer,
-.modchoosercontainer .searchresultitemscontainer {
-    overflow-x: hidden;
-    .option {
-        // 2 items per line.
-        flex-basis: calc(50% - 0.5rem);
-        .optionactions {
-            .optionaction {
-                cursor: pointer;
-                color: $gray-600;
-                i {
-                    margin: 0;
-                }
-            }
-        }
-        .optioninfo {
-            a {
-                color: $gray-700;
-                &:hover {
-                    text-decoration: none;
-                }
-            }
-        }
-    }
-}
-
-.modchooser .modal-body .optionsummary {
-    background-color: $white;
-    overflow-x: hidden;
-    overflow-y: auto;
-    height: 640px;
-
-    .content {
-        overflow-y: auto;
-        .heading {
-            .icon {
-                height: 32px;
-                width: 32px;
-                font-size: 32px;
-                padding: 0;
-            }
-        }
-    }
-
-    .actions {
-        border-top: 1px solid $gray-300;
-        background: $white;
-    }
-}
-
-@include media-breakpoint-down(xs) {
-    .path-course-view .modal-dialog.modal-lg,
-    .path-course-view .modal-content,
-    .modchooser .modal-body,
-    .modchooser .modal-body .carousel,
-    .modchooser .modal-body .carousel-inner,
-    .modchooser .modal-body .carousel-item,
-    .modchooser .modal-body .optionsummary,
-    .modchoosercontainer,
-    .optionscontainer,
-    .searchresultitemscontainer {
-        min-height: auto;
-        height: 100%;
-        overflow-y: auto;
-    }
-    .path-course-view .modal-dialog.modal-lg {
-        margin: 0;
-    }
-    .modchooser .modal-body .searchresultitemscontainer-wrapper {
-        min-height: auto;
-    }
-}
-
-@include media-breakpoint-up(sm) {
-    .modchoosercontainer .optionscontainer .option,
-    .modchoosercontainer .searchresultitemscontainer .option {
-        // Three items per line.
-        flex-basis: calc(33.33% - 0.5rem);
-    }
-}
-
-@include media-breakpoint-up(lg) {
-    .modchoosercontainer .optionscontainer .option,
-    .modchoosercontainer .searchresultitemscontainer .option {
-        // Six items per line.
-        flex-basis: calc(16.66% - 0.5rem);
     }
 }
 
@@ -1987,6 +1760,11 @@ nav.navbar .logo img {
 ul.dragdrop-keyboard-drag li {
     list-style-type: none;
     margin-bottom: 0.1em;
+    a,
+    a:hover {
+        color: inherit;
+        text-decoration: none;
+    }
 }
 
 a.disabled:hover,
@@ -2014,6 +1792,11 @@ body.lockscroll {
 /* IE10 only fix for calendar titling */
 .ie10 .yui3-calendar-header-label {
     display: inline-block;
+}
+
+.yui3-calendar-weekday {
+    max-width: 40px;
+    @include text-truncate();
 }
 
 dd:before,
@@ -2046,6 +1829,17 @@ dd:after {
             left: 0;
             right: auto;
             white-space: nowrap;
+            position: absolute;
+            top: 0;
+            font-size: $font-size-sm;
+            padding: .1em .4em;
+            text-decoration: none;
+            z-index: 9999;
+            border: $alert-border-width solid transparent;
+            width: fit-content;
+            color: shift-color($info, $alert-color-scale);
+            border-color: shift-color($info, $alert-border-scale);
+            @include gradient-bg(shift-color($info, $alert-bg-scale));
         }
         @include media-breakpoint-up(sm) {
             input {
@@ -2084,10 +1878,6 @@ dd:after {
     &.inplaceeditable-autocomplete {
         display: block;
     }
-}
-
-h3.sectionname .inplaceeditable.inplaceeditingon .editinstructions {
-    margin-top: -20px;
 }
 
 /** Chart area. */
@@ -2206,7 +1996,7 @@ h3.sectionname .inplaceeditable.inplaceeditingon .editinstructions {
         margin-right: $grid-gutter-width * 0.5;
         background-color: $card-bg;
     }
-    @include media-breakpoint-down(sm) {
+    @include media-breakpoint-down(md) {
         .nav {
             margin-top: $grid-gutter-width;
             margin-right: 0;
@@ -2236,12 +2026,14 @@ $footer-link-color: $bg-inverse-link-color !default;
     }
 }
 
-.btn-footer-popover {
-    display: none;
-    position: fixed;
-    bottom: 2rem;
-    right: 2rem;
-    @include box-shadow($popover-box-shadow);
+.footer-popover {
+    .btn-footer-popover {
+        display: none;
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        @include box-shadow($popover-box-shadow);
+    }
 }
 
 .btn-footer-communication {
@@ -2333,12 +2125,12 @@ $footer-link-color: $bg-inverse-link-color !default;
     }
 }
 
-.sr-only-focusable {
+.visually-hidden-focusable {
     &:active,
     &:focus {
         z-index: 1031;
         position: fixed;
-        background: $sr-only-active-bg;
+        background: $visually-hidden-active-bg;
         padding: 7px;
         left: 0;
         top: 0;
@@ -2494,6 +2286,7 @@ input[disabled] {
 .clamp-2 {
     display: -webkit-box;
     -webkit-box-orient: vertical;
+    line-clamp: 2;
     -webkit-line-clamp: 2;
     overflow: hidden;
 }
@@ -2613,7 +2406,7 @@ $picker-emojis-per-row: 7 !default;
         line-height: $picker-row-height * 0.5;
     }
 
-    @include media-breakpoint-down(xs) {
+    @include media-breakpoint-down(sm) {
         width: $picker-width-xs;
     }
 }
@@ -2621,7 +2414,7 @@ $picker-emojis-per-row: 7 !default;
 .emoji-auto-complete {
     height: $picker-row-height;
 
-    .btn.btn-link.btn-icon.emoji-button {
+    .btn.btn-icon.emoji-button {
         height: $picker-emoji-button-size;
         width: $picker-emoji-button-size;
         line-height: $picker-emoji-button-size;
@@ -2664,7 +2457,7 @@ $picker-emojis-per-row: 7 !default;
     padding: 0;
 }
 
-@include media-breakpoint-down(sm) {
+@include media-breakpoint-down(md) {
     #page-navbar {
         width: 100%;
     }
@@ -2696,9 +2489,6 @@ $picker-emojis-per-row: 7 !default;
         flex-wrap: wrap;
         justify-content: center;
     }
-    .custom-select {
-        max-width: 100%;
-    }
     .card .card-body {
         padding: $card-spacer-x * 0.5;
     }
@@ -2710,8 +2500,11 @@ $picker-emojis-per-row: 7 !default;
             }
         }
     }
+    // Navs and Tabs in small screens.
     .nav-tabs:not(.more-nav),
     .nav-pills {
+        --#{$prefix}nav-tabs-link-active-color: #{$nav-pills-link-active-color};
+        --#{$prefix}nav-tabs-link-active-bg: #{$nav-pills-link-active-bg};
         margin: 0;
         border: 0;
         padding: $spacer * 0.125;
@@ -2721,11 +2514,10 @@ $picker-emojis-per-row: 7 !default;
             text-align: center;
         }
         .nav-link {
-            background: $white;
             border: 0;
             margin: $spacer * 0.125;
-            &.active {
-                @include button-outline-variant($blue, $active-border: $gray-600);
+            &:not(.active) {
+                background-color: var(--#{$prefix}body-bg);
             }
         }
     }
@@ -2760,8 +2552,8 @@ $picker-emojis-per-row: 7 !default;
         }
     }
 }
-.core_payment_gateways_modal .custom-control-label::before,
-.core_payment_gateways_modal .custom-control-label::after {
+.core_payment_gateways_modal .form-check-label::before,
+.core_payment_gateways_modal .form-check-label::after {
     top: 45%;
 }
 
@@ -2889,14 +2681,14 @@ body.dragging {
         }
     }
 
-    .dropzone-sr-only-focusable {
+    .dropzone-visually-hidden-focusable {
         &:active,
         &:focus {
             outline: 0;
             box-shadow: $input-btn-focus-box-shadow;
             z-index: $zindex-popover;
             position: relative;
-            background: $sr-only-active-bg;
+            background: $visually-hidden-active-bg;
             padding: 7px;
         }
     }
@@ -2998,7 +2790,7 @@ body.dragging {
 }
 
 .dropdown-toggle::after {
-    @extend .fa-solid;
+    font: var(--fa-font-solid);
     content: fa-content($fa-var-chevron-down);
     margin-right: 0;
     margin-left: 4px;
@@ -3012,14 +2804,22 @@ body.dragging {
     content: none;
 }
 
+
+// TODO: Check if these are still needed.
 .dropleft .dropdown-toggle::before {
     border: 0;
-    @extend .fa-solid;
+    font: var(--fa-font-solid);
     content: fa-content($fa-var-chevron-left);
     font-size: 9px;
     margin-left: 0;
     margin-right: 4px;
     width: 9px;
+    display: inline-block;
+    vertical-align: 0.255em;
+}
+
+.dropleft .dropdown-toggle::after {
+    content: none;
 }
 
 .dir-rtl .dropleft .dropdown-toggle::before {
@@ -3028,7 +2828,8 @@ body.dragging {
 
 .dropright .dropdown-toggle::after {
     border: 0;
-    @extend .fa-solid;
+    font: var(--fa-font-solid);
+    font-size: 9px;
     content: fa-content($fa-var-chevron-right);
 }
 
@@ -3039,7 +2840,8 @@ body.dragging {
 
 .dropup .dropdown-toggle::after {
     border: 0;
-    @extend .fa-solid;
+    font: var(--fa-font-solid);
+    font-size: 9px;
     content: fa-content($fa-var-chevron-up);
 }
 
@@ -3063,8 +2865,13 @@ body.dragging {
             padding-left: 2.5rem;
         }
     }
-    .dropdown-item[aria-selected="true"] {
-        font-weight: bold;
+
+    .dropdown-item {
+        padding: map-get($spacers, 1) map-get($spacers, 4);
+
+        [aria-selected="true"] {
+            font-weight: bold;
+        }
     }
 }
 
@@ -3085,28 +2892,28 @@ body.dragging {
     &:first-child {
         .page-link {
             .initialbargroups & {
-                @include border-left-radius(0);
-                @include border-right-radius(0);
+                @include border-start-radius(0);
+                @include border-end-radius(0);
             }
             .initialbargroups .pagination-lg:first-child & {
-                @include border-left-radius($pagination-border-radius-lg);
+                @include border-start-radius($pagination-border-radius-lg);
             }
             .initialbargroups .pagination-sm:first-child & {
-                @include border-left-radius($pagination-border-radius-sm);
+                @include border-start-radius($pagination-border-radius-sm);
             }
         }
     }
     &:last-child {
         .page-link {
             .initialbargroups & {
-                @include border-left-radius(0);
-                @include border-right-radius(0);
+                @include border-start-radius(0);
+                @include border-end-radius(0);
             }
             .initialbargroups .pagination-lg:last-child & {
-                @include border-right-radius($pagination-border-radius-lg);
+                @include border-end-radius($pagination-border-radius-lg);
             }
             .initialbargroups .pagination-sm:last-child & {
-                @include border-right-radius($pagination-border-radius-sm);
+                @include border-end-radius($pagination-border-radius-sm);
             }
         }
     }
@@ -3166,6 +2973,7 @@ blockquote {
 .gradesearchdropdown,
 .groupsearchdropdown {
     &.dropdown-menu {
+        top: 100%;
         width: 350px;
         .searchresultitemscontainer {
             max-height: 170px;

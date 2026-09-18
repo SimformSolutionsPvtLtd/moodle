@@ -50,7 +50,7 @@ require_once($CFG->dirroot . '/question/editlib.php');
 $mdlscrollto = optional_param('mdlscrollto', '', PARAM_INT);
 
 list($thispageurl, $contexts, $cmid, $cm, $quiz, $pagevars) =
-    question_edit_setup('editq', '/mod/quiz/edit.php', true);
+    question_edit_setup('editq', '/mod/quiz/edit.php');
 
 $PAGE->set_url($thispageurl);
 $PAGE->set_secondary_active_tab("mod_quiz_edit");
@@ -64,7 +64,7 @@ $quizobj = new quiz_settings($quiz, $cm, $course);
 $structure = $quizobj->get_structure();
 $gradecalculator = $quizobj->get_grade_calculator();
 
-$defaultcategoryobj = question_make_default_categories($contexts->all());
+$defaultcategoryobj = question_get_default_category($contexts->lowest()->id, true);
 $defaultcategory = $defaultcategoryobj->id . ',' . $defaultcategoryobj->contextid;
 
 $quizhasattempts = quiz_has_attempts($quiz->id);
@@ -139,7 +139,18 @@ if ((optional_param('addrandom', false, PARAM_BOOL)) && confirm_sesskey()) {
     $addonpage = optional_param('addonpage', 0, PARAM_INT);
     $categoryid = required_param('categoryid', PARAM_INT);
     $randomcount = required_param('randomcount', PARAM_INT);
-    quiz_add_random_questions($quiz, $addonpage, $categoryid, $randomcount, $recurse);
+
+    $filtercondition = [
+        'filter' => [
+            'category' => [
+                'jointype' => \core_question\local\bank\condition::JOINTYPE_DEFAULT,
+                'values' => [$categoryid],
+                'filteroptions' => ['includesubcategories' => $recurse],
+            ],
+        ],
+    ];
+
+    $structure->add_random_questions($addonpage, $randomcount, $filtercondition);
 
     quiz_delete_previews($quiz);
     $gradecalculator->recompute_quiz_sumgrades();

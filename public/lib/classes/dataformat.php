@@ -179,7 +179,7 @@ class dataformat {
      * @return string|null Return escaped formula if detected.
      */
     public static function escape_spreadsheet_formula(mixed $value): ?string {
-        // Only escape strings; leave numbers and other types unchanged.
+        // Allow mixed input; only process strings.
         if (!is_string($value)) {
             return $value;
         }
@@ -191,20 +191,16 @@ class dataformat {
 
         // Trim only for checking, not for modifying output.
         $trimmed = ltrim($value);
-
         if ($trimmed === '') {
             return $value;
         }
 
-        // Characters that trigger formula parsing in Excel/Sheets.
         $formulacharacters = ['=', '+', '-', '@'];
-
         // If trimmed version starts with formula character, escape it.
         if (in_array($trimmed[0], $formulacharacters, true)) {
-            // Preserve original whitespace. Do not alter actual content.
+            // Prepend single quote if value starts with a formula character.
             return "'" . $value;
         }
-
         return $value;
     }
 }

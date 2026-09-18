@@ -52,25 +52,24 @@ use Facebook\WebDriver\WebDriverExpectedCondition;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class behat_general extends behat_base {
-
     /**
      * @var string used by {@link switch_to_window()} and
      * {@link switch_to_the_main_window()} to work-around a Chrome browser issue.
      */
-    const MAIN_WINDOW_NAME = '__moodle_behat_main_window_name';
+    public const MAIN_WINDOW_NAME = '__moodle_behat_main_window_name';
 
     /**
      * @var string when we want to check whether or not a new page has loaded,
      * we first write this unique string into the page. Then later, by checking
      * whether it is still there, we can tell if a new page has been loaded.
      */
-    const PAGE_LOAD_DETECTION_STRING = 'new_page_not_loaded_since_behat_started_watching';
+    public const PAGE_LOAD_DETECTION_STRING = 'new_page_not_loaded_since_behat_started_watching';
 
     /**
      * @var $pageloaddetectionrunning boolean Used to ensure that page load detection was started before a page reload
      * was checked for.
      */
-    private $pageloaddetectionrunning = false;
+    private bool $pageloaddetectionrunning = false;
 
     /**
      * Opens Moodle homepage.
@@ -153,26 +152,21 @@ class behat_general extends behat_base {
 
         // Getting the refresh time and the url if present.
         if (strstr($content, 'url') != false) {
-
             [$waittime, $url] = explode(';', $content);
 
             // Cleaning the URL value.
             $url = trim(substr($url, strpos($url, 'http')));
-
         } else {
             // Just wait then.
             $waittime = $content;
         }
 
-
         // Wait until the URL change is executed.
         if ($this->running_javascript()) {
             $this->getSession()->wait($waittime * 1000);
-
         } else if (!empty($url)) {
             // We redirect directly as we can not wait for an automatic redirection.
             $this->getSession()->getDriver()->getClient()->request('GET', $url);
-
         } else {
             // Reload the page if no URL was provided.
             $this->getSession()->getDriver()->reload();
@@ -191,7 +185,7 @@ class behat_general extends behat_base {
         // Using extended timeout as we don't know about which
         // kind of iframe will be loaded.
         $this->spin(
-            function($context) use ($name){
+            function ($context) use ($name) {
                 $iframe = $context->find('iframe', $name);
                 if ($iframe->hasAttribute('name')) {
                     $iframename = $iframe->getAttribute('name');
@@ -336,7 +330,7 @@ class behat_general extends behat_base {
             throw new DriverException('Closing windows steps require javascript');
         }
         $names = $this->getSession()->getWindowNames();
-        for ($index = 1; $index < count($names); $index ++) {
+        for ($index = 1; $index < count($names); $index++) {
             $this->getSession()->switchToWindow($names[$index]);
             $this->execute_script("window.open('', '_self').close();");
         }
@@ -621,7 +615,9 @@ class behat_general extends behat_base {
     }
 
     /**
-     * Drags and drops the specified element to the specified container. This step does not work in all the browsers, consider it experimental.
+     * Drag and drops the specified element to the specified container.
+     *
+     * Note: This step does not work in all the browsers, consider it experimental.
      *
      * The steps definitions calling this step as part of them should
      * manage the wait times by themselves as the times and when the
@@ -788,7 +784,7 @@ class behat_general extends behat_base {
         // should also ensure that the element is visible. Using microsleep as this
         // is a repeated step and global performance is important.
         $this->spin(
-            function($context, $args) {
+            function ($context, $args) {
 
                 foreach ($args['nodes'] as $node) {
                     if ($node->isVisible()) {
@@ -797,18 +793,22 @@ class behat_general extends behat_base {
                 }
 
                 // If non of the nodes is visible we loop again.
-                throw new ExpectationException('"' . $args['text'] . '" text was found but was not visible', $context->getSession());
+                throw new ExpectationException(
+                    sprintf('"%s" text was found but was not visible', $args['text']),
+                    $context->getSession(),
+                );
             },
-            array('nodes' => $nodes, 'text' => $text),
+            ['nodes' => $nodes, 'text' => $text],
             false,
             false,
             true
         );
-
     }
 
     /**
-     * Checks, that page doesn't contain specified text. When running Javascript tests it also considers that texts may be hidden.
+     * Ensure that page doesn't contain specified text.
+     *
+     * Note: When running Javascript tests it also considers that texts may be hidden.
      *
      * @Then /^I should not see "(?P<text_string>(?:[^"]|\\")*)"$/
      * @throws ExpectationException
@@ -840,15 +840,17 @@ class behat_general extends behat_base {
 
         // If the element is there we should be sure that it is not visible.
         $this->spin(
-            function($context, $args) {
+            function ($context, $args) {
 
                 foreach ($args['nodes'] as $node) {
                     // If element is removed from dom, then just exit.
                     try {
                         // If element is visible then throw exception, so we keep spinning.
                         if ($node->isVisible()) {
-                            throw new ExpectationException('"' . $args['text'] . '" text was found in the page',
-                                $context->getSession());
+                            throw new ExpectationException(
+                                '"' . $args['text'] . '" text was found in the page',
+                                $context->getSession()
+                            );
                         }
                     } catch (NoSuchElementException $e) {
                         // Do nothing just return, as element is no more on page.
@@ -862,7 +864,7 @@ class behat_general extends behat_base {
                 // If non of the found nodes is visible we consider that the text is not visible.
                 return true;
             },
-            array('nodes' => $nodes, 'text' => $text),
+            ['nodes' => $nodes, 'text' => $text],
             behat_base::get_reduced_timeout(),
             false,
             true
@@ -870,7 +872,9 @@ class behat_general extends behat_base {
     }
 
     /**
-     * Checks, that the specified element contains the specified text. When running Javascript tests it also considers that texts may be hidden.
+     * Ensure that the specified element contains the specified text.
+     *
+     * Note: When running Javascript tests it also considers that texts may be hidden.
      *
      * @Then /^I should see "(?P<text_string>(?:[^"]|\\")*)" in the "(?P<element_string>(?:[^"]|\\")*)" "(?P<text_selector_string>[^"]*)"$/
      * @throws ElementNotFoundException
@@ -894,7 +898,10 @@ class behat_general extends behat_base {
         try {
             $nodes = $this->find_all('xpath', $xpath, false, $container);
         } catch (ElementNotFoundException $e) {
-            throw new ExpectationException('"' . $text . '" text was not found in the "' . $element . '" element', $this->getSession());
+            throw new ExpectationException(
+                sprintf('"%s" text was not found in the "%s" element', $text, $element),
+                $this->getSession(),
+            );
         }
 
         // If we are not running javascript we have enough with the
@@ -906,17 +913,19 @@ class behat_general extends behat_base {
         // We also check the element visibility when running JS tests. Using microsleep as this
         // is a repeated step and global performance is important.
         $this->spin(
-            function($context, $args) {
-
+            function ($context, $args) {
                 foreach ($args['nodes'] as $node) {
                     if ($node->isVisible()) {
                         return true;
                     }
                 }
 
-                throw new ExpectationException('"' . $args['text'] . '" text was found in the "' . $args['element'] . '" element but was not visible', $context->getSession());
+                throw new ExpectationException(
+                    sprintf('"%s" text was found in the "%s" element but was not visible', $args['text'], $args['element']),
+                    $context->getSession(),
+                );
             },
-            array('nodes' => $nodes, 'text' => $text, 'element' => $element),
+            ['nodes' => $nodes, 'text' => $text, 'element' => $element],
             false,
             false,
             true
@@ -924,7 +933,9 @@ class behat_general extends behat_base {
     }
 
     /**
-     * Checks, that the specified element does not contain the specified text. When running Javascript tests it also considers that texts may be hidden.
+     * Ensure that the specified element does not contain the specified text.
+     *
+     * Note: When running Javascript tests it also considers that texts may be hidden.
      *
      * @Then /^I should not see "(?P<text_string>(?:[^"]|\\")*)" in the "(?P<element_string>(?:[^"]|\\")*)" "(?P<text_selector_string>[^"]*)"$/
      * @throws ElementNotFoundException
@@ -961,18 +972,21 @@ class behat_general extends behat_base {
 
         // We need to ensure all the found nodes are hidden.
         $this->spin(
-            function($context, $args) {
+            function ($context, $args) {
 
                 foreach ($args['nodes'] as $node) {
                     if ($node->isVisible()) {
-                        throw new ExpectationException('"' . $args['text'] . '" text was found in the "' . $args['element'] . '" element', $context->getSession());
+                        throw new ExpectationException(
+                            sprintf('"%s" text was found in "%s" element', $args['text'], $args['element']),
+                            $context->getSession(),
+                        );
                     }
                 }
 
                 // If all the found nodes are hidden we are happy.
                 return true;
             },
-            array('nodes' => $nodes, 'text' => $text, 'element' => $element),
+            ['nodes' => $nodes, 'text' => $text, 'element' => $element],
             behat_base::get_reduced_timeout(),
             false,
             true
@@ -1094,7 +1108,6 @@ class behat_general extends behat_base {
 EOF;
             $ok = $this->evaluate_script($js);
         } else {
-
             // Using following xpath axe to find it.
             $xpath = "{$prexpath}/following::*[contains(., {$postxpath})]";
             $ok = $this->getSession()->getDriver()->find($xpath);
@@ -1334,8 +1347,10 @@ EOF;
         // Run all tasks which have a scheduled runtime of before now.
         $timenow = time();
 
-        while (!\core\task\manager::static_caches_cleared_since($timenow) &&
-                $task = \core\task\manager::get_next_adhoc_task($timenow)) {
+        while (
+            !\core\task\manager::static_caches_cleared_since($timenow) &&
+                $task = \core\task\manager::get_next_adhoc_task($timenow)
+        ) {
             // Clean the output buffer between tasks.
             ob_clean();
 
@@ -1488,12 +1503,16 @@ EOF;
         $containernode = $this->get_selected_node($selectortype, $element);
         $value = $containernode->getAttribute($attribute);
         if ($value == null) {
-            throw new ExpectationException('The attribute "' . $attribute. '" does not exist',
-                    $this->getSession());
+            throw new ExpectationException(
+                'The attribute "' . $attribute . '" does not exist',
+                $this->getSession()
+            );
         } else if (strpos($value, $text) === false) {
-            throw new ExpectationException('The attribute "' . $attribute .
+            throw new ExpectationException(
+                'The attribute "' . $attribute .
                     '" does not contain "' . $text . '" (actual value: "' . $value . '")',
-                    $this->getSession());
+                $this->getSession()
+            );
         }
     }
 
@@ -1512,12 +1531,16 @@ EOF;
         $containernode = $this->get_selected_node($selectortype, $element);
         $value = $containernode->getAttribute($attribute);
         if ($value == null) {
-            throw new ExpectationException('The attribute "' . $attribute. '" does not exist',
-                    $this->getSession());
+            throw new ExpectationException(
+                'The attribute "' . $attribute . '" does not exist',
+                $this->getSession()
+            );
         } else if (strpos($value, $text) !== false) {
-            throw new ExpectationException('The attribute "' . $attribute .
+            throw new ExpectationException(
+                'The attribute "' . $attribute .
                     '" contains "' . $text . '" (value: "' . $value . '")',
-                    $this->getSession());
+                $this->getSession()
+            );
         }
     }
 
@@ -1553,7 +1576,12 @@ EOF;
         $coumnnode = $this->getSession()->getDriver()->find($columnvaluexpath);
         if (empty($coumnnode)) {
             $locatorexceptionmsg = $value . '" in "' . $row . '" row with column "' . $column;
-            throw new ElementNotFoundException($this->getSession(), "\n$columnvaluexpath\n\n".'Column value', null, $locatorexceptionmsg);
+            throw new ElementNotFoundException(
+                $this->getSession(),
+                "\n$columnvaluexpath\n\n" . 'Column value',
+                null,
+                $locatorexceptionmsg,
+            );
         }
     }
 
@@ -1612,13 +1640,17 @@ EOF;
                 if (strpos($column, '/') !== false) {
                     // We are not able to match headers consisting of several links, such as "First name / Last name".
                     // Instead we can match "First name" or "Last name" or "-1-" (column number).
-                    throw new Exception("Column matching locator \"$column\" not found. ".
-                        "If the column header contains multiple links, specify only one of the link texts. ".
+                    throw new Exception("Column matching locator \"$column\" not found. " .
+                        "If the column header contains multiple links, specify only one of the link texts. " .
                         "Otherwise, use the column number as the locator");
                 }
                 $columnexceptionmsg = $column . '" in table "' . $table . '"';
-                throw new ElementNotFoundException($this->getSession(), "\n$columnheaderxpath\n\n".'Column',
-                    null, $columnexceptionmsg);
+                throw new ElementNotFoundException(
+                    $this->getSession(),
+                    "\n$columnheaderxpath\n\n" . 'Column',
+                    null,
+                    $columnexceptionmsg
+                );
             }
             // Following conditions were considered before finding column count.
             // 1. Table header can be in thead/tr/th or tbody/tr/td[1].
@@ -1650,7 +1682,7 @@ EOF;
         $rownode = $this->getSession()->getDriver()->find($rowxpath);
         if (empty($rownode)) {
             $rowlocator = array_map(fn($k) => "{$k} => {$cells[$k]}", array_keys($cells));
-            throw new ElementNotFoundException($this->getSession(), "\n$rowxpath\n\n".'Table row', null, join(', ', $rowlocator));
+            throw new ElementNotFoundException($this->getSession(), "\n$rowxpath\n\n" . 'Table row', null, join(', ', $rowlocator));
         }
     }
 
@@ -1670,8 +1702,7 @@ EOF;
         }
         $rowlocator = array_map(fn($k) => "{$k} => {$cells[$k]}", array_keys($cells));
         throw new ExpectationException('Table row "' . join(', ', $rowlocator) .
-            '" is present in the table "' . $table . '"', $this->getSession()
-        );
+            '" is present in the table "' . $table . '"', $this->getSession());
     }
 
     /**
@@ -1763,17 +1794,21 @@ EOF;
         // Get the href and check it.
         $url = $linknode->getAttribute('href');
         if (!$url) {
-            throw new ExpectationException('Download link does not have href attribute',
-                    $this->getSession());
+            throw new ExpectationException(
+                'Download link does not have href attribute',
+                $this->getSession()
+            );
         }
         if (!preg_match('~^https?://~', $url)) {
-            throw new ExpectationException('Download link not an absolute URL: ' . $url,
-                    $this->getSession());
+            throw new ExpectationException(
+                'Download link not an absolute URL: ' . $url,
+                $this->getSession()
+            );
         }
 
         // Download the URL and check the size.
         $session = $this->getSession()->getCookie('MoodleSession');
-        return download_file_content($url, array('Cookie' => 'MoodleSession=' . $session));
+        return download_file_content($url, ['Cookie' => 'MoodleSession=' . $session]);
     }
 
     /**
@@ -1794,11 +1829,11 @@ EOF;
 
         // It will stop spinning once file is downloaded or time out.
         $result = $this->spin(
-            function($context, $args) {
+            function ($context, $args) {
                 $link = $args['link'];
                 return $this->download_file_from_link($link);
             },
-            array('link' => $link),
+            ['link' => $link],
             behat_base::get_extended_timeout(),
             $exception
         );
@@ -1829,7 +1864,11 @@ EOF;
      * @param number $maxexpectedsize the maximum expected file size in bytes.
      * @throws ExpectationException
      */
-    public function following_should_download_between_and_bytes($link, $minexpectedsize, $maxexpectedsize) {
+    public function following_should_download_between_and_bytes(
+        $link,
+        $minexpectedsize,
+        $maxexpectedsize,
+    ) {
         // If the minimum is greater than the maximum then swap the values.
         if ((int)$minexpectedsize > (int)$maxexpectedsize) {
             [$minexpectedsize, $maxexpectedsize] = [$maxexpectedsize, $minexpectedsize];
@@ -1839,12 +1878,12 @@ EOF;
 
         // It will stop spinning once file is downloaded or time out.
         $result = $this->spin(
-            function($context, $args) {
+            function ($context, $args) {
                 $link = $args['link'];
 
                 return $this->download_file_from_link($link);
             },
-            array('link' => $link),
+            ['link' => $link],
             behat_base::get_extended_timeout(),
             $exception
         );
@@ -1874,11 +1913,13 @@ EOF;
         $containernode = $this->get_selected_node($selectortype, $element);
         $url = $containernode->getAttribute('src');
         if ($url == null) {
-            throw new ExpectationException('Element does not have src attribute',
-                $this->getSession());
+            throw new ExpectationException(
+                'Element does not have src attribute',
+                $this->getSession()
+            );
         }
         $session = $this->getSession()->getCookie('MoodleSession');
-        $content = download_file_content($url, array('Cookie' => 'MoodleSession=' . $session));
+        $content = download_file_content($url, ['Cookie' => 'MoodleSession=' . $session]);
 
         // Get the content of the fixture file.
         // Replace 'admin/' if it is in start of path with $CFG->admin .
@@ -1914,7 +1955,9 @@ EOF;
             // If we find this node at this point we are already watching for a reload and the behat steps
             // are out of order. We will treat this as an error - really it needs to be fixed as it indicates a problem.
             throw new ExpectationException(
-                'Page load expectation error: page reloads are already been watched for.', $session);
+                'Page load expectation error: page reloads are already been watched for.',
+                $session
+            );
         }
 
         $this->pageloaddetectionrunning = true;
@@ -1939,7 +1982,9 @@ EOF;
         // Make sure page load tracking was started.
         if (!$this->pageloaddetectionrunning) {
             throw new ExpectationException(
-                'Page load expectation error: page load tracking was not started.', $session);
+                'Page load expectation error: page load tracking was not started.',
+                $session
+            );
         }
 
         // As the node is inserted by code above it is either there or not, and we do not need spin and it is safe
@@ -1947,7 +1992,9 @@ EOF;
         if ($session->getPage()->find('xpath', $this->get_page_load_xpath())) {
             // We don't want to find this node, if we do we have an error.
             throw new ExpectationException(
-                'Page load expectation error: a new page has not been loaded when it should have been.', $session);
+                'Page load expectation error: a new page has not been loaded when it should have been.',
+                $session
+            );
         }
 
         // Cancel the tracking of pageloaddetectionrunning.
@@ -1966,7 +2013,9 @@ EOF;
         // Make sure page load tracking was started.
         if (!$this->pageloaddetectionrunning) {
             throw new ExpectationException(
-                'Page load expectation error: page load tracking was not started.', $session);
+                'Page load expectation error: page load tracking was not started.',
+                $session
+            );
         }
 
         // We use our API here as we can use the exception handling provided by it.
@@ -2034,7 +2083,7 @@ EOF;
     public function i_type(string $keys): void {
         // Certain keys, such as the newline character, must be converted to the appropriate character code.
         // Without this, keys will behave differently depending on the browser.
-        $keylist = array_map(function($key): string {
+        $keylist = array_map(function ($key): string {
             switch ($key) {
                 case "\n":
                     return behat_keys::ENTER;
@@ -2193,14 +2242,16 @@ EOF;
         // Gets the node based on the requested selector type and locator.
         $node = $this->get_selected_node($selectortype, $element);
         $modifier = null;
-        $validmodifiers = array('ctrl', 'alt', 'shift', 'meta');
+        $validmodifiers = ['ctrl', 'alt', 'shift', 'meta'];
         $char = $key;
         if (strpos($key, '-')) {
             [$modifier, $char] = preg_split('/-/', $key, 2);
             $modifier = strtolower($modifier);
             if (!in_array($modifier, $validmodifiers)) {
-                throw new ExpectationException(sprintf('Unknown key modifier: %s.', $modifier),
-                    $this->getSession());
+                throw new ExpectationException(
+                    sprintf('Unknown key modifier: %s.', $modifier),
+                    $this->getSession()
+                );
             }
         }
         if (is_numeric($char)) {
@@ -2232,7 +2283,7 @@ EOF;
     }
 
     /**
-     * Checks if database family used is using one of the specified, else skip. (mysql, postgres, mssql, oracle, etc.)
+     * Checks if database family used is using one of the specified, else skip. (mysql, postgres, mssql, etc.)
      *
      * @Given /^database family used is one of the following:$/
      * @param TableNode $databasefamilies list of database.
@@ -2265,7 +2316,8 @@ EOF;
         $path = core_component::get_component_directory($plugin);
         if (!is_readable($path . '/version.php')) {
             throw new \Moodle\BehatExtension\Exception\SkippedException(
-                    'Skipping this scenario because the ' . $plugin . ' is not installed.');
+                'Skipping this scenario because the ' . $plugin . ' is not installed.'
+            );
         }
     }
 
@@ -2364,7 +2416,8 @@ EOF;
 
     /**
      * Checks, that the specified element contains the specified text a certain amount of times.
-     * When running Javascript tests it also considers that texts may be hidden.
+     *
+     * Note: When running Javascript tests it also considers that texts may be hidden.
      *
      * @Then /^I should see "(?P<elementscount_number>\d+)" occurrences of "(?P<text_string>(?:[^"]|\\")*)" in the "(?P<element_string>(?:[^"]|\\")*)" "(?P<text_selector_string>[^"]*)"$/
      * @throws ElementNotFoundException
@@ -2375,7 +2428,6 @@ EOF;
      * @param string $selectortype The type of element where we are looking in.
      */
     public function i_should_see_occurrences_of_in_element($elementscount, $text, $element, $selectortype) {
-
         // Getting the container where the text should be found.
         $container = $this->get_selected_node($selectortype, $element);
 
@@ -2388,20 +2440,23 @@ EOF;
         $nodes = $this->find_all('xpath', $xpath, false, $container);
 
         if ($this->running_javascript()) {
-            $nodes = array_filter($nodes, function($node) {
+            $nodes = array_filter($nodes, function ($node) {
                 return $node->isVisible();
             });
         }
 
         if ($elementscount != count($nodes)) {
-            throw new ExpectationException('Found '.count($nodes).' elements in column. Expected '.$elementscount,
-                    $this->getSession());
+            throw new ExpectationException(
+                'Found ' . count($nodes) . ' elements in column. Expected ' . $elementscount,
+                $this->getSession()
+            );
         }
     }
 
     /**
      * Checks, that the specified element contains the specified node type a certain amount of times.
-     * When running Javascript tests it also considers that texts may be hidden.
+     *
+     * Note: When running Javascript tests it also considers that texts may be hidden.
      *
      * @Then /^I should see "(?P<elementscount_number>\d+)" node occurrences of type "(?P<node_type>(?:[^"]|\\")*)" in the "(?P<element_string>(?:[^"]|\\")*)" "(?P<text_selector_string>[^"]*)"$/
      * @throws ElementNotFoundException
@@ -2411,8 +2466,12 @@ EOF;
      * @param string $element Element we look in.
      * @param string $selectortype The type of element where we are looking in.
      */
-    public function i_should_see_node_occurrences_of_type_in_element(int $elementscount, string $nodetype, string $element, string $selectortype) {
-
+    public function i_should_see_node_occurrences_of_type_in_element(
+        int $elementscount,
+        string $nodetype,
+        string $element,
+        string $selectortype,
+    ) {
         // Getting the container where the text should be found.
         $container = $this->get_selected_node($selectortype, $element);
 
@@ -2421,14 +2480,16 @@ EOF;
         $nodes = $this->find_all('xpath', $xpath, false, $container);
 
         if ($this->running_javascript()) {
-            $nodes = array_filter($nodes, function($node) {
+            $nodes = array_filter($nodes, function ($node) {
                 return $node->isVisible();
             });
         }
 
         if ($elementscount != count($nodes)) {
-            throw new ExpectationException('Found '.count($nodes).' elements in column. Expected '.$elementscount,
-                $this->getSession());
+            throw new ExpectationException(
+                'Found ' . count($nodes) . ' elements in column. Expected ' . $elementscount,
+                $this->getSession()
+            );
         }
     }
 
@@ -2474,8 +2535,10 @@ EOF;
      */
     public function i_click_on_the_dynamic_tab(string $tabname): void {
         $xpath = "//*[@id='dynamictabs-tabs'][descendant::a[contains(text(), '" . $this->escape($tabname) . "')]]";
-        $this->execute([self::class, 'i_click_on_in_the'],
-            [$tabname, 'link', $xpath, 'xpath_element']);
+        $this->execute(
+            [self::class, 'i_click_on_in_the'],
+            [$tabname, 'link', $xpath, 'xpath_element']
+        );
     }
 
     /**
@@ -2524,7 +2587,7 @@ EOF;
         }
 
         // Make the provided editor the default one in $CFG->texteditors by
-        // moving it to the first [editor],atto,tiny,textarea on the list.
+        // moving it to the first [editor],tiny,textarea on the list.
         $list = explode(',', $CFG->texteditors);
         array_unshift($list, $editor);
         $list = array_unique($list);
@@ -2631,7 +2694,6 @@ EOF;
         } else {
             throw new \Behat\Mink\Exception\ExpectationException('Invalid state for switch: ' . $state, $this->getSession());
         }
-
     }
 
     /**
@@ -2695,8 +2757,10 @@ EOF;
      * @param string $comboboxname The name (label) of the search combo box element. (e.g. "Search users", "Search groups").
      */
     public function i_confirm_in_search_combobox_exists(string $itemname, string $comboboxname): void {
-        $this->execute([self::class, 'assert_element_contains_text'],
-            [$itemname, $this->get_combobox_dropdown_node($comboboxname, $itemname, false), "NodeElement"]);
+        $this->execute(
+            [self::class, 'assert_element_contains_text'],
+            [$itemname, $this->get_combobox_dropdown_node($comboboxname, $itemname, false), "NodeElement"]
+        );
     }
 
     /**
@@ -2713,8 +2777,10 @@ EOF;
      * @param string $comboboxname The name (label) of the search combo box element. (e.g. "Search users", "Search groups").
      */
     public function i_confirm_in_search_combobox_does_not_exist(string $itemname, string $comboboxname): void {
-        $this->execute([self::class, 'assert_element_not_contains_text'],
-            [$itemname, $this->get_combobox_dropdown_node($comboboxname, $itemname, false), "NodeElement"]);
+        $this->execute(
+            [self::class, 'assert_element_not_contains_text'],
+            [$itemname, $this->get_combobox_dropdown_node($comboboxname, $itemname, false), "NodeElement"]
+        );
     }
 
     /**

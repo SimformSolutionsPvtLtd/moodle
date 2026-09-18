@@ -37,7 +37,7 @@ if (isset($_REQUEST['admin'])) {
 }
 
 // If config.php exists we just created config.php and need to redirect to continue installation
-$configfile = './config.php';
+$configfile = dirname(__DIR__) . '/config.php';
 if (file_exists($configfile)) {
     header("Location: $admin/index.php?lang=$lang");
     die;
@@ -46,6 +46,7 @@ if (file_exists($configfile)) {
 define('CLI_SCRIPT', false); // prevents some warnings later
 define('AJAX_SCRIPT', false); // prevents some warnings later
 define('CACHE_DISABLE_ALL', true); // Disables caching.. just in case.
+define('NO_DEBUG_DISPLAY', false);
 define('PHPUNIT_TEST', false);
 define('IGNORE_COMPONENT_CACHE', true);
 define('MDL_PERF_TEST', false);
@@ -162,6 +163,7 @@ global $CFG;
 $CFG = new stdClass();
 $CFG->lang                 = $config->lang;
 $CFG->dirroot              = __DIR__;
+$CFG->root                 = dirname(__DIR__);
 $CFG->libdir               = "$CFG->dirroot/lib";
 $CFG->wwwroot              = install_guess_wwwroot(); // can not be changed - ppl must use the real address when installing
 $CFG->httpswwwroot         = $CFG->wwwroot;
@@ -180,7 +182,7 @@ $CFG->umaskpermissions     = (($CFG->directorypermissions & 0777) ^ 0777);
 $CFG->running_installer    = true;
 $CFG->early_install_lang   = true;
 $CFG->ostype               = (stristr(PHP_OS, 'win') && !stristr(PHP_OS, 'darwin')) ? 'WINDOWS' : 'UNIX';
-$CFG->debug                = (E_ALL | E_STRICT);
+$CFG->debug                = (E_ALL);
 $CFG->debugdisplay         = true;
 $CFG->debugdeveloper       = true;
 
@@ -239,21 +241,16 @@ $hint_dataroot = '';
 $hint_admindir = '';
 $hint_database = '';
 
-// Are we in help mode?
-if (isset($_GET['help'])) {
-    install_print_help_page($_GET['help']);
-}
-
-//first time here? find out suitable dataroot
+// First time here? Find a suitable dataroot.
 if (is_null($CFG->dataroot)) {
-    $CFG->dataroot = __DIR__.'/../moodledata';
+    $CFG->dataroot = dirname($CFG->root) . '/moodledata';
 
-    $i = 0; //safety check - dirname might return some unexpected results
-    while(is_dataroot_insecure()) {
+    $i = 0; // Safety check - dirname might return some unexpected results.
+    while (is_dataroot_insecure()) {
         $parrent = dirname($CFG->dataroot);
         $i++;
         if ($parrent == '/' or $parrent == '.' or preg_match('/^[a-z]:\\\?$/i', $parrent) or ($i > 100)) {
-            $CFG->dataroot = ''; //can not find secure location for dataroot
+            $CFG->dataroot = ''; // Can not find secure location for dataroot.
             break;
         }
         $CFG->dataroot = dirname($parrent).DIRECTORY_SEPARATOR.'moodledata';
@@ -494,7 +491,6 @@ if ($config->stage == INSTALL_DATABASETYPE) {
                        'auroramysql' => moodle_database::get_driver_instance('auroramysql', 'native'),
                        'mariadb'=> moodle_database::get_driver_instance('mariadb', 'native'),
                        'pgsql'  => moodle_database::get_driver_instance('pgsql',  'native'),
-                       'oci'    => moodle_database::get_driver_instance('oci',    'native'),
                        'sqlsrv' => moodle_database::get_driver_instance('sqlsrv', 'native'), // MS SQL*Server PHP driver
                       );
 
@@ -561,6 +557,7 @@ if ($config->stage == INSTALL_PATHS) {
                    'dirroot'  => get_string('dirroot', 'install'),
                    'dataroot' => get_string('dataroot', 'install'));
 
+    $stageclass = "alert-info";
     $sub = '<dl>';
     foreach ($paths as $path=>$name) {
         $sub .= '<dt>'.$name.'</dt><dd>'.get_string('pathssub'.$path, 'install').'</dd>';
@@ -570,7 +567,22 @@ if ($config->stage == INSTALL_PATHS) {
     }
     $sub .= '</dl>';
 
-    install_print_header($config, get_string('paths', 'install'), get_string('pathshead', 'install'), $sub);
+    $warnings = '';
+    $wwwroot = $CFG->wwwroot;
+    if (str_ends_with($CFG->wwwroot, '/public')) {
+        $wwwroot = substr($CFG->wwwroot, 0, -7);
+        $warnings .= '<dt>' . get_string('webservernotconfigured', 'install') . '</dt>';
+        $warnings .= '<dd>' . get_string('webserverconfigproblemdescription', 'install', s($wwwroot)) . '</dd>';
+    }
+
+    install_print_header(
+        $config,
+        get_string('paths', 'install'),
+        get_string('pathshead', 'install'),
+        $sub,
+        $stageclass,
+        $warnings,
+    );
 
     $strwwwroot      = get_string('wwwroot', 'install');
     $strdirroot      = get_string('dirroot', 'install');
@@ -584,9 +596,9 @@ if ($config->stage == INSTALL_PATHS) {
     echo '</div>';
 
     echo '<div class="row mb-4">';
-    echo '<div class="col-md-3 text-md-end pt-1"><label for="id_dirroot">'.$paths['dirroot'].'</label></div>';
+    echo '<div class="col-md-3 text-md-end pt-1"><label for="id_root">'.$paths['dirroot'].'</label></div>';
     echo '<div class="col-md-9" data-fieldtype="text">';
-    echo '<input id="id_dirroot" name="dirroot" type="text" class="form-control text-ltr" value="'.s($CFG->dirroot).'" disabled="disabled" size="70" /></div>';
+    echo '<input id="id_root" name="root" type="text" class="form-control text-ltr" value="'.s($CFG->root).'" disabled="disabled" size="70" /></div>';
     echo '</div>';
 
     echo '<div class="row mb-4">';
@@ -610,7 +622,8 @@ if ($config->stage == INSTALL_PATHS) {
         }
     }
 
-    install_print_footer($config);
+    $requiresreload = ($warnings !== '');
+    install_print_footer($config, $requiresreload);
     die;
 }
 

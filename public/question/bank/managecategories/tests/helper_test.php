@@ -119,8 +119,8 @@ final class helper_test extends manage_category_test_base {
             MUST_EXIST
         );
 
-        // The following 2 lines have to be after the quiz_add_random_questions() call above.
-        // Otherwise, quiz_add_random_questions() will to be "smart" and use them instead of creating a new "random" question.
+        // The following 2 lines have to be after the add_random_questions() call above.
+        // Otherwise, add_random_questions() will have to be "smart" and use them instead of creating a new "random" question.
         $q1b = $this->create_question_in_a_category('random', $qcat1->id);
         $q2c = $this->create_question_in_a_category('random', $qcat2->id);
 
@@ -166,7 +166,7 @@ final class helper_test extends manage_category_test_base {
         $qcategory1 = $this->qgenerator->create_question_category(['contextid' => $this->context->id]);
 
         // Try to delete a top category.
-        $categorytop = question_get_top_category($qcategory1->id, true)->id;
+        $categorytop = question_get_top_category($qcategory1->contextid, true)->id;
         try {
             helper::question_can_delete_cat($categorytop);
         } catch (moodle_exception $e) {
@@ -275,7 +275,8 @@ final class helper_test extends manage_category_test_base {
 
         // Create categories.
         $quiz = $this->create_quiz();
-        $qcategory1 = $this->create_question_category_for_a_quiz($quiz);
+        $context = \context_module::instance($quiz->cmid);
+        $qcategory1 = question_get_default_category($context->id);
         $this->create_question_category_for_a_quiz($quiz, ['parent' => $qcategory1->id]);
         $this->create_question_category_for_a_quiz($quiz);
 
@@ -307,7 +308,8 @@ final class helper_test extends manage_category_test_base {
 
         // Create categories.
         $quiz = $this->create_quiz();
-        $qcategory1 = $this->create_question_category_for_a_quiz($quiz);
+        $context = \context_module::instance($quiz->cmid);
+        $qcategory1 = question_get_default_category($context->id);
         $qcategory2 = $this->create_question_category_for_a_quiz($quiz, ['parent' => $qcategory1->id]);
         $qcategory3 = $this->create_question_category_for_a_quiz($quiz);
 
@@ -339,12 +341,13 @@ final class helper_test extends manage_category_test_base {
         global $DB;
         // Create quiz.
         $quiz = $this->quiz;
-        // Create category 1 and one hidden question.
-        $qcat = $this->qgenerator->create_question_category(['contextid' => $this->context->id]);
-        $q1 = $this->qgenerator->create_question('shortanswer', null, ['category' => $qcat->id]);
+        $context = \context_module::instance($quiz->cmid);
+        // Get the question category and create one hidden question.
+        $qcat = question_get_default_category($context->id);
+        $q1 = $this->create_question_in_a_category('shortanswer', $qcat->id);
         $DB->set_field('question_versions', 'status', 'hidden', ['questionid' => $q1->id]);
 
-        $contexts = new \core_question\local\bank\question_edit_contexts(\context_module::instance($quiz->cmid));
+        $contexts = new \core_question\local\bank\question_edit_contexts($context);
         $contexts = $contexts->having_cap('moodle/question:add');
         foreach ($contexts as $context) {
             $contextslist[] = $context->id;
@@ -354,7 +357,7 @@ final class helper_test extends manage_category_test_base {
         $categorycontexts = helper::get_categories_for_contexts($contextslist);
         $this->assertEquals(0, reset($categorycontexts)->questioncount);
         // Add an extra question.
-        $this->qgenerator->create_question('shortanswer', null, ['category' => $qcat->id]);
+        $this->create_question_in_a_category('shortanswer', $qcat->id);
         $categorycontexts = helper::get_categories_for_contexts($contextslist);
         // Verify we have 1 question in category.
         $this->assertEquals(1, reset($categorycontexts)->questioncount);

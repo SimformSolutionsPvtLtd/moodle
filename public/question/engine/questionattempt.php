@@ -23,6 +23,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+use core\url;
 use core_question\local\bank\question_edit_contexts;
 
 defined('MOODLE_INTERNAL') || die();
@@ -595,14 +596,15 @@ class question_attempt {
      * @return string the URL of that file.
      */
     public function get_response_file_url(stored_file $file) {
-        return file_encode_url(new moodle_url('/pluginfile.php'), '/' . implode('/', array(
-                $file->get_contextid(),
-                $file->get_component(),
-                $file->get_filearea(),
-                $this->usageid,
-                $this->slot,
-                $file->get_itemid())) .
-                $file->get_filepath() . $file->get_filename(), true);
+        return url::make_pluginfile_url(
+            contextid: $file->get_contextid(),
+            component: $file->get_component(),
+            area: $file->get_filearea(),
+            itemid: implode('/', [$this->usageid, $this->slot, $file->get_itemid()]),
+            pathname: $file->get_filepath(),
+            filename: $file->get_filename(),
+            forcedownload: true
+        )->out();
     }
 
     /**
@@ -900,6 +902,7 @@ class question_attempt {
      */
     public function render($options, $number, $page = null) {
         $this->ensure_question_initialised();
+        $this->set_first_step_timecreated();
         if (is_null($page)) {
             global $PAGE;
             $page = $PAGE;
@@ -1712,6 +1715,22 @@ class question_attempt {
      */
     public function get_steps_with_submitted_response_iterator() {
         return new question_attempt_steps_with_submitted_response_iterator($this);
+    }
+
+    /**
+     * If the first step has a timecreated set to TIMECREATED_ON_FIRST_RENDER, set it to the current time.
+     *
+     * @return void
+     */
+    protected function set_first_step_timecreated(): void {
+        global $DB;
+        $firststep = $this->get_step(0);
+        if ((int)$firststep->get_timecreated() === question_attempt_step::TIMECREATED_ON_FIRST_RENDER) {
+            $timenow = time();
+            $firststep->set_timecreated($timenow);
+            $this->observer->notify_step_modified($firststep, $this, 0);
+            $DB->set_field('question_attempt_steps', 'timecreated', $timenow, ['id' => $firststep->get_id()]);
+        }
     }
 }
 

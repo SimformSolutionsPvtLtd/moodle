@@ -70,6 +70,7 @@ if (!empty($CFG->forceloginforprofiles)) {
 
 if ((!$user = $DB->get_record('user', array('id' => $userid))) || ($user->deleted)) {
     $PAGE->set_context(context_system::instance());
+    $PAGE->set_title(get_string('user'));
     echo $OUTPUT->header();
     if (!$user) {
         echo $OUTPUT->notification(get_string('invaliduser', 'error'));
@@ -188,10 +189,24 @@ if ($PAGE->user_allowed_editing()) {
         $params['edit'] = 1;
     } else if (empty($edit)) {
         $editstring = get_string('updatemymoodleon');
-        $resetbutton = $OUTPUT->single_button($reseturl, $resetstring);
+        $resetbutton = $OUTPUT->single_button(
+            $reseturl,
+            $resetstring,
+            options: [
+                'data-modal' => 'confirmation',
+                'data-modal-content-str' => json_encode(['resetpageconfirm', 'my']),
+            ],
+        );
     } else {
         $editstring = get_string('updatemymoodleoff');
-        $resetbutton = $OUTPUT->single_button($reseturl, $resetstring);
+        $resetbutton = $OUTPUT->single_button(
+            $reseturl,
+            $resetstring,
+            options: [
+                'data-modal' => 'confirmation',
+                'data-modal-content-str' => json_encode(['resetpageconfirm', 'my']),
+            ],
+        );
     }
 
     $url = new moodle_url("$CFG->wwwroot/user/profile.php", $params);
@@ -229,7 +244,7 @@ if ($user->description && !isset($hiddenfields['description'])) {
     echo '</div>';
 }
 
-echo $OUTPUT->heading(get_string('userprofile', 'core_user'), 2, 'sr-only');
+echo $OUTPUT->heading(get_string('userprofile', 'core_user'), 2, 'visually-hidden');
 echo $OUTPUT->custom_block_region('content');
 
 // Render custom blocks.

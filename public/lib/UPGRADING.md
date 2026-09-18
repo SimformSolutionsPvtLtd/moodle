@@ -1,24 +1,30 @@
 # core (subsystem) Upgrade notes
 
-## 4.5.14
+## 5.1.7
 
 ### Added
 
 - A new Behat step `I set the focus on the "<element>" "<selector>"` has been added to move keyboard focus onto an element without activating it.
 
   For more information see [MDL-84065](https://tracker.moodle.org/browse/MDL-84065)
+- New `flexible_table::set_columnheadersattributes(...)` method for tables to define additional attributes ('class', 'data-X', etc.) for column headers
+
+  For more information see [MDL-89384](https://tracker.moodle.org/browse/MDL-89384)
 
 ### Changed
 
 - The title of a modal dialogue rendered by the `core/modal` template is now an `<h2>` element instead of an `<h5>`, so that dialogue titles no longer break the page's heading hierarchy for assistive technology users.
 
-  The element carries the Bootstrap `h5` typography utility class, so the title's appearance is unchanged.
+  The element carries the Bootstrap `fs-5` font size utility class, so the title's appearance is unchanged.
 
-  If your plugin renders headings inside modal dialogue content, set their levels relative to this `<h2>` (i.e. start at `<h3>`) so that the heading structure remains correctly nested. Headings that were previously nested beneath the old `<h5>` will now skip levels. If your plugin renders its own modal header markup, or overrides the `header` block of the `core/modal` template, apply the same `<h2 class="modal-title h5">` pattern.
+  If your plugin renders headings inside modal dialogue content, set their levels relative to this `<h2>` (i.e. start at `<h3>`) so that the heading structure remains correctly nested. Headings that were previously nested beneath the old `<h5>` will now skip levels. If your plugin renders its own modal header markup, or overrides the `header` block of the `core/modal` template, apply the same `<h2 class="modal-title fs-5">` pattern.
 
   For more information see [MDL-75699](https://tracker.moodle.org/browse/MDL-75699)
+- Uninstalling a block plugin no longer deletes its instances synchronously. \core\plugininfo\block::uninstall_cleanup() now queues the new \core\task\delete_block_instances_task ad-hoc task, which deletes the instances and their related data (contexts, positions, user preferences and search index entries) in batches. This makes block removal upgrade steps and plugin uninstallation effectively instant on large sites. Remaining instances are not displayed anywhere once the block record has been deleted.
 
-## 4.5.13
+  For more information see [MDL-89289](https://tracker.moodle.org/browse/MDL-89289)
+
+## 5.1.6
 
 ### Changed
 
@@ -26,21 +32,27 @@
 
   For more information see [MDL-88833](https://tracker.moodle.org/browse/MDL-88833)
 
-## 4.5.11
+## 5.1.4
 
 ### Added
 
+- "grunt watch" now accepts a force flag. Run "grunt watch -f" or "grunt watch --force" to prevent grunt from cancelling builds when errors occur. This is especially useful during development, because js build files will be built even if, for example, jslint errors are still present in the files.
+
+  For more information see [MDL-86839](https://tracker.moodle.org/browse/MDL-86839)
 - When creating upgrade notes, the issue number will be inferred from the current Git branch name by default
 
   For more information see [MDL-87100](https://tracker.moodle.org/browse/MDL-87100)
-- There is a new Behat `toast_message` named selector to more easily assert the presence of Toast messages on the page
-
-  For more information see [MDL-87443](https://tracker.moodle.org/browse/MDL-87443)
 - The `core/toast` JS module now accepts a `visuallyHidden` configuration parameter to render visually hidden toast messages for screen reader users.
 
   For more information see [MDL-87993](https://tracker.moodle.org/browse/MDL-87993)
 
-## 4.5.9
+## 5.1.2
+
+### Added
+
+- There is a new Behat `toast_message` named selector to more easily assert the presence of Toast messages on the page
+
+  For more information see [MDL-87443](https://tracker.moodle.org/browse/MDL-87443)
 
 ### Changed
 
@@ -48,7 +60,13 @@
 
   For more information see [MDL-87694](https://tracker.moodle.org/browse/MDL-87694)
 
-## 4.5.8
+## 5.1.1
+
+### Added
+
+- Added clean_string() that prevents double escaping in Mustache templates
+
+  For more information see [MDL-87066](https://tracker.moodle.org/browse/MDL-87066)
 
 ### Changed
 
@@ -69,10 +87,58 @@
 
   For more information see [MDL-87079](https://tracker.moodle.org/browse/MDL-87079)
 
-## 4.5.7
+## 5.1
 
 ### Added
 
+- The following classes have been renamed and now support autoloading.
+  Existing classes are currently unaffected.
+
+  | Old class name                  | New class name                                  |
+  | ---                             | ---                                             |
+  | `\breadcrumb_navigation_node`   | `\core\navigation\breadcrumb_navigation_node`   |
+  | `\flat_navigation_node`         | `\core\navigation\flat_navigation_node`         |
+  | `\flat_navigation`              | `\core\navigation\flat_navigation_node`         |
+  | `\global_navigation_for_ajax`   | `\core\navigation\global_navigation_for_ajax`   |
+  | `\global_navigation`            | `\core\navigation\global_navigation`            |
+  | `\navbar`                       | `\core\navigation\navbar`                       |
+  | `\navigation_cache`             | `\core\navigation\navigation_cache`             |
+  | `\navigation_json`              | `\core\navigation\navigation_json`              |
+  | `\navigation_node_collection`   | `\core\navigation\navigation_node_collection`   |
+  | `\navigation_node`              | `\core\navigation\navigation_node`              |
+  | `\settings_navigation_for_ajax` | `\core\navigation\settings_navigation_for_ajax` |
+  | `\settings_navigation`          | `\core\navigation\settings_navigation`          |
+
+  For more information see [MDL-82159](https://tracker.moodle.org/browse/MDL-82159)
+- - Added is_site_registered_in_hub method in lib/classes/hub/api.php to
+    check if the site is registered or not.
+  - Added get_secret method in lib/classes/hub/registration.php to get site's secret.
+
+  For more information see [MDL-83448](https://tracker.moodle.org/browse/MDL-83448)
+- Added a new optional param to adhoc_task_failed and scheduled_task_failed to allow skipping log finalisation when called from a separate task.
+
+  For more information see [MDL-84442](https://tracker.moodle.org/browse/MDL-84442)
+- Add a new method has_valid_group in \core\report_helper that will return true or false depending if the user has a valid group. This is mainly false in case the user is not in any group in SEPARATEGROUPS. Used in report_log and report_loglive
+
+  For more information see [MDL-84464](https://tracker.moodle.org/browse/MDL-84464)
+- There is a new `core/page_title` Javascript module for manipulating the current page title
+
+  For more information see [MDL-84804](https://tracker.moodle.org/browse/MDL-84804)
+- Added support for configurable `aspectRatio` in charts rendered using Chart.js. This enables developers to control chart sizing more precisely via the `chart_base` API and the frontend renderer.
+
+  For more information see [MDL-85158](https://tracker.moodle.org/browse/MDL-85158)
+- Output classes can now implement the core\output\externable interface. This allows these classes to define methods for exporting their data in a format suitable for use in web services.
+
+  For more information see [MDL-85509](https://tracker.moodle.org/browse/MDL-85509)
+- The following functions have been replaced with class methods.
+
+   | Old function name               | New method name                       |
+   | ---                             | ---                                   |
+   | `\ajax_capture_output()`        | `\core\ajax::capture_output()`        |
+   | `\ajax_check_captured_output()` | `\core\ajax::check_captured_output()` |
+  It is no longer necessary to include `lib/ajax/ajaxlib.php` in any code.
+
+  For more information see [MDL-86168](https://tracker.moodle.org/browse/MDL-86168)
 - The Behat `::execute()` method now accepts an array-style callable in addition to the string `classname::method` format.
 
   The following formats are now accepted:
@@ -86,23 +152,32 @@
   ```
 
   For more information see [MDL-86231](https://tracker.moodle.org/browse/MDL-86231)
+- The following classes have been moved into namespaces and now support autoloading:
+
+  | Old class name          | New class name                         |
+  | ---                     | ---                                    |
+  | `\core_xml_parser`      | `\core\xml_parser`                     |
+  | `\xml_format_exception` | `\core\exception\xml_format_exception` |
+
+  For more information see [MDL-86256](https://tracker.moodle.org/browse/MDL-86256)
 - The `\externallib_advanced_testcase` has been replaced by `\core_external\tests\externallib_testcase` and is now autoloadable.
 
   For more information see [MDL-86283](https://tracker.moodle.org/browse/MDL-86283)
 
-## 4.5.6
-
-### Added
-
-- Add a new method has_valid_group in \core\report_helper that will return true or false depending if the user has a valid group. This is mainly false in case the user is not in any group in SEPARATEGROUPS. Used in report_log and report_loglive
-
-  For more information see [MDL-84464](https://tracker.moodle.org/browse/MDL-84464)
-
 ### Changed
 
+- Changes were implemented to make `checkbox-toggleall` output component more inclusive:
+
+  * Replace the references to `master` checkboxes with `toggler`.
+  * Replace the references to `slave` checkboxes with `target`.
+
+  For more information see [MDL-79756](https://tracker.moodle.org/browse/MDL-79756)
 - The `\core\attribute\deprecated` attribute constructor `$replacement` parameter now defaults to null, and can be omitted
 
   For more information see [MDL-84531](https://tracker.moodle.org/browse/MDL-84531)
+- The `core_plugin_manager::plugintype_name[_plural]` methods now require language strings for plugin types always be defined via `type_<type>` and `type_<type>_plural` language strings
+
+  For more information see [MDL-84948](https://tracker.moodle.org/browse/MDL-84948)
 - Added a new `\core\deprecation::emit_deprecation()` method which should be used in places where a deprecation is known to occur. This method will throw debugging if no deprecation notice was found, for example:
   ```php
   public function deprecated_method(): void {
@@ -111,27 +186,91 @@
   ```
 
   For more information see [MDL-85897](https://tracker.moodle.org/browse/MDL-85897)
+- The `\core\output\local\dropdown\dialog` class constructor now accepts a `$definition['autoclose']` parameter to define autoclose behaviour of the element
 
-## 4.5.5
+  For more information see [MDL-86015](https://tracker.moodle.org/browse/MDL-86015)
+- The default PHPUnit configuration now enables the following properties, ensuring PHP warnings will cause test failures (restoring pre-PHPUnit version 10 behaviour):
+
+  * `failOnDeprecation`
+  * `failOnWarning`
+
+  For more information see [MDL-86311](https://tracker.moodle.org/browse/MDL-86311)
+
+### Deprecated
+
+- The following function has been deprecated and should no longer be used: `file_encode_url`. Please consider using the `core\url` factory methods instead.
+
+  For more information see [MDL-31071](https://tracker.moodle.org/browse/MDL-31071)
+- The following `core/checkbox-toggleall` templates have been deprecated:
+
+  - `core/checkbox-toggleall-master-button` - This is replaced with `core/checkbox-toggleall-toggler-button`
+  - `core/checkbox-toggleall-master` - This is replaced with `core/checkbox-toggleall-toggler`
+  - `core/checkbox-toggleall-slave` - This is replaced with `core/checkbox-toggleall-target`
+
+  The following items in the `core/checkbox-toggleall` JS module have been deprecated:
+
+  - Method:
+      - `updateSlavesFromMasterState()` - This is replaced with `updateTargetsFromTogglerState()`.
+
+  - Usage of the following selectors:
+      - `data-toggle=master` - This is replaced with `data-toggle=toggler`.
+      - `data-toggle=slave` - This is replaced with `data-toggle=target`.
+
+  The usage of these selectors will continue to be supported until they are removed by final deprecation. In the meantime, a deprecation warning in the JavaScript console will be shown if usage of these selectors is detected.
+
+  For more information see [MDL-79756](https://tracker.moodle.org/browse/MDL-79756)
+- The following global constants have been deprecated in favour of class
+  constants:
+
+   | Old constant                       | New constant                                              |
+   | ---                                | ---                                                       |
+   | `NAVIGATION_CACHE_NAME`            | `\core\navigation\navigation_node::CACHE_NAME`            |
+   | `NAVIGATION_SITE_ADMIN_CACHE_NAME` | `\core\navigation\navigation_node::SITE_ADMIN_CACHE_NAME` |
+
+  For more information see [MDL-82159](https://tracker.moodle.org/browse/MDL-82159)
+- The `user_preference_allow_ajax_update()` has been removed. It was deprecated without replacement in Moodle 4.3.
+
+  For more information see [MDL-86168](https://tracker.moodle.org/browse/MDL-86168)
+- The `xmlize()` method from `lib/xmlize.php` has been deprecated, please instead use the `\core\xml_parser` class
+
+  For more information see [MDL-86256](https://tracker.moodle.org/browse/MDL-86256)
+- In toggle.mustache `dataattributes` parameter is deprecated. Use `extraattributes` instead
+
+  For more information see [MDL-86990](https://tracker.moodle.org/browse/MDL-86990)
+
+### Removed
+
+- Final deprecation of device related theme methods. The following two methods have been removed from the core_useragent class:
+    - core_useragent::get_device_type_theme
+    - core_useragent::get_device_type_cfg_var_name
+
+  For more information see [MDL-78375](https://tracker.moodle.org/browse/MDL-78375)
+- Final deprecation of removing the legacy theme settings. The following method has been removed:
+    - core_useragent::get_device_type_list()
+  The following classes have been removed:
+    - core_adminpresets\local\setting\adminpresets_admin_setting_devicedetectregex
+    - admin_setting_devicedetectregex
+
+  For more information see [MDL-79052](https://tracker.moodle.org/browse/MDL-79052)
+- Removed `core\hook\manager::is_deprecated_plugin_callback()` in favor of `core\hook\manager::get_hooks_deprecating_plugin_callback()`.
+
+  For more information see [MDL-80327](https://tracker.moodle.org/browse/MDL-80327)
+
+## 5.0
 
 ### Added
 
-- - Added is_site_registered_in_hub method in lib/classes/hub/api.php to
-    check if the site is registered or not.
-  - Added get_secret method in lib/classes/hub/registration.php to get site's secret.
+- The `core/sortable_list` Javascript module now emits native events, removing the jQuery dependency from calling code that wants to listen for the events. Backwards compatibility with existing code using jQuery is preserved
 
-  For more information see [MDL-83448](https://tracker.moodle.org/browse/MDL-83448)
-- Added a new optional param to adhoc_task_failed and scheduled_task_failed to allow skipping log finalisation when called from a separate task.
+  For more information see [MDL-72293](https://tracker.moodle.org/browse/MDL-72293)
+- `\core\output\activity_header` now uses the `is_title_allowed()` method when setting the title in the constructor.
 
-  For more information see [MDL-84442](https://tracker.moodle.org/browse/MDL-84442)
-- There is a new `core/page_title` Javascript module for manipulating the current page title
+  This method has been improved to give priority to the 'notitle' option in the theme config for the current page layout, over the top-level option in the theme.
 
-  For more information see [MDL-84804](https://tracker.moodle.org/browse/MDL-84804)
+  For example, the Boost theme sets `$THEME->activityheaderconfig['notitle'] = true;` by default, but in its `secure` pagelayout, it has `'notitle' = false`.
+  This prevents display of the title in all layouts except `secure`.
 
-## 4.5.4
-
-### Added
-
+  For more information see [MDL-75610](https://tracker.moodle.org/browse/MDL-75610)
 - Behat now supports email content verification using Mailpit.
   You can check the contents of an email using the step `Then the email to "user@example.com" with subject containing "subject" should contain "content".`
   To use this feature:
@@ -143,17 +282,6 @@
   3. Ensure that the email catcher is set up using the step `Given an email catcher server is configured`.
 
   For more information see [MDL-75971](https://tracker.moodle.org/browse/MDL-75971)
-- The public method `get_slashargument` has been added to the `url` class.
-
-  For more information see [MDL-84351](https://tracker.moodle.org/browse/MDL-84351)
-- A new method, `core_text::trim_ctrl_chars()`, has been introduced to clean control characters from text. This ensures cleaner input handling and prevents issues caused by invisible or non-printable characters
-
-  For more information see [MDL-84907](https://tracker.moodle.org/browse/MDL-84907)
-
-## 4.5.2
-
-### Added
-
 - A new core\ip_utils::normalize_internet_address() method is created to sanitize an IP address, a range of IP addresses, a domain name or a wildcard domain matching pattern.
 
   Moodle previously allowed entries such as 192.168. or .moodle.org for certain variables (eg: $CFG->proxybypass). Since MDL-74289, these formats are no longer allowed. This method converts this informations into an authorized format. For example, 192.168. becomes 192.168.0.0/16 and .moodle.org becomes *.moodle.org.
@@ -161,36 +289,52 @@
   Also a new core\ip_utils::normalize_internet_address_list() method is created. Based on core\ip_utils::normalize_internet_address(), this method normalizes a string containing a series of Internet addresses.
 
   For more information see [MDL-79121](https://tracker.moodle.org/browse/MDL-79121)
+- The stored progress API has been updated. The `\core\output\stored_progress_bar` class has
+  now has a `store_pending()` method, which will create a record for the stored process, but
+  without a start time or progress percentage.
+  `\core\task\stored_progress_task_trait` has been updated with a new `initialise_stored_progress()` method,
+  which will call `store_pending()` for the task's progress bar. This allows the progress bar to be displayed
+  in a "pending" state, to show that a process has been queued but not started.
+
+  For more information see [MDL-81714](https://tracker.moodle.org/browse/MDL-81714)
+- A new `\core\output\task_indicator` component has been added to display a progress bar and message
+  for a background task using `\core\task\stored_progress_task_trait`. See the "Task indicator"
+  page in the component library for usage details.
+
+  For more information see [MDL-81714](https://tracker.moodle.org/browse/MDL-81714)
+- The deprecated implementation in course/view.php, which uses the extern_server_course function to handle routing between internal and external courses, can be improved by utilizing the Hook API. This enhancement is essential for a project involving multiple universities, as the Hook API provides a more generalized and flexible approach to route users to external courses from within other plugins.
+
+  For more information see [MDL-83473](https://tracker.moodle.org/browse/MDL-83473)
+- Add after_role_switched hook that is triggered when we switch role to a new role in a course.
+
+  For more information see [MDL-83542](https://tracker.moodle.org/browse/MDL-83542)
+- New generic collapsable section output added. Use core\output\local\collapsable_section or include the core/local/collapsable_section template to use it. See the full documentation in the component library.
+
+  For more information see [MDL-83869](https://tracker.moodle.org/browse/MDL-83869)
+- A new method get_instance_record has been added to cm_info object so core can get the activity table record without using the $DB object every time. Also, the method caches de result so getting more than once per execution is much faster.
+
+  For more information see [MDL-83892](https://tracker.moodle.org/browse/MDL-83892)
+- Now lib/templates/select_menu.mustache has a new integer headinglevel context value to specify the heading level to keep the header accessibility when used as a tertiary navigation.
+
+  For more information see [MDL-84208](https://tracker.moodle.org/browse/MDL-84208)
+- The public method `get_slashargument` has been added to the `url` class.
+
+  For more information see [MDL-84351](https://tracker.moodle.org/browse/MDL-84351)
+- The new PHP enum core\output\local\properties\iconsize can be used to limit the amount of icons sizes an output component can use. The enum has the same values available in the theme_boost scss.
+
+  For more information see [MDL-84555](https://tracker.moodle.org/browse/MDL-84555)
+- A new method, `core_text::trim_ctrl_chars()`, has been introduced to clean control characters from text. This ensures cleaner input handling and prevents issues caused by invisible or non-printable characters
+
+  For more information see [MDL-84907](https://tracker.moodle.org/browse/MDL-84907)
 
 ### Changed
 
+- The {user_preferences}.value database field is now TEXT instead of CHAR. This means that any queries with a condition on this field in a WHERE or JOIN statement will need updating to use `$DB->sql_compare_text()`. See the `$newusers` query in `\core\task\send_new_users_password_task::execute` for an example.
+
+  For more information see [MDL-46739](https://tracker.moodle.org/browse/MDL-46739)
 - The `core_renderer::tag_list` function now has a new parameter named `displaylink`. When `displaylink` is set to `true`, the tag name will be displayed as a clickable hyperlink. Otherwise, it will be rendered as plain text.
 
   For more information see [MDL-75075](https://tracker.moodle.org/browse/MDL-75075)
-- The following test classes have been moved into autoloadable locations:
-
-  | Old location | New classname |
-  | --- | --- |
-  | `\core\tests\route_testcase` | `\core\tests\router\route_testcase` |
-  | `\core\router\mocking_route_loader` | `\core\tests\router\mocking_route_loader` |
-
-  For more information see [MDL-83968](https://tracker.moodle.org/browse/MDL-83968)
-
-## 4.5.1
-
-### Added
-
-- `\core\output\activity_header` now uses the `is_title_allowed()` method when setting the title in the constructor.
-
-  This method has been improved to give priority to the 'notitle' option in the theme config for the current page layout, over the top-level option in the theme.
-
-  For example, the Boost theme sets `$THEME->activityheaderconfig['notitle'] = true;` by default, but in its `secure` pagelayout, it has `'notitle' = false`.
-  This prevents display of the title in all layouts except `secure`.
-
-  For more information see [MDL-75610](https://tracker.moodle.org/browse/MDL-75610)
-
-### Changed
-
 - All uses of the following PHPUnit methods have been removed as these methods are
   deprecated upstream without direct replacement:
 
@@ -201,6 +345,139 @@
   Any plugin using these methods must update their uses.
 
   For more information see [MDL-81308](https://tracker.moodle.org/browse/MDL-81308)
+- PHPSpreadSheet has been updated to version 4.0.0.
+
+  All library usage should be via the Moodle wrapper and no change should be required.
+
+  For more information see [MDL-81664](https://tracker.moodle.org/browse/MDL-81664)
+- The Moodle subplugins.json format has been updated to accept a new `subplugintypes` object.
+
+  This should have the same format as the current `plugintypes` format, except that the paths should be relative to the _plugin_ root instead of the Moodle document root.
+
+  Both options can co-exist, but if both are present they must be kept in-sync.
+
+  ```json
+  {
+      "subplugintypes": {
+          "tiny": "plugins"
+      },
+      "plugintypes": {
+          "tiny": "lib/editor/tiny/plugins"
+      }
+  }
+  ```
+
+  For more information see [MDL-83705](https://tracker.moodle.org/browse/MDL-83705)
+- The behat/gherkin has been updated to 4.11.0 which introduces a breaking change where backslashes in feature files need to be escaped.
+
+  For more information see [MDL-83848](https://tracker.moodle.org/browse/MDL-83848)
+- The following test classes have been moved into autoloadable locations:
+
+  | Old location | New classname |
+  | --- | --- |
+  | `\core\tests\route_testcase` | `\core\tests\router\route_testcase` |
+  | `\core\router\mocking_route_loader` | `\core\tests\router\mocking_route_loader` |
+
+  For more information see [MDL-83968](https://tracker.moodle.org/browse/MDL-83968)
+- Analytics is now disabled by default on new installs.
+
+  For more information see [MDL-84107](https://tracker.moodle.org/browse/MDL-84107)
+
+### Deprecated
+
+- The methods `want_read_slave` and `perf_get_reads_slave` in `lib/dml/moodle_database.php` have been deprecated in favour of renamed versions that substitute `slave` for `replica`.
+
+  For more information see [MDL-71257](https://tracker.moodle.org/browse/MDL-71257)
+- The trait `moodle_read_slave_trait` has been deprecated in favour of a functionally identical version called `moodle_read_replica_trait`. The renamed trait substitutes the terminology of `slave` with `replica`, and `master` with `primary`.
+
+  For more information see [MDL-71257](https://tracker.moodle.org/browse/MDL-71257)
+- question_make_default_categories()
+
+  No longer creates a default category in either CONTEXT_SYSTEM, CONTEXT_COURSE, or CONTEXT_COURSECAT.
+  Superceded by question_get_default_category which can optionally create one if it does not exist.
+
+  For more information see [MDL-71378](https://tracker.moodle.org/browse/MDL-71378)
+- question_delete_course()
+
+  No replacement. Course contexts no longer hold question categories.
+
+  For more information see [MDL-71378](https://tracker.moodle.org/browse/MDL-71378)
+- question_delete_course_category()
+
+  Course category contexts no longer hold question categories.
+
+  For more information see [MDL-71378](https://tracker.moodle.org/browse/MDL-71378)
+- The 'core_renderer::sr_text()' function has been deprecated, use 'core_renderer::visually_hidden_text()' instead.
+
+  For more information see [MDL-81825](https://tracker.moodle.org/browse/MDL-81825)
+- The function imagecopybicubic() is now deprecated. The GD lib is a strict requirement, so use imagecopyresampled() instead.
+
+  For more information see [MDL-84449](https://tracker.moodle.org/browse/MDL-84449)
+
+### Removed
+
+- moodle_process_email() has been deprecated with the removal of the unused and non-functioning admin/process_email.php.
+
+  For more information see [MDL-61232](https://tracker.moodle.org/browse/MDL-61232)
+- The method `site_registration_form::add_select_with_email()` has been finally deprecated and will now throw an exception if called.
+
+  For more information see [MDL-71472](https://tracker.moodle.org/browse/MDL-71472)
+- Remove support deprecated boolean 'primary' parameter in \core\output\single_button. The 4th parameter is now a string and not a boolean (the use was to set it to true to have a primary button)
+
+  For more information see [MDL-75875](https://tracker.moodle.org/browse/MDL-75875)
+- Final removal of the following constants/methods from the `\core\encyption` class, removing support for OpenSSL fallback:
+
+  - `METHOD_OPENSSL`
+  - `OPENSSL_CIPHER`
+  - `is_sodium_installed`
+
+  For more information see [MDL-78869](https://tracker.moodle.org/browse/MDL-78869)
+- Final deprecation of core_renderer\activity_information()
+
+  For more information see [MDL-78926](https://tracker.moodle.org/browse/MDL-78926)
+- Final removal of `share_activity()` in `core\moodlenet\activity_sender`, please use `share_resource()` instead.
+
+  For more information see [MDL-79086](https://tracker.moodle.org/browse/MDL-79086)
+- Final deprecation of methods `task_base::is_blocking` and `task_base::set_blocking`.
+
+  For more information see [MDL-81509](https://tracker.moodle.org/browse/MDL-81509)
+- - Remove php-enum library. - It was a dependency of zipstream, but is no longer required as this
+    functionality has been replaced by native PHP functionality.
+
+  For more information see [MDL-82825](https://tracker.moodle.org/browse/MDL-82825)
+- Oracle support has been removed in LMS
+
+  For more information see [MDL-83172](https://tracker.moodle.org/browse/MDL-83172)
+- The Atto HTML editor has been removed from core, along with all standard
+  subplugins.
+
+  The editor is available for continued use in the Plugins Database.
+
+  For more information see [MDL-83282](https://tracker.moodle.org/browse/MDL-83282)
+- Support for `subplugins.php` files has been removed. All subplugin metadata must be created in a `subplugins.json` file.
+
+  For more information see [MDL-83703](https://tracker.moodle.org/browse/MDL-83703)
+- set_alignment(), set_constraint() and do_not_enhance() functions have been fully removed from action_menu class.
+
+  For more information see [MDL-83765](https://tracker.moodle.org/browse/MDL-83765)
+- The `core_output_load_fontawesome_icon_map` web service has been fully removed and replaced by `core_output_load_fontawesome_icon_system_map`
+
+  For more information see [MDL-84036](https://tracker.moodle.org/browse/MDL-84036)
+- Final deprecation and removal of \core\event\course_module_instances_list_viewed
+
+  For more information see [MDL-84593](https://tracker.moodle.org/browse/MDL-84593)
+
+### Fixed
+
+- url class now correctly supports multi level query parameter parsing and output.
+
+  This was previously supported in some methods such as get_query_string, but not others. This has been fixed to be properly supported.
+
+  For example https://example.moodle.net?test[2]=a&test[0]=b will be parsed as ['test' => [2 => 'a', 0 => 'b']]
+
+  All parameter values that are not arrays are casted to strings.
+
+  For more information see [MDL-77293](https://tracker.moodle.org/browse/MDL-77293)
 
 ## 4.5
 

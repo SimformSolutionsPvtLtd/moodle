@@ -102,6 +102,11 @@ class exifremover_service extends service implements file_redactor_service_inter
         string $mimetype,
         string $filepath,
     ): ?string {
+        // Return if there is no EXIF data.
+        if (@exif_read_data($filepath, 'ANY_TAG') === false) {
+            return null;
+        }
+
         if (!$this->is_mimetype_supported($mimetype)) {
             return null;
         }
@@ -120,6 +125,13 @@ class exifremover_service extends service implements file_redactor_service_inter
         string $mimetype,
         string $filecontent,
     ): ?string {
+        // Return if there is no EXIF data.
+        $filepath = make_request_directory() . '/input';
+        file_put_contents($filepath, $filecontent);
+        if (@exif_read_data($filepath, 'ANY_TAG') === false) {
+            return null;
+        }
+
         if (!$this->is_mimetype_supported($mimetype)) {
             return null;
         }
@@ -392,11 +404,11 @@ class exifremover_service extends service implements file_redactor_service_inter
             }
         }
 
-        $icon = $OUTPUT->pix_icon('i/externallink', get_string('opensinnewwindow'));
+        $icon = $OUTPUT->pix_icon('i/externallink', get_string('opensinnewwindow'), attributes: ['class' => 'ms-1']);
         $a = (object) [
             'link' => html_writer::link(
                 url: 'https://exiftool.sourceforge.net/install.html',
-                text: "https://exiftool.sourceforge.net/install.html $icon",
+                text: 'https://exiftool.sourceforge.net/install.html' . $icon,
                 attributes: ['role' => 'opener', 'rel' => 'noreferrer', 'target' => '_blank'],
             ),
         ];

@@ -48,7 +48,7 @@ Feature: SEB settings in quiz access rule
       | question  | page |
       | Reading   | 1    |
     When I am on the "Quiz 1" "quiz activity" page logged in as student1
-    Then "Download Safe Exam Browser" "button" <downloadseblinkvisibility> exist
+    Then "Download Safe Exam Browser" "link" <downloadseblinkvisibility> exist
     And I should see "This quiz has been configured so that students may only attempt it using the Safe Exam Browser."
 
     Examples:

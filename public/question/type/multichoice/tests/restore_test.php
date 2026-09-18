@@ -39,7 +39,8 @@ final class restore_test extends \advanced_testcase {
         // Create a course and a user with editing teacher capabilities.
         $generator = $this->getDataGenerator();
         $course1 = $generator->create_course();
-        $context = \context_course::instance($course1->id);
+        $qbank = $generator->get_plugin_generator('mod_qbank')->create_instance(['course' => $course1->id]);
+        $context = \context_module::instance($qbank->cmid);
         $questiongenerator = $this->getDataGenerator()->get_plugin_generator('core_question');
         $initialcount = $DB->count_records('question');
 
@@ -70,7 +71,13 @@ final class restore_test extends \advanced_testcase {
         $rc->execute_precheck();
         $rc->execute_plan();
         $rc->destroy();
-        $this->assertDebuggingCalled();
+
+        // Executing the precheck and plan will each emit debugging related to missing options.
+        $this->assertDebuggingCalledCount(
+            2,
+            array_fill(0, 2, "Question ID {$question->id} was missing an options record. Using default."),
+            array_fill(0, 2, DEBUG_DEVELOPER),
+        );
 
         // Both quizzes should refer to the same original question.
         $quizzes = get_fast_modinfo($course1->id)->get_instances_of('quiz');

@@ -59,7 +59,7 @@ final class repository_test extends \advanced_testcase {
         // Create repository instance.
         $record = $this->getDataGenerator()->create_repository('wikimedia');
 
-        $this->repo = \repository::get_repository_by_id($record->id, \context_system::instance());
+        $this->repo = \repository::get_repository_by_id($record->id, \core\context\system::instance());
     }
 
     /**

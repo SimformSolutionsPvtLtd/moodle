@@ -28,12 +28,12 @@ namespace mod_quiz\question\bank;
 defined('MOODLE_INTERNAL') || die();
 
 use core\output\datafilter;
+use core\output\html_writer;
 use core_question\local\bank\column_base;
 use core_question\local\bank\condition;
 use core_question\local\bank\column_manager_base;
+use core_question\local\bank\filter_condition_manager;
 use core_question\local\bank\question_version_status;
-use mod_quiz\question\bank\filter\custom_category_condition;
-use qbank_managecategories\category_condition;
 
 require_once($CFG->dirroot . '/mod/quiz/locallib.php');
 /**
@@ -59,6 +59,13 @@ class custom_view extends \core_question\local\bank\view {
     public $component = 'mod_quiz';
 
     /**
+     * Determine if the 'switch question bank' button must be displayed.
+     *
+     * @var bool
+     */
+    protected bool $requirebankswitch;
+
+    /**
      * Constructor.
      * @param \core_question\local\bank\question_edit_contexts $contexts
      * @param \moodle_url $pageurl
@@ -69,24 +76,18 @@ class custom_view extends \core_question\local\bank\view {
     public function __construct($contexts, $pageurl, $course, $cm, $params, $extraparams) {
         // Default filter condition.
         if (!isset($params['filter'])) {
-            $params['filter']  = [];
-            [$categoryid, $contextid] = custom_category_condition::validate_category_param($params['cat']);
-            if (!is_null($categoryid)) {
-                $category = custom_category_condition::get_category_record($categoryid, $contextid);
-                $params['filter']['category'] = [
-                    'jointype' => custom_category_condition::JOINTYPE_DEFAULT,
-                    'values' => [$category->id],
-                    'filteroptions' => ['includesubcategories' =>
-                        get_user_preferences('qbank_managecategories_includesubcategories_filter_default', false)],
-                ];
-            }
+            $params['filter']  = filter_condition_manager::get_default_filter($params['cat']);
+            // The quiz question bank modal doesn't include a hidden filter option.
+            // Therefore, the default filter hidden condition is unnecessary.
+            unset($params['filter']['hidden']);
         }
 
         $this->init_columns($this->wanted_columns(), $this->heading_column());
         $this->pagesize = self::DEFAULT_PAGE_SIZE;
         parent::__construct($contexts, $pageurl, $course, $cm, $params, $extraparams);
-        [$this->quiz, ] = get_module_from_cmid($cm->id);
+        [$this->quiz, ] = get_module_from_cmid($extraparams['quizcmid']);
         $this->set_quiz_has_attempts(quiz_has_attempts($this->quiz->id));
+        $this->requirebankswitch = $extraparams['requirebankswitch'] ?? true;
     }
 
     /**
@@ -242,20 +243,11 @@ class custom_view extends \core_question\local\bank\view {
         }
 
         // Build the where clause.
-        $latestversion = 'qv.version = (SELECT MAX(v.version)
-                                          FROM {question_versions} v
-                                          JOIN {question_bank_entries} be
-                                            ON be.id = v.questionbankentryid
-                                         WHERE be.id = qbe.id AND v.status <> :substatus)';
-
         // An additional condition is required in the subquery to account for scenarios
         // where the latest version is hidden. This ensures we retrieve the previous
         // "Ready" version instead of the hidden latest version.
         $onlyready = '((qv.status = :status))';
-        $this->sqlparams = [
-            'status' => question_version_status::QUESTION_STATUS_READY,
-            'substatus' => question_version_status::QUESTION_STATUS_HIDDEN,
-        ];
+        $this->sqlparams['status'] = question_version_status::QUESTION_STATUS_READY;
         $conditions = [];
         foreach ($this->searchconditions as $searchcondition) {
             if ($searchcondition->where()) {
@@ -265,13 +257,20 @@ class custom_view extends \core_question\local\bank\view {
                 $this->sqlparams = array_merge($this->sqlparams, $searchcondition->params());
             }
         }
-        $majorconditions = ['q.parent = 0', $latestversion, $onlyready];
+        $latestversion = 'qv2.questionbankentryid IS NULL';
+        $majorconditions = ['q.parent = :parent', $latestversion, $onlyready];
+        $this->sqlparams = array_merge(['parent' => 0], $this->sqlparams);
         // Get higher level filter condition.
         $jointype = isset($this->pagevars['jointype']) ? (int)$this->pagevars['jointype'] : condition::JOINTYPE_DEFAULT;
         $nonecondition = ($jointype === datafilter::JOINTYPE_NONE) ? ' NOT ' : '';
         $separator = ($jointype === datafilter::JOINTYPE_ALL) ? ' AND ' : ' OR ';
         // Build the SQL.
-        $sql = ' FROM {question} q ' . implode(' ', $joins);
+        $this->sqlparams['substatus'] = question_version_status::QUESTION_STATUS_HIDDEN;
+        $sql = '      FROM {question} q ' . implode(' ', $joins) .
+               ' LEFT JOIN {question_versions} qv2 ON (   qv2.questionbankentryid = qv.questionbankentryid
+                                                      AND qv2.version > qv.version
+                                                      AND qv2.status <> :substatus
+                                                      )';
         $sql .= ' WHERE ' . implode(' AND ', $majorconditions);
         if (!empty($conditions)) {
             $sql .= ' AND ' . $nonecondition . ' ( ';
@@ -307,5 +306,45 @@ class custom_view extends \core_question\local\bank\view {
      */
     public function get_quiz() {
         return $this->quiz;
+    }
+
+    /**
+     * Shows the question bank interface.
+     *
+     * @return void
+     */
+    public function display(): void {
+
+        echo \html_writer::start_div('questionbankwindow boxwidthwide boxaligncenter', [
+            'data-component' => 'core_question',
+            'data-callback' => 'display_question_bank',
+            'data-contextid' => $this->contexts->lowest()->id,
+        ]);
+
+        // Show the 'switch question bank' button.
+        echo $this->display_bank_switch();
+
+        // Show the filters and search options.
+        $this->wanted_filters();
+        // Continues with list of questions.
+        $this->display_question_list();
+        echo \html_writer::end_div();
+    }
+
+    /**
+     * Get the current bank header and bank switch button.
+     *
+     * @return string
+     */
+    protected function display_bank_switch(): string {
+        global $OUTPUT;
+
+        if (!$this->requirebankswitch) {
+            return '';
+        }
+
+        $cminfo = \cm_info::create($this->cm);
+
+        return $OUTPUT->render_from_template('mod_quiz/switch_bank_header', ['currentbank' => $cminfo->get_formatted_name()]);
     }
 }

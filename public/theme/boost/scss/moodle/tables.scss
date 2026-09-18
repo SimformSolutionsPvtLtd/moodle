@@ -1,69 +1,19 @@
-.generaltable {
-    width: 100%;
-    margin-bottom: $spacer;
-    color: $table-color;
-    background-color: $table-bg; // Reset for nesting within parents with `background-color`.
+/**
+ * File tables.scss.
+ * Contains styles for tables.
+ */
 
+.generaltable {
+    border-top: $table-border-width solid $table-border-color;
     th,
     td {
-        padding: $table-cell-padding;
-        vertical-align: top;
+        padding: .75rem;
         border-top: $table-border-width solid $table-border-color;
-        .form-check {
-            padding: 0;
-        }
-    }
-
-    thead th,
-    thead td {
-        vertical-align: bottom;
-        border-bottom: (2 * $table-border-width) solid $table-border-color;
-    }
-
-    tbody + tbody {
-        border-top: (2 * $table-border-width) solid $table-border-color;
-    }
-
-    tbody tr:nth-of-type(#{$table-striped-order}) {
-        background-color: $table-accent-bg;
-    }
-    thead .sticky-column,
-    tbody tr:nth-of-type(even) {
-        background-color: $white;
-    }
-    tbody tr:nth-of-type(#{$table-striped-order}) .sticky-column {
-        background-color: $table-accent-bg;
-    }
-    &.table-sm {
-        th,
-        td {
-            padding: $table-cell-padding-sm;
-        }
-    }
-    tbody tr {
-        &:hover {
-            color: $table-hover-color;
-            background-color: $table-hover-bg;
-            &.dimmed_text {
-                a:not(.menu-action) {
-                    color: $table-hover-color;
-                }
-            }
-            td.sticky-column {
-                background-color: $table-hover-bg;
-            }
-        }
     }
 }
 
 table {
-    caption {
-        font-size: 24px;
-        font-weight: bold;
-        line-height: 42px;
-        text-align: left;
-        caption-side: top;
-    }
+    caption-side: top;
     .sticky-column {
         position: sticky;
         left: 0;
@@ -71,6 +21,7 @@ table {
     }
 }
 
+// Fix loading icon position in dynamic tables.
 .table-dynamic > .loading-icon {
     position: absolute;
     left: calc(50% - 1.5rem);
@@ -79,5 +30,50 @@ table {
         max-height: 3rem;
         max-width: 3rem;
         font-size: 3rem;
+    }
+}
+
+/**
+ * Custom styles for Bootstrap table classes.
+ */
+
+.table {
+    border-top: $table-border-width solid $table-border-color;
+    // Allow table cells to inherit text color and background color from table rows.
+    tbody {
+        td,
+        th {
+            color: inherit;
+            background-color: inherit;
+        }
+    }
+    // Fix hover styling for table rows.
+    tbody tr:hover {
+        &.dimmed_text,
+        &.text-muted {
+            a:not(.menu-action) {
+                color: $table-hover-color;
+            }
+        }
+        td.sticky-column {
+            background-color: $table-hover-bg;
+        }
+    }
+}
+
+.table-responsive {
+    @include thin-scrolls($gray-100);
+    // Fix dropdown menu position inside responsive tables.
+    .dropdown {
+        position: static !important; /* stylelint-disable-line declaration-no-important */
+    }
+    // Fix visually hidden text in responsive tables.
+    .table {
+        margin-bottom: 0;
+        .visually-hidden,
+        .accesshide {
+            position: relative !important; /* stylelint-disable-line declaration-no-important */
+            display: block;
+        }
     }
 }

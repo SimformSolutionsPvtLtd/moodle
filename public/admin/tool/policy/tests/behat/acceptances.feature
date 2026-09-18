@@ -306,8 +306,6 @@ Feature: Viewing acceptances reports and accepting on behalf of other users
   Scenario: Policy acceptance is prioritised when MFA is enabled
     Given the following config values are set as admin:
       | enabled | 1 | tool_mfa |
-    And the following config values are set as admin:
-      | enabled | 1 | factor_email |
     And I log in as "user1"
     And I press "Next"
     And I set the field "I agree to the This site policy" to "1"

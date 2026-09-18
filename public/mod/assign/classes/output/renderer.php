@@ -252,15 +252,18 @@ class renderer extends \plugin_renderer_base {
         $this->page->set_heading($this->page->course->fullname);
 
         $description = $header->preface;
-        if ($header->showintro || $header->activity) {
-            $description = $this->output->box_start('generalbox boxaligncenter');
-            if ($header->showintro) {
-                $description .= format_module_intro('assign', $header->assign, $header->coursemoduleid);
-            }
-            if ($header->activity) {
-                $description .= $this->format_activity_text($header->assign, $header->coursemoduleid);
-            }
-            $description .= $header->postfix;
+        $introcontent = '';
+        if ($header->showintro) {
+            $introcontent .= format_module_intro('assign', $header->assign, $header->coursemoduleid);
+        }
+        if ($header->activity) {
+            $introcontent .= $this->format_activity_text($header->assign, $header->coursemoduleid);
+        }
+        $introcontent .= $header->postfix ?? '';
+
+        if (trim($introcontent) !== '') {
+            $description .= $this->output->box_start('generalbox boxaligncenter');
+            $description .= $introcontent;
             $description .= $this->output->box_end();
         }
 
@@ -298,12 +301,12 @@ class renderer extends \plugin_renderer_base {
 
         if (isset($summary->cm)) {
             $currenturl = new \moodle_url('/mod/assign/view.php', array('id' => $summary->cm->id));
-            $o .= groups_print_activity_menu($summary->cm, $currenturl->out(), true);
+            $o .= groups_print_activity_menu($summary->cm, $currenturl->out(), true, participationonly: false);
         }
 
         $o .= $this->output->box_start('boxaligncenter gradingsummarytable');
         $t = new \html_table();
-        $t->attributes['class'] = 'generaltable table-bordered';
+        $t->attributes['class'] = 'generaltable table table-striped table-bordered table-hover';
         $t->caption = get_string('gradingsummary', 'assign');
         $t->captionhide = true; // Hidden because it matches the title above.
 
@@ -347,7 +350,7 @@ class renderer extends \plugin_renderer_base {
             }
         }
 
-        $time = time();
+        $time = \core\di::get(\core\clock::class)->time();
         if ($summary->duedate) {
             // Time remaining.
             $duedate = $summary->duedate;
@@ -390,24 +393,6 @@ class renderer extends \plugin_renderer_base {
 
         // All done - write the table.
         $o .= \html_writer::table($t);
-        
-        //Pie Chart for Grading Summary
-        $participants = $summary->participantcount;
-        $submitted = $summary->submissionssubmittedcount;
-        $needsGrading = $summary->submissionsneedgradingcount;
-
-        $participants1 =  $participants - $submitted;
-        $participants2 =  $submitted - $needsGrading;
-
-        $gradeSummary = new \core\chart_series('Participants', [$participants1, $participants2, $needsGrading]);
-        $labels = ['Not Submitted', 'Graded & Submitted', 'Not Graded & Submitted'];
-
-        $chart = new \core\chart_pie();
-        $chart->set_title('PIE CHART FOR GRADE SUMMARY');
-        $chart->add_series($gradeSummary);
-        $chart->set_labels($labels);
-        $o .= $this->output->render($chart);
-        
         $o .= $this->output->box_end();
 
         // Close the container and insert a spacer.
@@ -666,12 +651,12 @@ class renderer extends \plugin_renderer_base {
         $o = '';
         $o .= $this->output->container_start('submissionstatustable');
         $o .= $this->output->heading(get_string('submissionstatusheading', 'assign'), 3);
-        $time = time();
+        $time = \core\di::get(\core\clock::class)->time();
 
         $o .= $this->output->box_start('boxaligncenter submissionsummarytable');
 
         $t = new \html_table();
-        $t->attributes['class'] = 'generaltable table-bordered';
+        $t->attributes['class'] = 'generaltable table table-striped table-bordered table-hover';
         $t->caption = get_string('submissionstatusheading', 'assign');
         $t->captionhide = true; // Hidden because it matches the title above.
 
@@ -1246,10 +1231,19 @@ class renderer extends \plugin_renderer_base {
     /**
      * Render a course index summary
      *
+     * @deprecated since Moodle 5.0 (MDL-83888).
+     * @todo MDL-84429 Final deprecation in Moodle 6.0.
      * @param \assign_course_index_summary $indexsummary
      * @return string
      */
+    #[\core\attribute\deprecated(
+        since: '5.0',
+        mdl: 'MDL-83888',
+        reason: 'The assign_course_index_summary class is not used anymore.',
+    )]
     public function render_assign_course_index_summary(\assign_course_index_summary $indexsummary) {
+        \core\deprecation::emit_deprecation([$this, __FUNCTION__]);
+
         $o = '';
 
         $strplural = get_string('modulenameplural', 'assign');
@@ -1317,7 +1311,7 @@ class renderer extends \plugin_renderer_base {
      *               string and the second is a CSS class.
      */
     protected function get_time_remaining(\mod_assign\output\assign_submission_status $status): array {
-        $time = time();
+        $time = \core\di::get(\core\clock::class)->time();
         $submission = $status->teamsubmission ? $status->teamsubmission : $status->submission;
         $submissionstarted = $submission && property_exists($submission, 'timestarted') && $submission->timestarted;
         $timelimitenabled = get_config('assign', 'enabletimelimit') && $status->timelimit > 0 && $submissionstarted;

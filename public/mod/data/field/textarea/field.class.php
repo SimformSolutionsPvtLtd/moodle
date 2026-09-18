@@ -48,7 +48,7 @@ class data_field_textarea extends data_field_base {
     /**
      * The field name for the content field.
      *
-     * @var string
+     * @var string|null
      */
     protected $fieldname = null;
 
@@ -203,6 +203,15 @@ class data_field_textarea extends data_field_base {
             $link_options->env = 'editor';
             $link_options->itemid = $draftitemid;
 
+            // Subtitles, for multimedia.
+            $args->accepted_types = ['.vtt'];
+            $subtitleoptions = initialise_filepicker($args);
+            $subtitleoptions->context = $this->context;
+            $subtitleoptions->client_id = uniqid();
+            $subtitleoptions->maxbytes  = $options['maxbytes'];
+            $subtitleoptions->env = 'editor';
+            $subtitleoptions->itemid = $draftitemid;
+
             // H5P plugin.
             $args->accepted_types = ['h5p'];
             $h5poptions = initialise_filepicker($args);
@@ -215,6 +224,7 @@ class data_field_textarea extends data_field_base {
             $fpoptions['image'] = $image_options;
             $fpoptions['media'] = $media_options;
             $fpoptions['link'] = $link_options;
+            $fpoptions['subtitle'] = $subtitleoptions;
             $fpoptions['h5p'] = $h5poptions;
         }
 
@@ -232,7 +242,7 @@ class data_field_textarea extends data_field_base {
             'rows="'.$this->field->param3 . '" class="form-control" data-fieldtype="editor" ' .
             'cols="'.$this->field->param2.'" spellcheck="true">'.s($text).'</textarea></div>';
         $str .= '<div><label class="accesshide" for="' . $field . '_content1">' . get_string('format') . '</label>';
-        $str .= '<select id="' . $field . '_content1" name="'.$field.'_content1">';
+        $str .= '<select id="' . $field . '_content1" name="'.$field.'_content1" class="form-select mt-2">';
         foreach ($formats as $key=>$desc) {
             $selected = ($format == $key) ? 'selected="selected"' : '';
             $str .= '<option value="'.s($key).'" '.$selected.'>'.$desc.'</option>';

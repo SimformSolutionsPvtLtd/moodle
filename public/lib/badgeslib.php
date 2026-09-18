@@ -124,13 +124,14 @@ define('OPEN_BADGES_V2_TYPE_ASSERTION', 'Assertion');
 define('OPEN_BADGES_V2_TYPE_BADGE', 'BadgeClass');
 define('OPEN_BADGES_V2_TYPE_ISSUER', 'Issuer');
 define('OPEN_BADGES_V2_TYPE_ENDORSEMENT', 'Endorsement');
-define('OPEN_BADGES_V2_TYPE_AUTHOR', 'Author');
 
 define('BACKPACK_MOVE_UP', -1);
 define('BACKPACK_MOVE_DOWN', 1);
 
 // Global badge class has been moved to the component namespace.
 class_alias('\core_badges\badge', 'badge');
+
+use core_badges\png_metadata_handler;
 
 /**
  * Sends notifications to users about awarded badges.
@@ -157,12 +158,11 @@ function badges_notify_badge_award(badge $badge, $userid, $issued, $filepathhash
     $issuedlink = html_writer::link($badgeurl, $badge->name);
     $userto = $DB->get_record('user', array('id' => $userid), '*', MUST_EXIST);
 
+    // Parameters to use for the event subject/message template.
     $params = new stdClass();
     $params->badgename = $badge->name;
     $params->username = fullname($userto);
     $params->badgelink = $issuedlink;
-    $message = badge_message_from_template($badge->message, $params);
-    $plaintext = html_to_text($message);
 
     // Notify recipient.
     $eventdata = new \core\message\message();
@@ -174,10 +174,11 @@ function badges_notify_badge_award(badge $badge, $userid, $issued, $filepathhash
     $eventdata->notification      = 1;
     $eventdata->contexturl        = $badgeurl;
     $eventdata->contexturlname    = $badge->name;
-    $eventdata->subject           = $badge->messagesubject;
-    $eventdata->fullmessage       = $plaintext;
+    $eventdata->subject           = badge_message_from_template($badge->messagesubject, $params);
+    $eventdata->fullmessagehtml   = badge_message_from_template($badge->message, $params);
+    $eventdata->fullmessage       = html_to_text($eventdata->fullmessagehtml);
     $eventdata->fullmessageformat = FORMAT_HTML;
-    $eventdata->fullmessagehtml   = $message;
+
     $eventdata->smallmessage      = '';
     $eventdata->customdata        = [
         'notificationiconurl' => moodle_url::make_pluginfile_url(
@@ -445,11 +446,14 @@ function badges_prepare_badge_for_external(stdClass $badge, stdClass $user): obj
             'dateexpire'    => $badge->dateexpire,
             'version'       => $badge->version,
             'language'      => $badge->language,
-            'imageauthorname'  => $badge->imageauthorname,
-            'imageauthoremail' => $badge->imageauthoremail,
-            'imageauthorurl'   => $badge->imageauthorurl,
             'imagecaption'     => $badge->imagecaption,
         ];
+    }
+
+    // Course.
+    if ($badge->type == BADGE_TYPE_COURSE) {
+        $course = get_course($context->instanceid);
+        $badge->coursefullname = \core_external\util::format_string($course->fullname, $context);
     }
 
     // Recipient (the badge was awarded to this person).
@@ -514,6 +518,7 @@ function badges_prepare_badge_for_external(stdClass $badge, stdClass $user): obj
 function badges_prepare_badgeclass_for_external(core_badges\output\badgeclass $badgeclass): stdClass {
     global $PAGE;
     $context = $badgeclass->context;
+    $canconfiguredetails = has_capability('moodle/badges:configuredetails', $context);
 
     $badgeurl = new \moodle_url('/badges/badgeclass.php', [
         'id' => $badgeclass->badge->id,
@@ -538,11 +543,20 @@ function badges_prepare_badgeclass_for_external(core_badges\output\badgeclass $b
         'hostedUrl'     => $badgeclass->badge->issuerurl,
         'image'         => $image,
     ];
+
+    // Course.
+    if ($badgeclass->badge->type == BADGE_TYPE_COURSE) {
+        $course = get_course($badgeclass->badge->courseid);
+        $badge->coursefullname = \core_external\util::format_string($course->fullname, $context);
+        if ($canconfiguredetails) {
+            $badge->courseid = $course->id;
+        }
+    }
+
     // Create a badge instance to be able to get the endorsement and other info.
     $badgeinstance = new badge($badgeclass->badge->id);
     $endorsement   = $badgeinstance->get_endorsement();
     $relatedbadges = $badgeinstance->get_related_badges();
-    $canconfiguredetails = has_capability('moodle/badges:configuredetails', $context);
     $alignments = [];
     foreach ($badgeinstance->get_alignments() as $alignment) {
         $alignmentobj = (object) [
@@ -695,7 +709,6 @@ function print_badge_image(badge $badge, stdClass $context, $size = 'small') {
  */
 function badges_bake($hash, $badgeid, $userid = 0, $pathhash = false) {
     global $CFG, $USER;
-    require_once(__DIR__ . '/../badges/lib/bakerlib.php');
 
     $badge = new badge($badgeid);
     $badge_context = $badge->get_context();
@@ -707,7 +720,7 @@ function badges_bake($hash, $badgeid, $userid = 0, $pathhash = false) {
         if ($file = $fs->get_file($badge_context->id, 'badges', 'badgeimage', $badge->id, '/', 'f3.png')) {
             $contents = $file->get_content();
 
-            $filehandler = new PNG_MetaDataHandler($contents);
+            $filehandler = new png_metadata_handler($contents);
             // For now, the site backpack OB version will be used as default.
             $obversion = badges_open_badges_backpack_api();
             $assertion = new core_badges_assertion($hash, $obversion);

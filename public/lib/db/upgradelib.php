@@ -206,7 +206,7 @@ function upgrade_calculated_grade_items($courseid = null) {
     }
 
     if (!empty($possiblecourseids)) {
-        list($sql, $params) = $DB->get_in_or_equal($possiblecourseids);
+        [$sql, $params] = $DB->get_in_or_equal($possiblecourseids);
         // A calculated grade item grade min != 0 and grade max != 100 and the course setting is set to
         // "Initial min and max grades".
         $coursesql = "SELECT DISTINCT courseid
@@ -238,7 +238,7 @@ function upgrade_calculated_grade_items($courseid = null) {
         }
 
         if (!empty($categoryids)) {
-            list($sql, $params) = $DB->get_in_or_equal($categoryids);
+            [$sql, $params] = $DB->get_in_or_equal($categoryids);
             // A category with a calculation where the raw grade min and the raw grade max don't match the grade min and grade max
             // for the category.
             $coursesql = "SELECT DISTINCT gi.courseid
@@ -264,6 +264,125 @@ function upgrade_calculated_grade_items($courseid = null) {
             if (!$gradebookfreeze) {
                 set_config('gradebook_calculations_freeze_' . $affectedcourseid->courseid, 20150627);
             }
+        }
+    }
+}
+
+/**
+ * Freezes gradebook calculations for courses that may be affected by MDL-88407.
+ *
+ * Used during upgrade and course restore to prevent existing grades from being silently changed.
+ *
+ * Assignment grades are checked against the authoritative grade for the student's latest attempt,
+ * so a course is frozen when a penalised grade has an incorrect rawgrade. A second check recomputes
+ * finalgrade from the stored rawgrade and deductedmark using the fixed post-MDL-88407 formula, and
+ * freezes the course if that differs from the stored finalgrade.
+ *
+ * Other item types have no authoritative source to compare against, so any penalised grade
+ * conservatively freezes the course.
+ *
+ * Locked items and locked/overridden grades are excluded throughout: a regrade never touches them,
+ * so there is nothing for a freeze to protect against. The Assignment check also requires a
+ * value-type grade item and a non-null finalgrade, matching what
+ * penalty_manager::repair_penalised_rawgrade() requires to repair a row - freezing on a row that
+ * repair would never fix would leave it with a still-corrupted rawgrade once Accept forces a regrade.
+ *
+ * @param int|null $courseid Specify a course ID to run this script on just one course.
+ */
+function upgrade_penalty_calculation_freeze(?int $courseid = null) {
+    global $CFG, $DB;
+
+    require_once($CFG->libdir . '/gradelib.php');
+
+    $params = [];
+    $singlecoursesql = '';
+    if ($courseid !== null) {
+        $singlecoursesql = 'AND gi.courseid = :courseid';
+        $params['courseid'] = $courseid;
+    }
+
+    // Find courses containing a non-Assignment grade item that may be affected by the bug. Locked
+    // items and locked/overridden grades are never touched by a regrade, so they carry no risk of a
+    // silent change - the same reasoning penalty_manager::repair_penalised_rawgrade() uses to exclude
+    // them from repair.
+    $sql = "SELECT DISTINCT gi.courseid
+              FROM {grade_items} gi
+              JOIN {grade_grades} gg ON gg.itemid = gi.id
+             WHERE gg.deductedmark > 0
+               AND (gi.itemtype <> 'mod' OR gi.itemmodule <> 'assign')
+               AND gi.locked = 0
+               AND gg.locked = 0
+               AND gg.overridden = 0
+               $singlecoursesql";
+    $affectedcourseids = array_fill_keys($DB->get_fieldset_sql($sql, $params), true);
+
+    // Find penalised Assignment grades that meet the conditions required by
+    // penalty_manager::repair_penalised_rawgrade() to repair the row. Freezing a row that cannot be
+    // repaired would leave its rawgrade corrupted when Accept forces a regrade.
+    $assignparams = $params;
+    $assignparams['gradetype'] = GRADE_TYPE_VALUE;
+    $sql = "SELECT gg.id, gi.id AS itemid, gg.rawgrade, gg.deductedmark, ag.grade AS authoritativegrade,
+                   gi.courseid, gg.rawgrademin, gg.rawgrademax, gg.finalgrade
+              FROM {grade_items} gi
+              JOIN {grade_grades} gg ON gg.itemid = gi.id
+              JOIN {assign_submission} asub
+                ON asub.assignment = gi.iteminstance
+               AND asub.userid = gg.userid
+               AND asub.latest = 1
+              JOIN {assign_grades} ag
+                ON ag.assignment = asub.assignment
+               AND ag.userid = asub.userid
+               AND ag.attemptnumber = asub.attemptnumber
+             WHERE gg.deductedmark > 0
+               AND gg.rawgrade IS NOT NULL
+               AND gg.finalgrade IS NOT NULL
+               AND gi.itemtype = 'mod'
+               AND gi.itemmodule = 'assign'
+               AND gi.gradetype = :gradetype
+               AND gi.locked = 0
+               AND gg.locked = 0
+               AND gg.overridden = 0
+               AND ag.grade IS NOT NULL
+               AND ag.grade <> -1
+               $singlecoursesql";
+    $candidates = $DB->get_recordset_sql($sql, $assignparams);
+    $gradeitemcache = [];
+    foreach ($candidates as $candidate) {
+        if (grade_floats_different((float)$candidate->rawgrade, (float)$candidate->authoritativegrade)) {
+            $affectedcourseids[$candidate->courseid] = true;
+        } else {
+            // The rawgrade may match the authoritative grade even when finalgrade is affected by the
+            // legacy calculation, so verify finalgrade using the fixed calculation.
+            if (!array_key_exists($candidate->itemid, $gradeitemcache)) {
+                $gradeitemcache[$candidate->itemid] = grade_item::fetch(['id' => $candidate->itemid]);
+            }
+            $gradeitem = $gradeitemcache[$candidate->itemid];
+            if (!$gradeitem) {
+                continue;
+            }
+
+            $penalisedraw = max($gradeitem->grademin, $candidate->rawgrade - $candidate->deductedmark);
+            $fixedfinalgrade = $gradeitem->adjust_raw_grade(
+                $penalisedraw,
+                $candidate->rawgrademin,
+                $candidate->rawgrademax
+            );
+            if (grade_floats_different((float) $candidate->finalgrade, (float) $fixedfinalgrade)) {
+                // The finalgrade would change if regraded now, so freeze the whole course.
+                $affectedcourseids[$candidate->courseid] = true;
+            }
+        }
+    }
+    $candidates->close();
+
+    foreach (array_keys($affectedcourseids) as $affectedcourseid) {
+        // Check to see if the gradebook freeze is already in effect.
+        $gradebookfreeze = get_config('core', 'gradebook_calculations_freeze_' . $affectedcourseid);
+        if (!$gradebookfreeze) {
+            set_config(
+                'gradebook_calculations_freeze_' . $affectedcourseid,
+                \core_grades\penalty_manager::PENALTY_CALCULATION_FREEZE_VERSION
+            );
         }
     }
 }
@@ -629,7 +748,7 @@ function upgrade_calendar_site_status(bool $output = true): bool {
     ];
 
     $targetsteps = array_merge(array_values($badsteps), array_values( $fixsteps));
-    list($insql, $inparams) = $DB->get_in_or_equal($targetsteps);
+    [$insql, $inparams] = $DB->get_in_or_equal($targetsteps);
     $foundsteps = $DB->get_fieldset_sql("
         SELECT DISTINCT version
           FROM {upgrade_log}
@@ -1441,19 +1560,6 @@ function upgrade_block_set_my_user_parent_context(
                SET bi.parentcontextid = bic.contextid
              WHERE bi.id = bic.instanceid
         EOF;
-    } else if ($dbfamily === 'oracle') {
-        $sql = <<<EOF
-            UPDATE {block_instances} bi
-            SET (bi.parentcontextid) = (
-                SELECT bic.contextid
-                  FROM {block_instance_context} bic
-                 WHERE bic.instanceid = bi.id
-            ) WHERE EXISTS (
-                SELECT 'x'
-                  FROM {block_instance_context} bic
-                 WHERE bic.instanceid = bi.id
-            )
-        EOF;
     } else {
         // Postgres and sqlsrv.
         $sql = <<<EOF
@@ -1896,27 +2002,10 @@ function upgrade_change_binary_column_to_int(
     $dbman->add_field($table, $field);
 
     // Copy the 'true' values from the old field to the new field.
-    if ($DB->get_dbfamily() === 'oracle') {
-        // It's tricky to use the binary column in the WHERE clause in Oracle DBs.
-        // Let's go updating the records one by one. It's nasty, but it's only done for instances with Oracle DBs.
-        // The normal SQL UPDATE statement will be used for other DBs.
-        $columns = implode(', ', ['id', $tmpfieldname, $fieldname]);
-        $records = $DB->get_recordset($tablename, null, '', $columns);
-        if ($records->valid()) {
-            foreach ($records as $record) {
-                if (!$record->$tmpfieldname) {
-                    continue;
-                }
-                $DB->set_field($tablename, $fieldname, 1, ['id' => $record->id]);
-            }
-        }
-        $records->close();
-    } else {
-        $sql = 'UPDATE {' . $tablename . '}
-                   SET ' . $fieldname . ' = 1
-                 WHERE ' . $tmpfieldname . ' = ?';
-        $DB->execute($sql, [1]);
-    }
+    $sql = 'UPDATE {' . $tablename . '}
+               SET ' . $fieldname . ' = 1
+             WHERE ' . $tmpfieldname . ' = ?';
+    $DB->execute($sql, [1]);
 
     // Drop the old field.
     $oldfield = new xmldb_field($tmpfieldname);
@@ -1945,4 +2034,201 @@ function upgrade_store_relative_url_sitehomepage() {
             ]);
         }
     }
+}
+
+/**
+ * Upgrade script to convert existing AI providers to provider instances.
+ */
+function upgrade_convert_ai_providers_to_instances() {
+    global $DB;
+    // Start with the azureai provider.
+    // Only migrate the provider if it is enabled.
+    $azureaiconfig = get_config('aiprovider_azureai');
+    if (!empty($azureaiconfig->enabled) || !empty($azureaiconfig->apikey)) {
+        // Create the instance config. We don't want everything from the provider config.
+        $instanceconfig = [
+            'aiprovider' => \aiprovider_azureai\provider::class,
+            'name' => get_string('pluginname', 'aiprovider_azureai'),
+            'apikey' => $azureaiconfig->apikey ?? '',
+            'endpoint' => $azureaiconfig->endpoint ?? '',
+            'enableglobalratelimit' => $azureaiconfig->enableglobalratelimit ?? 0,
+            'globalratelimit' => $azureaiconfig->globalratelimit ?? 100,
+            'enableuserratelimit' => $azureaiconfig->enableuserratelimit ?? 0,
+            'userratelimit' => $azureaiconfig->userratelimit ?? 10,
+        ];
+        $actionconfig = [
+            'core_ai\aiactions\generate_text' => [
+                'enabled' => $azureaiconfig->generate_text ?? true,
+                'settings' => [
+                    'deployment' => $azureaiconfig->action_generate_text_deployment ?? '',
+                    'apiversion' => $azureaiconfig->action_generate_text_apiversion ?? '2024-06-01',
+                    'systeminstruction' => $azureaiconfig->action_generate_text_systeminstruction
+                        ?? get_string('action_generate_text_instruction', 'core_ai'),
+                ],
+            ],
+            'core_ai\aiactions\generate_image' => [
+                'enabled' => $azureaiconfig->generate_image ?? true,
+                'settings' => [
+                    'deployment' => $azureaiconfig->action_generate_image_deployment ?? '',
+                    'apiversion' => $azureaiconfig->action_generate_image_apiversion ?? '2024-06-01',
+                ],
+            ],
+            'core_ai\aiactions\summarise_text' => [
+                'enabled' => $azureaiconfig->summarise_text ?? true,
+                'settings' => [
+                    'deployment' => $azureaiconfig->action_summarise_text_deployment ?? '',
+                    'apiversion' => $azureaiconfig->action_summarise_text_apiversion ?? '2024-06-01',
+                    'systeminstruction' => $azureaiconfig->action_generate_text_systeminstruction
+                        ?? get_string('action_summarise_text_instruction', 'core_ai'),
+                ],
+            ],
+        ];
+
+        // Because of the upgrade code restrictions we insert directly into the database and don't use the AI manager class.
+        $record = new stdClass();
+        $record->name = get_string('pluginname', 'aiprovider_azureai');
+        $record->provider = \aiprovider_azureai\provider::class;
+        $record->enabled = $azureaiconfig->enabled ?? false;
+        $record->config = json_encode($instanceconfig);
+        $record->actionconfig = json_encode($actionconfig);
+
+        $DB->insert_record('ai_providers', $record);
+    }
+
+    // Now do the same for the openai provider.
+    $openaiconfig = get_config('aiprovider_openai');
+    if (!empty($openaiconfig->enabled) || !empty($openaiconfig->apikey)) {
+        // Create the instance config. We don't want everything from the provider config.
+        $instanceconfig = [
+            'aiprovider' => \aiprovider_openai\provider::class,
+            'name' => get_string('pluginname', 'aiprovider_openai'),
+            'apikey' => $openaiconfig->apikey ?? '',
+            'orgid' => $openaiconfig->orgid ?? '',
+            'enableglobalratelimit' => $openaiconfig->enableglobalratelimit ?? 0,
+            'globalratelimit' => $openaiconfig->globalratelimit ?? 100,
+            'enableuserratelimit' => $openaiconfig->enableuserratelimit ?? 0,
+            'userratelimit' => $openaiconfig->userratelimit ?? 10,
+        ];
+        $actionconfig = [
+            'core_ai\aiactions\generate_text' => [
+                'enabled' => $openaiconfig->generate_text ?? true,
+                'settings' => [
+                    'model' => $openaiconfig->action_generate_text_model ?? 'gpt-4o',
+                    'endpoint' => $openaiconfig->action_generate_text_endpoint ?? 'https://api.openai.com/v1/chat/completions',
+                    'systeminstruction' => $openaiconfig->action_generate_text_systeminstruction
+                        ?? get_string('action_generate_text_instruction', 'core_ai'),
+                ],
+            ],
+            'core_ai\aiactions\generate_image' => [
+                'enabled' => $openaiconfig->generate_image ?? true,
+                'settings' => [
+                    'model' => $openaiconfig->action_generate_text_model ?? 'dall-e-3',
+                    'endpoint' => $openaiconfig->action_generate_text_endpoint ?? 'https://api.openai.com/v1/images/generations',
+                ],
+            ],
+            'core_ai\aiactions\summarise_text' => [
+                'enabled' => $openaiconfig->summarise_text ?? true,
+                'settings' => [
+                    'model' => $openaiconfig->action_generate_text_model ?? 'gpt-4o',
+                    'endpoint' => $openaiconfig->action_generate_text_endpoint ?? 'https://api.openai.com/v1/chat/completions',
+                    'systeminstruction' => $openaiconfig->action_generate_text_systeminstruction
+                        ?? get_string('action_summarise_text_instruction', 'core_ai'),
+                ],
+            ],
+        ];
+
+        $record = new stdClass();
+        $record->name = get_string('pluginname', 'aiprovider_openai');
+        $record->provider = \aiprovider_openai\provider::class;
+        $record->enabled = $openaiconfig->enabled ?? false;
+        $record->config = json_encode($instanceconfig);
+        $record->actionconfig = json_encode($actionconfig);
+
+        $DB->insert_record('ai_providers', $record);
+    }
+
+    // Finally remove the config settings from the plugin config table.
+    $azuresettings = ['enabled', 'apikey', 'endpoint', 'enableglobalratelimit', 'globalratelimit',
+        'enableuserratelimit', 'userratelimit', 'generate_text', 'action_generate_text_enabled', 'action_generate_text_deployment',
+        'action_generate_text_apiversion', 'action_generate_text_systeminstruction', 'generate_image',
+        'action_generate_image_enabled', 'action_generate_image_deployment', 'action_generate_image_apiversion',
+        'summarise_text', 'action_summarise_text_enabled', 'action_summarise_text_deployment', 'action_summarise_text_apiversion',
+        'action_summarise_text_systeminstruction'];
+    array_walk($azuresettings, static fn($setting) => unset_config($setting, 'aiprovider_azureai'));
+    $openaisettings = ['enabled', 'apikey', 'orgid', 'enableglobalratelimit', 'globalratelimit',
+        'enableuserratelimit', 'userratelimit', 'generate_text', 'action_generate_text_enabled', 'action_generate_text_model',
+        'action_generate_text_endpoint', 'action_generate_text_systeminstruction', 'generate_image',
+        'action_generate_image_enabled', 'action_generate_image_model', 'action_generate_image_endpoint',
+        'summarise_text', 'action_summarise_text_enabled', 'action_summarise_text_model', 'action_summarise_text_endpoint',
+        'action_summarise_text_systeminstruction'];
+    array_walk($openaisettings, static fn($setting) => unset_config($setting, 'aiprovider_openai'));
+}
+
+/**
+ * Upgrade script to get all current AI providers and update their action config to include explain.
+ */
+function upgrade_add_explain_action_to_ai_providers() {
+    global $DB;
+    $currentrecords = $DB->get_recordset('ai_providers');
+
+    foreach ($currentrecords as $currentrecord) {
+        $actionconfig = json_decode($currentrecord->actionconfig, true);
+        if ($currentrecord->provider === 'aiprovider_openai\provider') {
+            $explainconfig = [
+                'enabled' => true,
+                'settings' => [
+                    'model' => 'gpt-4o',
+                    'endpoint' => 'https://api.openai.com/v1/chat/completions',
+                    'systeminstruction' => get_string('action_explain_text_instruction', 'core_ai'),
+                ],
+            ];
+        } else if ($currentrecord->provider === 'aiprovider_azureai\provider') {
+            $explainconfig = [
+                'enabled' => true,
+                'settings' => [
+                    'deployment' => '',
+                    'apiversion' => '2024-06-01',
+                    'systeminstruction' => get_string('action_explain_text_instruction', 'core_ai'),
+                ],
+            ];
+        }
+
+        // Update the record with the changes.
+        if (!empty($explainconfig)) {
+            $actionconfig['core_ai\aiactions\explain_text'] = $explainconfig;
+            $currentrecord->actionconfig = json_encode($actionconfig);
+            $DB->update_record('ai_providers', $currentrecord);
+        }
+    }
+
+    $currentrecords->close();
+}
+
+/**
+ * Creates a new ad-hoc task to upgrade the mime-type of files asynchronously.
+ * Thus, we can considerably reduce the time an upgrade takes.
+ *
+ * @param string $mimetype the desired mime-type
+ * @param string[] $extensions a list of file extensions, without the leading dot
+ * @return void
+ */
+function upgrade_create_async_mimetype_upgrade_task(string $mimetype, array $extensions): void {
+    global $DB;
+
+    // Create adhoc task for upgrading of existing files. Due to a code restriction on the upgrade, invoking any core
+    // functions is not permitted. Thus we craft our own ad-hoc task that will process all existing files.
+    $record = new \stdClass();
+    $record->classname = '\core_files\task\asynchronous_mimetype_upgrade_task';
+    $record->component = 'core';
+    $record->customdata = json_encode([
+        'mimetype' => $mimetype,
+        'extensions' => $extensions,
+    ]);
+
+    // Next run time based from nextruntime computation in \core\task\manager::queue_adhoc_task().
+    $clock = \core\di::get(\core\clock::class);
+    $nextruntime = $clock->time() - 1;
+    $record->nextruntime = $nextruntime;
+
+    $DB->insert_record('task_adhoc', $record);
 }

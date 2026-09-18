@@ -1,4 +1,5 @@
 <?php
+
 /**
  * libphonenumber-for-php-lite data file
  * This file has been @generated from libphonenumber data
@@ -6,101 +7,56 @@
  * @internal
  */
 
-return  [
-  'generalDesc' =>
-   [
-    'NationalNumberPattern' => '(?:[25-79]\\d\\d|800)\\d{4}',
-    'PossibleLength' =>
-     [
-      0 => 7,
-    ],
-  ],
-  'fixedLine' =>
-   [
-    'NationalNumberPattern' => '5(?:2\\d|8[1-9])\\d{4}',
-    'ExampleNumber' => '5212345',
-  ],
-  'mobile' =>
-   [
-    'NationalNumberPattern' => '(?:290|5[69]\\d|6(?:[03]0|22|4[0-2]|[69]\\d)|7(?:[34]\\d|7[07])|9(?:6[45]|9[4-8]))\\d{4}',
-    'ExampleNumber' => '5601234',
-  ],
-  'tollFree' =>
-   [
-    'NationalNumberPattern' => '800\\d{4}',
-    'ExampleNumber' => '8001234',
-  ],
-  'premiumRate' =>
-   [
-    'NationalNumberPattern' => '900\\d{4}',
-    'ExampleNumber' => '9001234',
-  ],
-  'sharedCost' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'personalNumber' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'voip' =>
-   [
-    'NationalNumberPattern' => '(?:28\\d|501)\\d{4}',
-    'ExampleNumber' => '5011234',
-  ],
-  'pager' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'uan' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'voicemail' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'noInternationalDialling' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'id' => 'AW',
-  'countryCode' => 297,
-  'internationalPrefix' => '00',
-  'sameMobileAndFixedLinePattern' => false,
-  'numberFormat' =>
-   [
-    0 =>
-     [
-      'pattern' => '(\\d{3})(\\d{4})',
-      'format' => '$1 $2',
-      'leadingDigitsPatterns' =>
-       [
-        0 => '[25-9]',
-      ],
-      'nationalPrefixFormattingRule' => '',
-      'domesticCarrierCodeFormattingRule' => '',
-      'nationalPrefixOptionalWhenFormatting' => false,
-    ],
-  ],
-  'mainCountryForCode' => false,
-  'mobileNumberPortableRegion' => false,
-];
+declare(strict_types=1);
+
+namespace libphonenumber\data;
+
+use libphonenumber\NumberFormat;
+use libphonenumber\PhoneMetadata;
+use libphonenumber\PhoneNumberDesc;
+
+/**
+ * @internal
+ */
+class PhoneNumberMetadata_AW extends PhoneMetadata
+{
+    protected const ID = 'AW';
+    protected const COUNTRY_CODE = 297;
+
+    protected ?string $internationalPrefix = '00';
+
+    public function __construct()
+    {
+        $this->generalDesc = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('(?:[25-79]\d\d|800)\d{4}')
+            ->setPossibleLength([7]);
+        $this->mobile = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('(?:290|5[69]\d|6(?:[03]0|22|4[0-2]|[69]\d)|7(?:[34]\d|7[07])|9(?:6[45]|9[4-8]))\d{4}')
+            ->setExampleNumber('5601234');
+        $this->premiumRate = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('900\d{4}')
+            ->setExampleNumber('9001234');
+        $this->fixedLine = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('5(?:2\d|8[1-9])\d{4}')
+            ->setExampleNumber('5212345');
+        $this->numberFormat = [
+            (new NumberFormat())
+                ->setPattern('(\d{3})(\d{4})')
+                ->setFormat('$1 $2')
+                ->setLeadingDigitsPattern(['[25-9]'])
+                ->setNationalPrefixOptionalWhenFormatting(false),
+        ];
+        $this->tollFree = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('800\d{4}')
+            ->setExampleNumber('8001234');
+        $this->sharedCost = PhoneNumberDesc::empty();
+        $this->personalNumber = PhoneNumberDesc::empty();
+        $this->voip = (new PhoneNumberDesc())
+            ->setNationalNumberPattern('(?:28\d|501)\d{4}')
+            ->setExampleNumber('5011234');
+        $this->pager = PhoneNumberDesc::empty();
+        $this->uan = PhoneNumberDesc::empty();
+        $this->voicemail = PhoneNumberDesc::empty();
+        $this->noInternationalDialling = PhoneNumberDesc::empty();
+    }
+}

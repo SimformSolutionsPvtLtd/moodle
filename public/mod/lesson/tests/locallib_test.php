@@ -25,6 +25,7 @@
 namespace mod_lesson;
 
 use lesson;
+use core\context\module as context_module;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -285,5 +286,340 @@ final class locallib_test extends \advanced_testcase {
         $lesson = $this->getDataGenerator()->create_module('lesson', ['course' => $course, 'maxattempts' => $maxattempts]);
         $lesson = new lesson($lesson);
         $this->assertEquals($expected, $lesson->get_last_attempt($attempts));
+    }
+
+    /**
+     * Helper function to create attempts for a lesson.
+     *
+     * @param lesson $lesson The lesson object.
+     * @param int $userid The user ID for whom the attempts are created.
+     * @param int $count The number of attempts to create.
+     */
+    private function create_user_attempts(lesson $lesson, int $userid, int $count): void {
+        /** @var \mod_lesson_generator $lessongenerator */
+        $lessongenerator = $this->getDataGenerator()->get_plugin_generator('mod_lesson');
+
+        for ($i = 0; $i < $count; $i++) {
+            $lessongenerator->create_attempt([
+                'lessonid' => $lesson->id,
+                'userid' => $userid,
+                'grade' => 100,
+                'retry' => $i,
+            ]);
+        }
+    }
+
+    /**
+     * Helper function to create lesson pages with multichoice questions.
+     *
+     * @param lesson $lesson The lesson object.
+     * @param int $count The number of multichoice questions to create.
+     */
+    private function create_lesson_pages(lesson $lesson, int $count): void {
+        /** @var \mod_lesson_generator $lessongenerator */
+        $lessongenerator = $this->getDataGenerator()->get_plugin_generator('mod_lesson');
+
+        for ($i = 0; $i < $count; $i++) {
+            $lessongenerator->create_page([
+                'title' => 'Multichoice question' . ($i + 1),
+                'content' => 'Question content',
+                'qtype' => 'multichoice',
+                'lessonid' => $lesson->id,
+            ]);
+            $lessongenerator->create_answer(['page' => 'Multichoice question' . ($i + 1), 'answer' => 'A', 'score' => 1]);
+            $lessongenerator->create_answer(['page' => 'Multichoice question' . ($i + 1), 'answer' => 'B']);
+        }
+        $lessongenerator->finish_generate_answer();
+    }
+
+    /**
+     * Test the count_all_attempts, count_attempted_participants and count_all_participants methods.
+     *
+     * @covers \lesson::count_all_submissions
+     * @covers \lesson::count_submitted_participants
+     * @covers \lesson::count_all_participants
+     */
+    public function test_count_attempts_and_participants(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $course = $this->getDataGenerator()->create_course();
+        $student1 = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $student2 = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $student3 = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $student4 = $this->getDataGenerator()->create_and_enrol($course, 'student');
+
+        $teacher = $this->getDataGenerator()->create_and_enrol($course, 'teacher');
+
+        $lessonrecord = $this->getDataGenerator()->create_module(
+            'lesson',
+            ['course' => $course, 'retake' => 1]
+        );
+
+        $lesson = new lesson($lessonrecord);
+        $this->create_lesson_pages($lesson, 2);
+        $this->create_user_attempts($lesson, $student1->id, 1);
+        $this->create_user_attempts($lesson, $student2->id, 2);
+        $this->create_user_attempts($lesson, $student3->id, 2);
+
+        $this->setUser($teacher->id);
+
+        $this->assertEquals(5, $lesson->count_all_submissions([]));
+        $this->assertEquals(3, $lesson->count_submitted_participants([]));
+        $this->assertEquals(4, $lesson->count_all_participants([]));
+
+        // Check that the lesson is not counting teachers as participants.
+        $teacher2 = $this->getDataGenerator()->create_and_enrol($course, 'teacher');
+        $this->assertEquals(4, $lesson->count_all_participants([]));
+        $student5 = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $this->assertEquals(5, $lesson->count_all_participants([]));
+
+        // Prohibit mod/lesson:view capability on student role to ensure it does not count students as participants/submissions.
+        $studentrole = $DB->get_record('role', ['shortname' => 'student']);
+        assign_capability(
+            'mod/lesson:view',
+            CAP_PROHIBIT,
+            $studentrole->id,
+            context_module::instance($lesson->get_cm()->id)
+        );
+        $this->assertEquals(0, $lesson->count_all_submissions([]));
+        $this->assertEquals(0, $lesson->count_submitted_participants([]));
+        $this->assertEquals(0, $lesson->count_all_participants([]));
+    }
+
+    /**
+     * Test the count_all_attempts, count_attempted_participants and count_all_participants methods with groups.
+     *
+     * @covers \lesson::count_all_submissions
+     * @covers \lesson::count_submitted_participants
+     * @covers \lesson::count_all_participants
+     */
+    public function test_count_attempts_and_participants_with_groups(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $course = $this->getDataGenerator()->create_course();
+        $student1 = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $student2 = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $student3 = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $student4 = $this->getDataGenerator()->create_and_enrol($course, 'student');
+
+        $lessonrecord = $this->getDataGenerator()->create_module(
+            'lesson',
+            ['course' => $course, 'retake' => 1, 'groupmode' => SEPARATEGROUPS]
+        );
+
+        $lesson = new lesson($lessonrecord);
+        $this->create_lesson_pages($lesson, 2);
+        $this->create_user_attempts($lesson, $student1->id, 1);
+        $this->create_user_attempts($lesson, $student2->id, 2);
+        $this->create_user_attempts($lesson, $student3->id, 2);
+
+        $group1 = $this->getDataGenerator()->create_group(['courseid' => $course->id]);
+        $group2 = $this->getDataGenerator()->create_group(['courseid' => $course->id]);
+        $this->getDataGenerator()->create_group_member(['userid' => $student1->id, 'groupid' => $group1->id]);
+        $this->getDataGenerator()->create_group_member(['userid' => $student2->id, 'groupid' => $group1->id]);
+        $this->getDataGenerator()->create_group_member(['userid' => $student4->id, 'groupid' => $group2->id]);
+
+        // The following data was created for the lesson:
+        // Student 1: group 1, with 1 submission.
+        // Student 2: group 1, with 2 submissions.
+        // Student 3: not in a group, with 2 submissions.
+        // Student 4: group 2, with no submissions.
+
+        $this->assertEquals(3, $lesson->count_all_submissions([$group1->id]));
+        $this->assertEquals(2, $lesson->count_submitted_participants([$group1->id]));
+        $this->assertEquals(2, $lesson->count_all_participants([$group1->id]));
+
+        $this->assertEquals(3, $lesson->count_all_submissions([$group1->id, $group2->id]));
+        $this->assertEquals(2, $lesson->count_submitted_participants([$group1->id, $group2->id]));
+        $this->assertEquals(3, $lesson->count_all_participants([$group1->id, $group2->id]));
+
+        // Check that the lesson is not counting teachers as participants.
+        $teacher = $this->getDataGenerator()->create_and_enrol($course, 'teacher');
+        $this->getDataGenerator()->create_group_member(['userid' => $teacher->id, 'groupid' => $group1->id]);
+        $this->assertEquals(2, $lesson->count_all_participants([$group1->id]));
+    }
+
+    /**
+     * Data provider for test_get_last_page_seen_with_this_page_jumpto.
+     *
+     * Each case defines:
+     *  - maxattempts:   Lesson setting (0 = unlimited).
+     *  - attemptcount:  Number of wrong attempts on the question page.
+     *  - expectnextpage Whether we expect get_last_page_seen() to return the next page.
+     *
+     * @return array
+     */
+    public static function get_last_page_seen_dataprovider(): array {
+        return [
+            // Unlimited attempts: even with multiple wrong attempts, we should stay on the same page.
+            'unlimited_attempts_one_attempt' => [0, 1, false],
+            'unlimited_attempts_two_attempts' => [0, 2, false],
+
+            // Maxattempts = 1, with one wrong attempt: attempts are exhausted, move to next page.
+            'single_attempt_limit_reached' => [1, 1, true],
+
+            // Maxattempts = 2, with one wrong attempt: not exhausted yet, stay on same page.
+            'two_attempt_limit_not_reached' => [2, 1, false],
+
+            // Maxattempts = 2, with two wrong attempts: exhausted, move to next page.
+            'two_attempt_limit_reached' => [2, 2, true],
+        ];
+    }
+
+    /**
+     * Helper to create a lesson with a question page followed by a content page,
+     * where the wrong answer on the question jumps to "This page".
+     *
+     * Returns:
+     *  - course       => course record
+     *  - lesson       => lesson object
+     *  - questionpage => question page record
+     *  - nextpage     => next page record
+     *  - wronganswer  => wrong answer record (jumpto = LESSON_THISPAGE)
+     *
+     * @param int $maxattempts The lesson maxattempts setting (0 = unlimited).
+     * @return array
+     */
+    private function create_lesson_with_this_page_wrong_answer(int $maxattempts): array {
+        global $DB;
+
+        // Course and lesson.
+        $course = $this->getDataGenerator()->create_course();
+        $lessonrecord = $this->getDataGenerator()->create_module('lesson', [
+            'course' => $course->id,
+            'maxattempts' => $maxattempts,
+        ]);
+        $lesson = new lesson($lessonrecord);
+
+        /** @var \mod_lesson_generator $lessongenerator */
+        $lessongenerator = $this->getDataGenerator()->get_plugin_generator('mod_lesson');
+
+        // Create a multichoice question page followed by a content page.
+        $questionpage = [
+            'title' => 'Question page',
+            'content' => 'What animal is an amphibian?',
+            'qtype' => 'multichoice',
+            'lessonid' => $lesson->id,
+        ];
+        $nextpage = [
+            'title' => 'Next content page',
+            'content' => 'This is the next page.',
+            'qtype' => 'content',
+            'lessonid' => $lesson->id,
+        ];
+
+        $lessongenerator->create_page($questionpage);
+        $lessongenerator->create_page($nextpage);
+
+        // Add a correct answer (Next page) and an incorrect answer (This page).
+        $lessongenerator->create_answer([
+            'page' => $questionpage['title'],
+            'answer' => 'Frog',
+            'response' => 'Correct',
+            'jumpto' => 'Next page',
+            'score' => 1,
+        ]);
+        $lessongenerator->create_answer([
+            'page' => $questionpage['title'],
+            'answer' => 'Cat',
+            'response' => 'Incorrect',
+            'jumpto' => 'This page',
+            'score' => 0,
+        ]);
+
+        $lessongenerator->finish_generate_answer();
+
+        $questionpagedb = $DB->get_record('lesson_pages', [
+            'lessonid' => $lesson->id,
+            'qtype' => LESSON_PAGE_MULTICHOICE,
+        ], '*', MUST_EXIST);
+
+        $nextpagedb = $DB->get_record('lesson_pages', [
+            'lessonid' => $lesson->id,
+            'qtype' => LESSON_PAGE_BRANCHTABLE,
+        ], '*', MUST_EXIST);
+
+        // Fetch the wrong answer record.
+        $wronganswerdb = $DB->get_record('lesson_answers', [
+            'lessonid' => $lesson->id,
+            'pageid' => $questionpagedb->id,
+            'score' => 0,
+        ], '*', MUST_EXIST);
+
+        return [
+            'course' => $course,
+            'lesson' => $lesson,
+            'questionpage' => $questionpagedb,
+            'nextpage' => $nextpagedb,
+            'wronganswer' => $wronganswerdb,
+        ];
+    }
+
+    /**
+     * Test get_last_page_seen() when the last attempts were wrong answers with a
+     * "This page" jump, for different maxattempts and attempt counts.
+     *
+     * Scenario:
+     *  - Lesson with a multichoice question followed by a content page.
+     *  - Wrong answer on the question jumps to "This page".
+     *  - We record wrong attempts on that question.
+     *  - We call get_last_page_seen(0) to determine where resuming should start.
+     *
+     * For unlimited attempts (maxattempts = 0) we should always stay on the question page.
+     * For limited attempts, once count(attempts) >= maxattempts, we should go to the next page.
+     *
+     * @dataProvider get_last_page_seen_dataprovider
+     * @param int $maxattempts Lesson setting (0 = unlimited).
+     * @param int $attemptcount Number of wrong attempts to create on the question page.
+     * @param bool $expectnextpage Whether we expect the next page to be returned.
+     * @covers ::get_last_page_seen
+     */
+    public function test_get_last_page_seen_with_this_page_jumpto(int $maxattempts, int $attemptcount, bool $expectnextpage): void {
+        global $DB;
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        // Build the lesson scenario.
+        [
+            'course' => $course,
+            'lesson' => $lesson,
+            'questionpage' => $questionpage,
+            'nextpage' => $nextpage,
+            'wronganswer' => $wronganswer,
+        ] = $this->create_lesson_with_this_page_wrong_answer($maxattempts);
+        // Create and enrol a student.
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+
+        // Act as the student.
+        $this->setUser($student);
+
+        // Create the required number of wrong attempts on the question page.
+        for ($i = 0; $i < $attemptcount; $i++) {
+            $attempt = (object) [
+                'lessonid' => $lesson->id,
+                'pageid' => $questionpage->id,
+                'userid' => $student->id,
+                'answerid' => $wronganswer->id,
+                'retry' => 0,
+                'correct' => 0,
+                'useranswer' => 'Cat', // Cat is the incorrect answer.
+                'timeseen' => time(),
+            ];
+            $DB->insert_record('lesson_attempts', $attempt);
+        }
+
+        // Call the method under test.
+        $lastpageid = $lesson->get_last_page_seen(0);
+
+        // Decide which page we expect based on the data provider.
+        $expectedpageid = $expectnextpage ? $nextpage->id : $questionpage->id;
+        $this->assertEquals($expectedpageid, $lastpageid);
     }
 }

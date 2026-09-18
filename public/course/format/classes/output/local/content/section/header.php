@@ -84,7 +84,7 @@ class header implements named_templatable, renderable {
         } else {
             if (is_null($format->get_sectionid()) || $format->get_sectionid() != $section->id) {
                 // All sections are displayed.
-                if (!$data->editing) {
+                if (!$data->editing && $section->uservisible) {
                     $data->title = $output->section_title($section, $course);
                 } else {
                     $data->title = $output->section_title_without_link($section, $course);
@@ -119,7 +119,7 @@ class header implements named_templatable, renderable {
         }
 
         // Delegated sections in main course page need to have h4 tag, h3 otherwise.
-        $data->headinglevel = ($section->is_delegated() && is_null($format->get_sectionid())) ? 4 : 3;
+        $data->headinglevel = ($section->get_component_instance() && is_null($format->get_sectionid())) ? 4 : 3;
 
         return $data;
     }

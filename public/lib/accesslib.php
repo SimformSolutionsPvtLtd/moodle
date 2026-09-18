@@ -2881,12 +2881,12 @@ function get_roles_used_in_context(context $context, $includeparents = true) {
  * It is using the CFG->profileroles to limit the list to only interesting roles.
  * (The permission tab has full details of user role assignments.)
  *
- * @param int $userid
+ * @param int $userid ID of the user whose course roles are filtered by visibility
  * @param int $courseid
  * @return string
  */
 function get_user_roles_in_course($userid, $courseid) {
-    global $CFG, $DB;
+    global $CFG, $DB, $USER;
     if ($courseid == SITEID) {
         $context = context_system::instance();
     } else {
@@ -2926,7 +2926,7 @@ function get_user_roles_in_course($userid, $courseid) {
     $rolestring = '';
 
     if ($roles = $DB->get_records_sql($sql, $params)) {
-        $viewableroles = get_viewable_roles($context, $userid);
+        $viewableroles = get_viewable_roles($context, $USER->id);
 
         $rolenames = array();
         foreach ($roles as $roleid => $unused) {
@@ -3384,7 +3384,7 @@ function get_switchable_roles(context $context, $rolenamedisplay = ROLENAME_ALIA
  * Gets a list of roles that this user can view in a context
  *
  * @param context $context a context.
- * @param int $userid id of user.
+ * @param int $userid id of user whose viewable roles we are fetching
  * @param int $rolenamedisplay the type of role name to display. One of the
  *      ROLENAME_X constants. Default ROLENAME_ALIAS.
  * @return array an array $roleid => $rolename.
@@ -4421,11 +4421,6 @@ function role_switch($roleid, context $context) {
         load_all_capabilities();
     }
 
-    // Make sure that course index is refreshed.
-    if ($coursecontext = $context->get_course_context()) {
-        core_courseformat\base::session_cache_reset(get_course($coursecontext->instanceid));
-    }
-
     // Add the switch RA
     if ($roleid == 0) {
         unset($USER->access['rsw'][$context->path]);
@@ -4434,6 +4429,12 @@ function role_switch($roleid, context $context) {
 
     $USER->access['rsw'][$context->path] = $roleid;
 
+    // Dispatch the hook for post user switch.
+    $hook = new \core\hook\access\after_role_switched(
+            context: $context,
+            roleid: $roleid
+        );
+    \core\di::get(\core\hook\manager::class)->dispatch($hook);
     return true;
 }
 

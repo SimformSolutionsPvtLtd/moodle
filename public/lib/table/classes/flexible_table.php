@@ -277,7 +277,7 @@ class flexible_table {
     }
 
     /**
-     * Use text sorting functions for this column (required for text columns with Oracle).
+     * Use text sorting functions for this column.
      * Be warned that you cannot use this with column aliases. You can only do this
      * with real columns. See MDL-40481 for an example.
      * @param string column name
@@ -1260,7 +1260,7 @@ class flexible_table {
 
         if (!empty($this->prefs['collapse'][$column])) {
             $linkattributes = [
-                'title' => get_string('show') . ' ' . strip_tags($this->headers[$index]),
+                'title' => get_string('showx', 'core', strip_tags($this->headers[$index])),
                 'aria-expanded' => 'false',
                 'aria-controls' => $ariacontrols,
                 'data-action' => 'show',
@@ -1274,7 +1274,7 @@ class flexible_table {
             );
         } else if ($this->headers[$index] !== null) {
             $linkattributes = [
-                'title' => get_string('hide') . ' ' . strip_tags($this->headers[$index]),
+                'title' => get_string('hidex', 'core', strip_tags($this->headers[$index])),
                 'aria-expanded' => 'true',
                 'aria-controls' => $ariacontrols,
                 'data-action' => 'hide',
@@ -1715,15 +1715,21 @@ class flexible_table {
             $this->request[TABLE_VAR_DIR] => $sortorder,
         ];
 
+        if ($order != SORT_ASC) {
+            $sortlabel = get_string('sortbyxreverse', 'moodle', $text);
+        } else {
+            $sortlabel = get_string('sortbyx', 'moodle', $text);
+        }
+
         return html_writer::link(
             $this->baseurl->out(false, $params),
-            $text . get_accesshide(get_string('sortby') . ' ' .
-                $text . ' ' . $this->sort_order_name($isprimary, $order)),
+            $text,
             [
                     'data-sortable' => $this->is_sortable($column),
                     'data-sortby' => $column,
                     'data-sortorder' => $sortorder,
                     'role' => 'button',
+                    'aria-label' => $sortlabel,
             ]
         ) . ' ' . $this->sort_icon($isprimary, $order);
     }
@@ -1888,7 +1894,7 @@ class flexible_table {
         // Start of main data table.
 
         if ($this->responsive) {
-            echo html_writer::start_tag('div', ['class' => 'no-overflow']);
+            echo html_writer::start_tag('div', ['class' => 'table-responsive']);
         }
         echo html_writer::start_tag('table', $this->attributes) . $this->render_caption();
     }

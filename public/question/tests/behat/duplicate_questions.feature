@@ -1,4 +1,4 @@
-@core @core_question
+@core @core_question @javascript
 Feature: A teacher can duplicate questions in the question bank
   In order to efficiently expand my question bank
   As a teacher
@@ -14,13 +14,17 @@ Feature: A teacher can duplicate questions in the question bank
     And the following "course enrolments" exist:
       | user    | course | role           |
       | teacher | C1     | editingteacher |
+    And the following "activities" exist:
+      | activity   | name    | intro              | course | idnumber |
+      | qbank      | Qbank 1 | Question bank 1    | C1     | qbank1   |
     And the following "question categories" exist:
-      | contextlevel | reference | name           |
-      | Course       | C1        | Test questions |
+      | contextlevel    | reference | name           |
+      | Activity module | qbank1    | Test questions |
     And the following "questions" exist:
       | questioncategory | qtype | name                       | questiontext                  | idnumber |
       | Test questions   | essay | Test question to be copied | Write about whatever you want | qid      |
-    And I am on the "Course 1" "core_question > course question bank" page logged in as "teacher"
+    And I am on the "Qbank 1" "core_question > question bank" page logged in as "teacher"
+    And I apply question bank filter "Category" with value "Test questions"
 
   Scenario: Duplicating a previously created question
     When I choose "Duplicate" action for "Test question to be copied" in the question bank
@@ -37,7 +41,6 @@ Feature: A teacher can duplicate questions in the question bank
     When I choose "Duplicate" action for "Test question to be copied" in the question bank
     Then the field "Question name" matches value "Test question to be copied (copy)"
 
-  @javascript
   Scenario: The duplicate operation can be cancelled
     When I choose "Duplicate" action for "Test question to be copied" in the question bank
     And I press "Cancel"

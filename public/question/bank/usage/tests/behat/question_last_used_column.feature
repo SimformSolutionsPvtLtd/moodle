@@ -10,8 +10,8 @@ Feature: Use the qbank plugin manager page for question last used
       | activity   | name      | course | idnumber |
       | quiz       | Test quiz | C1     | quiz1    |
     And the following "question categories" exist:
-      | contextlevel | reference | name           |
-      | Course         | C1     | Test questions |
+      | contextlevel    | reference | name           |
+      | Activity module | quiz1     | Test questions |
     And the following "questions" exist:
       | questioncategory | qtype     | name           | questiontext              |
       | Test questions   | truefalse | First question | Answer the first question |
@@ -23,9 +23,11 @@ Feature: Use the qbank plugin manager page for question last used
     When I click on "Disable" "link" in the "Question usage" "table_row"
     And I am on the "Test quiz" "quiz activity" page
     And I navigate to "Question bank" in current page administration
+    And I apply question bank filter "Category" with value "Test questions"
     Then I should not see "Last used"
     And I navigate to "Plugins > Question bank plugins > Manage question bank plugins" in site administration
     And I click on "Enable" "link" in the "Question usage" "table_row"
     And I am on the "Test quiz" "quiz activity" page
     And I navigate to "Question bank" in current page administration
+    And I apply question bank filter "Category" with value "Test questions"
     And I should see "Last used"

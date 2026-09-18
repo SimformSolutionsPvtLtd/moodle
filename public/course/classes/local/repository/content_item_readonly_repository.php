@@ -111,6 +111,19 @@ class content_item_readonly_repository implements content_item_readonly_reposito
     }
 
     /**
+     * Filter out any modules that are not to be rendered or managed on the course page.
+     *
+     * @param content_item[] $contentitems items to be filtered
+     * @return content_item[] filtered items
+     */
+    private static function filter_out_items_not_to_be_displayed(array $contentitems): array {
+        return array_filter($contentitems, static function ($module) {
+            [, $name] = core_component::normalize_component($module->get_component_name());
+            return \course_modinfo::is_mod_type_visible_on_course($name);
+        });
+    }
+
+    /**
      * Find all the available content items, not restricted to course or user.
      *
      * @return array the array of content items.
@@ -134,19 +147,23 @@ class content_item_readonly_repository implements content_item_readonly_reposito
             $help = $this->get_core_module_help_string($mod->name);
             $archetype = plugin_supports('mod', $mod->name, FEATURE_MOD_ARCHETYPE, MOD_ARCHETYPE_OTHER);
             $purpose = plugin_supports('mod', $mod->name, FEATURE_MOD_PURPOSE, MOD_PURPOSE_OTHER);
+            $otherpurpose = plugin_supports('mod', $mod->name, FEATURE_MOD_OTHERPURPOSE);
             $isbranded = component_callback('mod_' . $mod->name, 'is_branded', [], false);
+            $gradable = plugin_supports('mod', $mod->name, FEATURE_GRADE_HAS_GRADE, false);
 
             $contentitem = new content_item(
-                $mod->id,
-                $mod->name,
-                new lang_string_title("modulename", $mod->name),
-                new \moodle_url(''), // No course scope, so just an empty link.
-                $OUTPUT->pix_icon('monologo', '', $mod->name, ['class' => 'icon activityicon']),
-                $help,
-                $archetype,
-                'mod_' . $mod->name,
-                $purpose,
-                $isbranded,
+                id: $mod->id,
+                name: $mod->name,
+                title: new lang_string_title("modulename", $mod->name),
+                link: new \moodle_url(''), // No course scope, so just an empty link.
+                icon: $OUTPUT->pix_icon('monologo', '', $mod->name, ['class' => 'icon activityicon']),
+                help: $help,
+                archetype: $archetype,
+                componentname: 'mod_' . $mod->name,
+                purpose: $purpose,
+                branded: $isbranded,
+                gradable: $gradable,
+                otherpurpose: $otherpurpose,
             );
 
             $modcontentitemreference = clone($contentitem);
@@ -169,7 +186,9 @@ class content_item_readonly_repository implements content_item_readonly_reposito
                 $return[] = $contentitem;
             }
         }
-        return $return;
+
+        // These module types are not to be rendered to the course page.
+        return self::filter_out_items_not_to_be_displayed($return);
     }
 
     /**
@@ -198,7 +217,9 @@ class content_item_readonly_repository implements content_item_readonly_reposito
             $help = $this->get_core_module_help_string($mod->name);
             $archetype = plugin_supports('mod', $mod->name, FEATURE_MOD_ARCHETYPE, MOD_ARCHETYPE_OTHER);
             $purpose = plugin_supports('mod', $mod->name, FEATURE_MOD_PURPOSE, MOD_PURPOSE_OTHER);
+            $otherpurpose = plugin_supports('mod', $mod->name, FEATURE_MOD_OTHERPURPOSE);
             $isbranded = component_callback('mod_' . $mod->name, 'is_branded', [], false);
+            $gradable = plugin_supports('mod', $mod->name, FEATURE_GRADE_HAS_GRADE, false);
 
             $icon = 'monologo';
             // Quick check for monologo icons.
@@ -209,16 +230,18 @@ class content_item_readonly_repository implements content_item_readonly_reposito
                 $iconclass = 'nofilter';
             }
             $contentitem = new content_item(
-                $mod->id,
-                $mod->name,
-                new lang_string_title("modulename", $mod->name),
-                new \moodle_url('/course/mod.php', ['id' => $course->id, 'add' => $mod->name]),
-                $OUTPUT->pix_icon($icon, '', $mod->name, ['class' => "activityicon $iconclass"]),
-                $help,
-                $archetype,
-                'mod_' . $mod->name,
-                $purpose,
-                $isbranded,
+                id: $mod->id,
+                name: $mod->name,
+                title: new lang_string_title("modulename", $mod->name),
+                link: new \moodle_url('/course/mod.php', ['id' => $course->id, 'add' => $mod->name]),
+                icon: $OUTPUT->pix_icon($icon, '', $mod->name, ['class' => "activityicon $iconclass"]),
+                help: $help,
+                archetype: $archetype,
+                componentname: 'mod_' . $mod->name,
+                purpose: $purpose,
+                branded: $isbranded,
+                gradable: $gradable,
+                otherpurpose: $otherpurpose,
             );
 
             $modcontentitemreference = clone($contentitem);
@@ -243,6 +266,7 @@ class content_item_readonly_repository implements content_item_readonly_reposito
             }
         }
 
-        return $return;
+        // These module types are not to be rendered to the course page.
+        return self::filter_out_items_not_to_be_displayed($return);
     }
 }
