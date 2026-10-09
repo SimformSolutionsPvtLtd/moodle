@@ -1,0 +1,234 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    Edwiser RemUI
+    @package   theme_remui
+    @copyright (c) 2020 WisdmLabs (https://wisdmlabs.com/)
+    @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+
+}}
+{{!
+    @template theme_remui/activity_navigation
+
+    Display the activity navigation for all activities in a course
+
+    Context variables required for this template:
+
+    Example context (json):
+    {
+    }
+}}
+{{{notice}}}
+{{#bfs}}
+    {{> local_edwiserreports/black_friday_sale }}
+{{/bfs}}
+<div class="mx-4">
+    {{> local_edwiserreports/navigation }}
+</div>
+<div class="edwiserreports-header position-relative mb-5 mx-4">
+    <div class="edwiserreport-title theme-1-color text-left">
+        <h2 class="m-0">{{#str}} dashboard, local_edwiserreports {{/str}}</h2>
+        <label class="h5 selected-period theme-1-bg text-white">{{#str}} loading, local_edwiserreports {{/str}}</label>
+    </div>
+    <div class="ml-auto filter-wrapper text-right mt-2">
+
+        <div class="filter-selector d-inline-block ml-1">
+            <label>{{#str}} date, local_edwiserreports {{/str}}</label>
+            <button type="button" class="btn dropdown-toggle text-left edwiserreports-calendar" data-toggle="dropdown" aria-expanded="false">
+                {{#str}} last7days, local_edwiserreports {{/str}}
+            </button>
+            <div class="dropdown-menu" aria-labelledby="filter-dropdown" role="menu">
+                <div class="dropdown-calendar"></div>
+                <div class="dropdown-body">
+                    <a class="dropdown-item active" role="menuitem" data-value="last7days" href="javascript:void(0)">{{#str}} last7days, local_edwiserreports {{/str}}</a>
+                    <a class="dropdown-item" role="menuitem" data-value="weekly" href="javascript:void(0)">{{#str}} lastweek, local_edwiserreports {{/str}}</a>
+                    <a class="dropdown-item" role="menuitem" data-value="monthly" href="javascript:void(0)">{{#str}} lastmonth, local_edwiserreports {{/str}}</a>
+                    <a class="dropdown-item" role="menuitem" data-value="yearly" href="javascript:void(0)">{{#str}} lastyear, local_edwiserreports {{/str}}</a>
+                    <a class="dropdown-item custom" role="menuitem" href="javascript:void(0)">
+                        <input class="border-0 p-0 bg-transparent flatpickr" placeholder="{{#str}} customdate, local_edwiserreports {{/str}}" 0="data-input" />
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{{# topinsights }}
+    {{> local_edwiserreports/insights/insights }}
+{{/ topinsights }}
+<div id="wdm-edwiserreports" class="row mx-0" data-editing="{{ editing }}">
+    {{#showwhatsnew}}
+        {{> local_edwiserreports/whatsnew }}
+    {{/showwhatsnew}}
+    {{# canmanagecustomreports }}
+        <div class="col-12 mb-5">
+            <a href="{{customreportseditlink}}" class="btn theme-primary-bg text-white pull-right">
+                <i class="icon fa fa-plus fa-fw " aria-hidden="true"></i>
+                {{#str}} createcustomreports, local_edwiserreports {{/str}}
+            </a>
+        </div>
+    {{/ canmanagecustomreports }}
+    {{# blocks }}
+        <div class="{{{extraclasses}}} mb-5 edwiserReport-block {{# hiddenblock }} block-hidden {{/ hiddenblock}}" data-block="{{id}}">
+            <div id="{{id}}" data-sesskey="{{sesskey}}" data-blockname="{{name}}">
+                <div class="panel m-0 pt-0 px-0 pb-3">
+                    {{#pro}}
+                        <div class="upgrade-to-pro text-white">
+                            <div class="upgrade-notice text-center pt-5 mt-5">
+                                <h4 class="text-white d-inline">{{#str}} unlockthisfeature, local_edwiserreports {{/str}}</h4>
+                                {{#upgradelink}}
+                                    <a href="{{{upgradelink}}}" class="btn theme-primary-bg text-white ml-2 d-inline" target="_blank">{{#str}} upgradetopro, local_edwiserreports {{/str}}</a>
+                                {{/upgradelink}}
+                            </div>
+                        </div>
+                    {{/pro}}
+                    <div class="panel-header p-3 d-flex">
+                        <div class="panel-background"></div>
+                        <div class="panel-title theme-1-text p-0">
+                            <strong class="mb-1">
+                                {{{name}}}
+                                <a href="javascript:void(0)" data-title="{{info}}" class="small panel-help" data-toggle="tooltip" data-trigger="hover" data-placement="top">
+                                    {{{infoicon}}}
+                                </a>
+                            </strong>
+                        </div>
+                        <div class="row p-0 ml-auto mr-0">
+                            {{^pro}}
+                                {{# hasmenu}}
+                                    <div class="dropdown blockoptions">
+                                        <button role="button" type="button" class="btn" data-toggle="dropdown">
+                                            <i class="fa fa-ellipsis-v theme-primary-text"></i>
+                                        </button>
+                                        <div class="dropdown-menu dropdown-menu-right" style="">
+                                            {{# morelink }}
+                                                <a href="{{{.}}}" class="dropdown-item m-0">{{#str}} more, core_calendar {{/str}}</a>
+                                            {{/ morelink }}
+                                            <!-- item-->
+                                            {{# downloadlinks }}
+                                                {{> local_edwiserreports/download_buttons }}
+                                            {{/ downloadlinks }}
+                                        </div>
+                                    </div>
+                                {{/ hasmenu}}
+                            {{/pro}}
+                            {{#pro}}
+                                <div class="pro-lock {{#editing}} pr-1 {{/editing}}">
+                                    {{{pro}}}
+                                </div>
+                            {{/pro}}
+                            {{# editopt }}
+                                {{> local_edwiserreports/blocksettingdropdown }}
+                            {{/ editopt }}
+                        </div>
+                    </div>
+                    <div class="panel-body px-3 py-0">
+                        <div class="block-filters position-relative pb-1">{{{ filters }}}</div>
+                        {{{ blockview }}}
+                        {{#iscustomblock}}
+                            <div class="table-responsive">
+                                <table class="table customreportdata w-full"></table>
+                            </div>
+                        {{/iscustomblock}}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {{#iscustomblock}}
+            {{#js}}
+                require([
+                    'jquery',
+                    'core/ajax',
+                    'local_edwiserreports/common',
+                    'local_edwiserreports/variables',
+                    'local_edwiserreports/customreportsblock'
+                ], function(
+                    $,
+                    ajax,
+                    common,
+                    V,
+                    customreportsblock
+                ) {
+                    var tableId = '#{{{id}}} table.customreportdata';
+                    var searchTable = '#{{{id}}}  .table-search-input input';
+
+                    /**
+                    * Selectors list.
+                    */
+                    let SELECTOR = {
+                        TABLE: '.edwiserreports-table',
+                        FILTER: '.table-filter',
+                        PAGINATION: '.table-pagination',
+                        PAGINATIONITEM: '.paginate_button'
+                    };
+
+                    $(document).ready(function() {
+                        common.loader.show(tableId);
+                        var getCustomReportsData = ajax.call([{
+                            methodname: 'local_edwiserreports_get_customreports_data',
+                            args: {
+                                params: JSON.stringify({{{params}}})
+                            }
+                        }]);
+
+                        getCustomReportsData[0].done(function(response) {
+                            if (response.success) {
+                                var data = JSON.parse(response.data);
+                                var table = $(tableId).DataTable({
+                                    columns: data.columns,
+                                    dom: '<"edwiserreports-table"<"table-wrapper"t><"table-pagination"p>>',
+                                    data: data.reportsdata,
+                                    bInfo: false,
+                                    lengthChange: false,
+                                    language: {
+                                        info: "{{#str}}tableinfo, local_edwiserreports{{/str}}",
+                                        infoEmpty: "{{#str}}infoempty, local_edwiserreports{{/str}}",
+                                        emptyTable: "{{#str}}nodata, local_edwiserreports{{/str}}",
+                                        zeroRecords: "{{#str}}zerorecords, local_edwiserreports{{/str}}",
+                                        paginate: {
+                                            previous: "{{#str}}previous{{/str}}",
+                                            next: "{{#str}}next{{/str}}"
+                                        }
+                                    },
+                                    drawCallback: function() {
+                                        common.stylePaginationButton(this);
+                                    }
+                                });
+
+                                // Search in table.
+                                $('body').on('input', searchTable, function() {
+                                    table.search(this.value).draw();
+                                });
+                            }
+                            common.loader.hide(tableId);
+                        });
+                    });
+                });
+            {{/js}}
+        {{/iscustomblock}}
+    {{/ blocks }}
+    {{# canmanagecustomreports }}
+        <div class="col-12 mb-5">
+            <a href="{{customreportseditlink}}" class="btn theme-primary-bg text-white pull-right">
+                <i class="icon fa fa-plus fa-fw " aria-hidden="true"></i>
+                {{#str}} createcustomreports, local_edwiserreports {{/str}}
+            </a>
+        </div>
+    {{/ canmanagecustomreports }}
+</div>
+{{#js}}
+M.local_edwiserreports = {
+    secret: '{{{secret}}}'
+};
+{{/js}}
+{{#setactive}}
+    {{> local_edwiserreports/setactivenav }}
+{{/setactive}}

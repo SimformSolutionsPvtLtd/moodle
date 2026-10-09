@@ -1,0 +1,79 @@
+/* stylelint-disable declaration-no-important */
+
+@mixin calendar-size {
+    height: 300px;
+    width: 308px;
+    float: left;
+    position: relative;
+}
+
+@mixin calendar-position {
+    top: 0 !important;
+    left: 0 !important;
+    right: auto !important;
+    box-shadow: none !important;
+    border: 0 !important;
+    position: unset;
+}
+
+#wdm-edwiserreports {
+    #activeusersblock {
+        .dropdown-menu {
+            .dropdown-item.custom {
+                background: #fff;
+            }
+        }
+        .refresh {
+            cursor: pointer;
+        }
+        .refresh.refresh-spin {
+            cursor: pointer;
+            -webkit-animation: rotating 2s linear infinite;
+            -moz-animation: rotating 2s linear infinite;
+            -ms-animation: rotating 2s linear infinite;
+            -o-animation: rotating 2s linear infinite;
+            animation: rotating 2s linear infinite;
+        }
+    }
+}
+
+#wdm-activeusers-individual {
+    .dropdown-item {
+        input {
+            border-radius: 0 !important;
+            border: 0 !important;
+            box-shadow: none !important;
+            font-size: inherit !important;
+            min-height: inherit !important;
+            cursor: inherit !important;
+            font-weight: inherit !important;
+        }
+    }
+    .dropdown-menu.withcalendar {
+        width: 310px;
+        display: flex;
+        right: 0;
+        left: auto;
+        .dropdown-body {
+            display: none;
+        }
+        .dropdown-calendar {
+            user-select: none;
+            @include calendar-size;
+            .flatpickr-calendar {
+                @include calendar-position;
+            }
+        }
+    }
+    .filter-wrapper {
+        width: fit-content;
+    }
+    // Fixing header background glitch because of block configurable_rerport plugin.
+    .dataTable {
+        .sorting_asc,
+        .sorting_desc,
+        .sorting {
+            background-image: none !important;
+        }
+    }
+}

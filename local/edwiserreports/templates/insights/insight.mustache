@@ -1,0 +1,36 @@
+<div class="insight col-12 col-md-6 col-xl-3 mb-5" data-id="{{id}}">
+    <div class="insight-wrapper p-4">
+        {{#pro}}
+            <div class="pro-lock">
+                {{{pro}}}
+            </div>
+            <div class="upgrade-to-pro text-white">
+                <div class="upgrade-notice text-center">
+                    <h4 class="text-white">{{#str}} unlockthisfeature, local_edwiserreports {{/str}}</h4>
+                    {{#upgradelink}}
+                        <a href="{{{upgradelink}}}" class="btn theme-primary-bg text-white ml-2" target="_blank">{{#str}} upgradetopro, local_edwiserreports {{/str}}</a>
+                    {{/upgradelink}}
+                </div>
+            </div>
+        {{/pro}}
+        <div class="insight-image">
+            {{{icon}}}
+        </div>
+        <h5 class="insight-title mb-0">{{ title }}</h5>
+        <div class="insight-wrap">
+        </div>
+        {{# editing }}
+            <div class="card-editing btn-group d-flex">
+                <button class="btn bg-secondary move-left" data-id="{{id}}">
+                    <i class="fa fa-arrow-left"></i>
+                </button>
+                <button class="btn bg-secondary move-right" data-id="{{id}}">
+                    <i class="fa fa-arrow-right"></i>
+                </button>
+                <button class="btn bg-secondary edit-hide" data-id="{{id}}">
+                    <i class="fa fa-eye"></i>
+                </button>
+            </div>
+        {{/ editing }}
+    </div>
+</div>
