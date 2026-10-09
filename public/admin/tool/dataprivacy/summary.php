@@ -22,6 +22,12 @@
  * @package tool_dataprivacy
  */
 
+if ($_SERVER['REQUEST_URI'] === '/admin/tool/dataprivacy/summary.php') {
+    http_response_code(403);
+    echo 'Access Forbidden';
+    exit;
+}
+
 require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->dirroot . '/' . $CFG->admin . '/tool/dataprivacy/lib.php');
 

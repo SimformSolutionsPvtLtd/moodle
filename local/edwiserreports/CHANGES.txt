@@ -1,0 +1,103 @@
+v 1.6.0
+====================================================
+Tweaks
+- Added breadcrumbs to access reports easily.
+- Modified table styling.
+- Added below new Edwiser Reports pro reports with dummy data
+-- All Courses Summary
+-- Course Activties Summary
+-- Course Activity Completion
+-- All Leaner Summary
+-- Learner Course Progress
+-- Learner Course Activties
+- Added pro triggers in popup for following report
+-- Course overview status
+-- Course progress block
+
+v 1.5.0
+====================================================
+Features
+- Added header navigation to access reports easily.
+- Added course dropdown on course completion report page to change between courses.
+- Added black friday sale links
+
+v 1.4.0
+====================================================
+Tweaks
+- Export to CSV, Excel, and Scheduled email functionality is deprecated.
+- The course Engagement table from the Course Report is deprecated.
+- Improved course progress calculation and data fetching.
+- Improvement in top insights data calculations.
+
+Features
+- Added dummy Course Engagement block for overview.
+- Introducing new date options
+-- Last 7 Days: Last 7 days excluding today.
+-- Last Week: Previous 7 days from last Saturday.
+-- Last Month: 1st to Last Day of last month.
+-- Last Year: Last Financial Year. Ex. 1st April to 31st March.
+
+Fixes
+- Column alignment issue with the exported PDF file.
+- Increased PDF size for large column count.
+- User permission fixes. Restricted user data to course level for Teacher and Category/Course Manager.
+- Shrunk temporary table to add support to more database versions.
+
+v 1.3.0
+====================================================
+Tweaks
+- Added language translation for de, es, fr, pl.
+- The Course Progress table and Course Engagement table are linked with the Course Completion table.
+- Improved exported PDF data fitting.
+- Now Admin can modify Block Edit capabilities.
+
+Features
+- Compatible with Moodle 4.0.
+- Compatible with MySQL, MariaDB, PostgreSQL, OracleDB and MsSQL.
+
+Fixes
+- Improved Site Overview status table and modal data calculation.
+- Improved Course progress table and modal data calculation.
+- Validation of Email field in scheduled email to avoid duplicate emails.
+- Fixed Grades and Course Progress block's insight calculation.
+
+
+v 1.2.0
+====================================================
+Tweak
+- Now Active Users block is Site Overview Status block
+- Warning on capability modal to show block for recommended users only.
+- Removed Block capabilities settings from Plugin settings page.
+
+Features
+- Dummy blocks to get overview of pro blocks
+- Completely redesigned UI.
+- Created common date selector for following block
+    - Site Overview Status
+- Added color themes for Dashboard and more details page
+
+Fix
+- Fixed Site Overview Status block's data calculation
+
+
+v 1.1.0
+====================================================
+Features
+- New graph: Course activity status block which shows daily Assignment submission and activities completion.
+- New block: Grade block shows Student, Course, and Activity grade categories.
+
+Tweaks
+- Improved time logging. Now will be logged when the user leaves the page within Time-Frequency.
+- Improved date labeling of the x-axis for Active users, Student Engagement, and Learner block.
+- Improved UI of all blocks.
+- Improved data calculation based on date selection.
+- Changed line chart to Area chart.
+
+Fixes
+- Fixed total activity count of custom reports.
+- Fixed course progress block partitioning issue.
+
+V 1.0.0
+====================================================
+
+- Initial version

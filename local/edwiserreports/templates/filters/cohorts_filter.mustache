@@ -1,0 +1,8 @@
+{{#disabled}}
+    {{> local_edwiserreports/proexport }}
+{{/disabled}}
+<select class="cohort-select form-control singleselect" {{#disabled}}disabled title=""{{/disabled}}>
+    {{#values}}
+        <option value="{{id}}">{{name}}</option>
+    {{/values}}
+</select>
