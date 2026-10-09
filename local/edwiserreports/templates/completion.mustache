@@ -1,0 +1,102 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    Edwiser RemUI
+    @package   theme_remui
+    @copyright (c) 2020 WisdmLabs (https://wisdmlabs.com/)
+    @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+
+}}
+{{!
+    @template theme_remui/activity_navigation
+
+    Display the activity navigation for all activities in a course
+
+    Context variables required for this template:
+
+    Example context (json):
+    {
+    }
+}}
+{{> local_edwiserreports/navigation }}
+{{> local_edwiserreports/breadcrumb }}
+
+{{> local_edwiserreports/report-page-header }}
+
+<div id="wdm-completion-individual" class="table-responsive" data-sesskey="{{sesskey}}">
+    <div id="userfilter" class="h-auto mt-2">
+        <div class="row mr-2">
+            <div class="filter-selector col-12 col-md-3 mb-1">
+                <label>{{#str}} search, local_edwiserreports {{/str}}</label>
+                {{> local_edwiserreports/datatable/search }}
+            </div>
+            {{# cohortfilters }}
+                <div class="filter-selector col-12 col-md-2 mb-1">
+                    <label>{{#str}} cohort, local_edwiserreports {{/str}}</label>
+                    <select class="cohort-select form-control singleselect" name="cohort-select">
+                        {{#values}}
+                            <option value="{{id}}">{{name}}</option>
+                        {{/values}}
+                    </select>
+                </div>
+            {{/ cohortfilters }}
+            <div class="filter-selector col-12 col-lg-3 col-md-4 mb-1">
+                <label>{{#str}} course, local_edwiserreports {{/str}}</label>
+                {{> local_edwiserreports/filters/courses_filter }}
+            </div>
+            <div class="filter-selector col-12 table-length-input ml-auto mb-3">
+                <label>{{#str}} show, local_edwiserreports {{/str}}</label>
+                {{> local_edwiserreports/datatable/length }}
+            </div>
+        </div>
+    </div>
+    <table class="table w-100">
+        <thead>
+            <tr>
+                <th>
+                    {{#str}} fullname, local_edwiserreports {{/str}}
+                </th>
+                <th class="text-center">
+                    {{#str}} enrolledon, local_edwiserreports {{/str}}
+                </th>
+                <th class="text-center">
+                    {{#str}} enrolltype, local_edwiserreports {{/str}}
+                </th>
+                <th class="text-center">
+                    {{#str}} noofvisits, local_edwiserreports {{/str}}
+                </th>
+                <th class="text-center">
+                    {{#str}} coursecompletion, local_edwiserreports {{/str}}
+                </th>
+                <th class="text-center">
+                    {{#str}} completiontime, local_edwiserreports {{/str}}
+                </th>
+                <th class="text-center">
+                    {{#str}} grade, local_edwiserreports {{/str}}
+                </th>
+                <th class="text-center">
+                    {{#str}} lastaccess, local_edwiserreports {{/str}}
+                </th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+    {{# export }}
+    <div class="pull-right px-5">
+        {{> local_edwiserreports/exportreports }}
+    </div>
+    {{/ export }}
+</div>
+{{#setactive}}
+    {{> local_edwiserreports/setactivenav }}
+{{/setactive}}
