@@ -602,3 +602,30 @@ function local_edwiserreports_get_default_block_settings() {
 
     return $blocks;
 }
+
+/**
+ * Declare the user preferences that can be updated via AJAX.
+ *
+ * Replaces the removed user_preference_allow_ajax_update() calls (Moodle 5.0+).
+ *
+ * @return array
+ */
+function local_edwiserreports_user_preferences() {
+    return [
+        'local_edwiserreports_bfs_pre_hide' => [
+            'null' => NULL_NOT_ALLOWED,
+            'default' => false,
+            'type' => PARAM_BOOL,
+        ],
+        'local_edwiserreports_bfs_after_hide' => [
+            'null' => NULL_NOT_ALLOWED,
+            'default' => false,
+            'type' => PARAM_BOOL,
+        ],
+        'local_edwiserreports_insights_order' => [
+            'null' => NULL_ALLOWED,
+            'default' => null,
+            'type' => PARAM_TEXT,
+        ],
+    ];
+}
