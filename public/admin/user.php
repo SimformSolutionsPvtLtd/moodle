@@ -15,7 +15,14 @@
     $unlock       = optional_param('unlock', 0, PARAM_INT);
     $resendemail  = optional_param('resendemail', 0, PARAM_INT);
 
-    admin_externalpage_setup('editusers');
+    // Simform: the header search box on this page searches users (not admin settings).
+    $usersearch   = optional_param('query', null, PARAM_RAW_TRIMMED);
+
+    admin_externalpage_setup('editusers', '', null, '', ['nosearch' => true]);
+    $PAGE->add_header_action($OUTPUT->render_from_template('core_admin/header_search_input', [
+        'action' => new moodle_url('/admin/user.php'),
+        'query' => $usersearch,
+    ]));
 
     $sitecontext = context_system::instance();
     $site = get_site();
@@ -169,6 +176,18 @@
 
     $report = \core_reportbuilder\system_report_factory::create(\core_admin\reportbuilder\local\systemreports\users::class,
         context_system::instance(), parameters: ['withcheckboxes' => $bulkactions->has_bulk_actions()]);
+    if ($usersearch !== null) {
+        // Apply the search text as the report's full name (or email, if it looks like one) filter.
+        $field = (strpos($usersearch, '@') !== false) ? 'user:email' : 'user:fullname';
+        $filtervalues = [];
+        if ($usersearch !== '') {
+            $filtervalues = [
+                "{$field}_operator" => \core_reportbuilder\local\filters\text::CONTAINS,
+                "{$field}_value" => $usersearch,
+            ];
+        }
+        \core_reportbuilder\local\helpers\user_filter_manager::set($report->get_report_persistent()->get('id'), $filtervalues);
+    }
     if (has_capability('moodle/user:create', $sitecontext)) {
         $url = new moodle_url('/user/editadvanced.php', ['id' => -1]);
         $report->set_report_action(new \core_reportbuilder\output\report_action(
