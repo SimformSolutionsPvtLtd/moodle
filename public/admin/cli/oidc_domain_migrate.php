@@ -42,6 +42,7 @@ $longoptions = [
     'outdir' => null,
     'log' => null,
     'include-manual' => false,
+    'include-admins' => false,
     'confirm' => false,
 ];
 [$options, $unrecognized] = cli_get_params($longoptions, ['h' => 'help']);
@@ -66,6 +67,7 @@ Options:
     --outdir=DIR      Where snapshot, change log and report go (default: dataroot/oidc_domain_migrate/<time>)
     --log=FILE        changes.jsonl of an earlier apply run (rollback mode only)
     --include-manual  Also migrate auth=manual users (email/username only; default is OIDC users only)
+    --include-admins  Also migrate site admin accounts (skipped by default)
     --confirm         Required for apply and rollback
 
 Examples:
@@ -182,7 +184,8 @@ $candidates = $DB->get_records_select('user', $where, $params, 'id');
 $ctx = [
     'usernames' => [], 'emails' => [], 'allowsameemail' => !empty($CFG->allowaccountssameemail),
     'tokensbyuser' => [], 'tokensbyusername' => [], 'tokenowners' => [],
-    'admins' => array_map('intval', explode(',', (string) $CFG->siteadmins)), 'planned' => [],
+    'admins' => $options['include-admins'] ? [] : array_map('intval', explode(',', (string) $CFG->siteadmins)),
+    'planned' => [],
 ];
 $rs = $DB->get_recordset_select('user', 'deleted = 0 AND mnethostid = :m', ['m' => $CFG->mnet_localhost_id],
     '', 'id, username, email');
